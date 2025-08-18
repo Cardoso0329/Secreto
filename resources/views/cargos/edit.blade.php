@@ -1,0 +1,24 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="container">
+    <h1>Editar Cargo</h1>
+
+    <form action="{{ route('cargos.update', $cargo) }}" method="POST">
+        @csrf
+        @method('PUT')
+
+        <div class="mb-3">
+            <label for="name" class="form-label">Nome do Cargo</label>
+            <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror"
+                   value="{{ old('name', $cargo->name) }}" required>
+            @error('name')
+            <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
+        </div>
+
+        <button class="btn btn-primary" type="submit">Atualizar</button>
+        <a href="{{ route('cargos.index') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+@endsection
