@@ -24,6 +24,7 @@ Route::middleware('auth')->group(function () {
 
     // Painel principal
     Route::get('/painel', [PainelController::class, 'index'])->name('painel');
+    Route::get('/users/search', [UserController::class, 'search'])->name('users.search');
 
 
     
@@ -77,6 +78,8 @@ Route::match(['put', 'post'], '/recados/guest/{token}', [RecadoController::class
 // **Novo** - comentário por convidado (POST)
 Route::post('/recados/guest/{token}/comment', [RecadoController::class, 'guestComment'])
      ->name('recados.guest.comment');
+
+
 
 
 

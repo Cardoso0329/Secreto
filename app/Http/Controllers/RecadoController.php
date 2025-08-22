@@ -97,7 +97,7 @@ class RecadoController extends Controller
         ->paginate(10)
         ->withQueryString();
 
-    return view('recados.index', compact('recados', 'estados', 'tiposFormulario'));
+    return view('recados.index', compact('recados', 'estados', 'tiposFormulario',));
 }
 
     public function store(Request $request)
@@ -414,6 +414,7 @@ public function export()
 {
     return Excel::download(new RecadosExport, 'recados.xlsx');
 }
+
 
 
 

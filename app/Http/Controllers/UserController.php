@@ -27,10 +27,10 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required',
+            'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
             'cargo_id' => 'required|exists:cargos,id',
-            'password' => 'required|min:6|confirmed',
+            'password' => 'required|string|min:6|confirmed',
         ]);
 
         User::create([
@@ -52,16 +52,19 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $request->validate([
-            'name' => 'required',
+            'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
             'cargo_id' => 'required|exists:cargos,id',
+            'password' => 'nullable|string|min:6|confirmed',
         ]);
 
-        $user->update([
-            'name' => $request->name,
-            'email' => $request->email,
-            'cargo_id' => $request->cargo_id,
-        ]);
+        $data = $request->only('name', 'email', 'cargo_id');
+
+        if ($request->filled('password')) {
+            $data['password'] = Hash::make($request->password);
+        }
+
+        $user->update($data);
 
         return redirect()->route('users.index')->with('success', 'Utilizador atualizado.');
     }
@@ -75,7 +78,6 @@ class UserController extends Controller
     // ============================
     // Exportar utilizadores
     // ============================
-
     public function export()
     {
         return Excel::download(new UsersExport, 'users.xlsx');
@@ -84,7 +86,6 @@ class UserController extends Controller
     // ============================
     // Importar utilizadores
     // ============================
-
     public function import(Request $request)
     {
         $request->validate([
@@ -98,4 +99,17 @@ class UserController extends Controller
             return redirect()->back()->with('error', 'Erro ao importar: ' . $e->getMessage());
         }
     }
+
+    public function search(Request $request)
+{
+    $query = $request->input('q', '');
+
+    $users = User::with(['cargo', 'grupos'])
+        ->where('name', 'like', "%{$query}%")
+        ->orWhere('email', 'like', "%{$query}%")
+        ->get();
+
+    return response()->json($users);
+}
+
 }
