@@ -4,40 +4,41 @@
 <div class="container mt-4">
 
     {{-- Cabeçalho --}}
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h2 class="mb-0">Recados</h2>
-
-        <div class="d-flex gap-2">
-
-<a href="{{ route('recados.export') }}" class="btn btn-outline-success">
-    Exportar Recados
-</a>
+        <a href="{{ route('recados.export') }}" class="btn btn-outline-success">
+            Exportar Recados
+        </a>
+    </div>
 
 
 
-{{-- Filtro por Estado --}}
-<form action="{{ route('recados.index') }}" method="GET" class="d-flex gap-2">
-    {{-- Filtro Estado --}}
-    <select name="estado_id" class="form-select" onchange="this.form.submit()">
-        <option value="">Todos os Estados</option>
-        @foreach($estados as $estado)
-            <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
-                {{ $estado->name }}
-            </option>
-        @endforeach
-    </select>
+    {{-- Filtros (Estado e Tipo) --}}
+    <div class="card mb-4">
+        <div class="card-body">
+            <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
+                <div class="col-md-6">
+                    <select name="estado_id" class="form-select" onchange="this.form.submit()">
+                        <option value="">Todos os Estados</option>
+                        @foreach($estados as $estado)
+                            <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
+                                {{ $estado->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-    {{-- Filtro Tipo de Formulário --}}
-    <select name="tipo_formulario_id" class="form-select" onchange="this.form.submit()">
-        <option value="">Todos os Tipos</option>
-        @foreach($tiposFormulario as $tipo_formulario)
-            <option value="{{ $tipo_formulario->id }}" {{ request('tipo_formulario_id') == $tipo_formulario->id ? 'selected' : '' }}>
-                {{ $tipo_formulario->name }}
-            </option>
-        @endforeach
-    </select>
-</form>
-
+                <div class="col-md-6">
+                    <select name="tipo_formulario_id" class="form-select" onchange="this.form.submit()">
+                        <option value="">Todos os Tipos</option>
+                        @foreach($tiposFormulario as $tipo_formulario)
+                            <option value="{{ $tipo_formulario->id }}" {{ request('tipo_formulario_id') == $tipo_formulario->id ? 'selected' : '' }}>
+                                {{ $tipo_formulario->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -54,7 +55,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="col-md-6 mb-3">
                 <div class="card text-center">
                     <div class="card-body">
@@ -67,37 +67,59 @@
         </div>
     </div>
 
+    {{-- Barra de Pesquisa Automática --}}
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ route('recados.index') }}" id="searchForm" class="row g-3">
+            <div class="col-md-6">
+                <input
+                    type="text"
+                    name="contact_client"
+                    class="form-control"
+                    placeholder="Pesquisar Nº Cliente..."
+                    value="{{ request('contact_client') }}"
+                    oninput="document.getElementById('searchForm').submit()">
+            </div>
+
+            <div class="col-md-6">
+                <input
+                    type="text"
+                    name="plate"
+                    class="form-control"
+                    placeholder="Pesquisar Matrícula..."
+                    value="{{ request('plate') }}"
+                    oninput="document.getElementById('searchForm').submit()">
+            </div>
+        </form>
+    </div>
+</div>
+
     {{-- Mensagem de sucesso --}}
     @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
 
-    {{-- Tabela de recados --}}
+    {{-- Tabela de recados responsiva --}}
     <div class="card">
-        <div class="card-body">
+        <div class="card-body table-responsive">
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                    @php
-    $direction = request('direction') === 'asc' ? 'desc' : 'asc';
-@endphp
-@php
-    $sortDir = request('sort_dir', 'desc') === 'asc' ? 'desc' : 'asc';
-@endphp
-<th>
-    <a href="{{ route('recados.index', array_merge(request()->query(), ['sort_by' => 'id', 'sort_dir' => $sortDir])) }}">
-        ID
-        @if(request('sort_by') === 'id')
-            @if(request('sort_dir') === 'asc')
-                🔼
-            @else
-                🔽
-            @endif
-        @endif
-    </a>
-</th>
-
-
+                        @php
+                            $sortDir = request('sort_dir', 'desc') === 'asc' ? 'desc' : 'asc';
+                        @endphp
+                        <th>
+                            <a href="{{ route('recados.index', array_merge(request()->query(), ['sort_by' => 'id', 'sort_dir' => $sortDir])) }}">
+                                ID
+                                @if(request('sort_by') === 'id')
+                                    @if(request('sort_dir') === 'asc')
+                                        🔼
+                                    @else
+                                        🔽
+                                    @endif
+                                @endif
+                            </a>
+                        </th>
                         <th>Nome</th>
                         <th>Contato Cliente</th>
                         <th>Matrícula</th>
@@ -155,11 +177,9 @@
 
             {{-- Paginação --}}
             <div class="d-flex justify-content-center mt-4">
-    {{ $recados->appends(request()->query())->links() }}
-</div>
-
+                {{ $recados->appends(request()->query())->links() }}
+            </div>
         </div>
     </div>
-
 </div>
 @endsection

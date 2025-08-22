@@ -38,7 +38,7 @@
                 {{-- Campo WIP --}}
                 <div class="form-floating mb-4">
                     <input type="text" name="wip" id="wip" class="form-control rounded-3" placeholder="WIP" required>
-                    <label for="wip">WIP *</label>
+                    <label for="wip">WIP</label>
                 </div>
 
                 {{-- Relações exceto Setor --}}
