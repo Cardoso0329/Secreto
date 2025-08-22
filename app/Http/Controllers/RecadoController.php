@@ -165,12 +165,16 @@ public function index(Request $request)
         );
     }
 
-    if ($request->has('destinatarios_grupos')) {
-        $grupos = Grupo::with('users')->whereIn('id', $request->destinatarios_grupos)->get();
-        foreach ($grupos as $grupo) {
-            $emails = array_merge($emails, $grupo->users->pluck('email')->toArray());
-        }
+    if ($request->filled('destinatarios_grupos')) {
+    $grupos = Grupo::with('users')
+        ->whereIn('id', $request->destinatarios_grupos)
+        ->get();
+
+    foreach ($grupos as $grupo) {
+        $recado->destinatarios()->syncWithoutDetaching($grupo->users->pluck('id')->toArray());
     }
+}
+
 
     if ($request->filled('destinatarios_users')) {
         $recado->destinatarios()->syncWithoutDetaching($request->destinatarios_users);
