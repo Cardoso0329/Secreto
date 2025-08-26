@@ -40,7 +40,13 @@ class RecadoController extends Controller
         $origens = Origem::all();
         $departamentos = Departamento::all();
         $slas = SLA::all();
-        $tipos = Tipo::all();
+        $tipos = Tipo::whereIn('name', [
+    'Pedido de contacto',
+    'Pedido de informação',
+    'Pedido de marcação',
+    'Pedido de orçamento'
+])->get();
+
         $estados = Estado::all();
         $avisos = Aviso::all();
         $destinatarios = Destinatario::with('user')->get();
@@ -143,8 +149,9 @@ public function index(Request $request)
         'destinatarios_grupos.*' => 'exists:grupos,id',
         'tipo_formulario_id' => 'nullable|exists:tipo_formularios,id',
         'wip' => 'nullable|string|max:255',
-        'destinatario_livre' => 'nullable|string',
-        'destinatario_livre_email' => 'nullable|email',
+        'destinatarios_livres' => 'array',
+        'destinatarios_livres.*' => 'email',
+
     ]);
 
     if ($request->hasFile('ficheiro')) {
@@ -197,20 +204,25 @@ public function index(Request $request)
         Mail::to($email)->send(new RecadoCriadoMail($recado));
     }
 
-    if ($request->filled('destinatario_livre') && filter_var($request->destinatario_livre, FILTER_VALIDATE_EMAIL)) {
-        $token = Str::random(60);
+    if ($request->filled('destinatarios_livres')) {
+    foreach ($request->destinatarios_livres as $livreEmail) {
+        if (filter_var($livreEmail, FILTER_VALIDATE_EMAIL)) {
+            $token = Str::random(60);
 
-        RecadoGuestToken::create([
-            'recado_id' => $recado->id,
-            'token' => $token,
-            'expires_at' => now()->addMonth(),
-            'is_active' => true,
-        ]);
+            RecadoGuestToken::create([
+                'recado_id' => $recado->id,
+                'token' => $token,
+                'expires_at' => now()->addMonth(),
+                'is_active' => true,
+            ]);
 
-        $guestUrl = route('recados.guest', ['token' => $token]);
+            $guestUrl = route('recados.guest', ['token' => $token]);
 
-        Mail::to($request->destinatario_livre)->send(new RecadoCriadoMail($recado, $guestUrl));
+            Mail::to($livreEmail)->send(new RecadoCriadoMail($recado, $guestUrl));
+        }
     }
+}
+
 
     return redirect()->route('recados.index')->with('success', 'Recado criado e emails enviados.');
 }

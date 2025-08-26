@@ -34,18 +34,62 @@
                     <label for="operator_email">Email do Operador *</label>
                 </div>
 
-                {{-- Seleções Dinâmicas (SLA, Tipo, etc.) --}}
-                @foreach (['sla' => $slas, 'tipo' => $tipos, 'origem' => $origens, 'setor' => $setores, 'departamento' => $departamentos] as $field => $items)
-                    <div class="mb-4">
-                        <label class="form-label fw-semibold">{{ ucfirst($field) }} *</label>
-                        <select name="{{ $field }}_id" id="{{ $field }}_id" class="form-select rounded-3" required>
-                            <option value="">-- Selecione --</option>
-                            @foreach ($items as $item)
-                                <option value="{{ $item->id }}">{{ $item->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                @endforeach
+              {{-- SLA --}}
+<div class="mb-4">
+    <label class="form-label fw-semibold">SLA *</label>
+    <select name="sla_id" id="sla_id" class="form-select rounded-3" required>
+        <option value="">-- Selecione --</option>
+        @foreach ($slas as $item)
+            <option value="{{ $item->id }}">{{ $item->name }}</option>
+        @endforeach
+    </select>
+</div>
+
+{{-- Tipo (filtrado) --}}
+<div class="mb-4">
+    <label class="form-label fw-semibold">Tipo *</label>
+    <select name="tipo_id" id="tipo_id" class="form-select rounded-3" required>
+    <option value="">-- Selecione --</option>
+    @foreach ($tipos as $item)
+        <option value="{{ $item->id }}">{{ $item->name }}</option>
+    @endforeach
+</select>
+
+</div>
+
+{{-- Origem --}}
+<div class="mb-4">
+    <label class="form-label fw-semibold">Origem *</label>
+    <select name="origem_id" id="origem_id" class="form-select rounded-3" required>
+        <option value="">-- Selecione --</option>
+        @foreach ($origens as $item)
+            <option value="{{ $item->id }}">{{ $item->name }}</option>
+        @endforeach
+    </select>
+</div>
+
+{{-- Setor --}}
+<div class="mb-4">
+    <label class="form-label fw-semibold">Setor *</label>
+    <select name="setor_id" id="setor_id" class="form-select rounded-3" required>
+        <option value="">-- Selecione --</option>
+        @foreach ($setores as $item)
+            <option value="{{ $item->id }}">{{ $item->name }}</option>
+        @endforeach
+    </select>
+</div>
+
+{{-- Departamento --}}
+<div class="mb-4">
+    <label class="form-label fw-semibold">Departamento *</label>
+    <select name="departamento_id" id="departamento_id" class="form-select rounded-3" required>
+        <option value="">-- Selecione --</option>
+        @foreach ($departamentos as $item)
+            <option value="{{ $item->id }}">{{ $item->name }}</option>
+        @endforeach
+    </select>
+</div>
+
 
                 {{-- Destinatários Dinâmicos --}}
                 <div class="mb-4">
@@ -76,11 +120,19 @@
                     <div class="form-text">Todos os membros dos grupos selecionados serão notificados.</div>
                 </div>
 
-                {{-- Destinatário Livre --}}
-                <div class="form-floating mb-4">
-                    <input type="text" name="destinatario_livre" id="destinatario_livre" class="form-control rounded-3" placeholder="Destinatário livre">
-                    <label for="destinatario_livre">Destinatário Livre</label>
-                </div>
+                {{-- Destinatários Livres --}}
+<div class="mb-4">
+    <label class="form-label fw-semibold">Destinatários Livres</label>
+    <div class="input-group">
+        <input type="text" id="novoDestinatarioLivre" class="form-control rounded-start" placeholder="Adicionar destinatário livre">
+        <button type="button" id="adicionarDestinatarioLivre" class="btn btn-success rounded-end" disabled>
+            <i class="bi bi-plus-lg"></i>
+        </button>
+    </div>
+    <div id="listaDestinatariosLivres" class="mt-3 d-flex flex-wrap gap-2"></div>
+    <div id="destinatariosLivresInputs"></div>
+</div>
+
 
                 {{-- Mensagem --}}
                 <div class="mb-4">
@@ -199,5 +251,53 @@
             }
         });
     });
+
+    // =======================
+// Destinatários Livres
+// =======================
+const destinatariosLivres = new Map();
+const inputLivre = document.getElementById('novoDestinatarioLivre');
+const addBtnLivre = document.getElementById('adicionarDestinatarioLivre');
+const badgeContainerLivre = document.getElementById('listaDestinatariosLivres');
+const inputContainerLivre = document.getElementById('destinatariosLivresInputs');
+
+const atualizarBotaoLivre = () => {
+    addBtnLivre.disabled = !inputLivre.value.trim();
+};
+
+inputLivre.addEventListener('input', atualizarBotaoLivre);
+
+addBtnLivre.addEventListener('click', () => {
+    const valor = inputLivre.value.trim();
+    if (!valor || destinatariosLivres.has(valor)) return;
+
+    destinatariosLivres.set(valor, valor);
+
+    const badge = document.createElement('span');
+    badge.className = 'badge bg-secondary d-flex align-items-center gap-2 px-2 py-1 rounded-pill';
+    badge.innerHTML = `
+        <span>${valor}</span>
+        <button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remover"></button>
+    `;
+
+    badge.querySelector('button').addEventListener('click', () => {
+        destinatariosLivres.delete(valor);
+        badge.remove();
+        document.getElementById(`destinatario-livre-input-${valor}`)?.remove();
+    });
+
+    badgeContainerLivre.appendChild(badge);
+
+    const inputHidden = document.createElement('input');
+    inputHidden.type = 'hidden';
+    inputHidden.name = 'destinatarios_livres[]';
+    inputHidden.value = valor;
+    inputHidden.id = `destinatario-livre-input-${valor}`;
+    inputContainerLivre.appendChild(inputHidden);
+
+    inputLivre.value = '';
+    atualizarBotaoLivre();
+});
+
 </script>
 @endpush
