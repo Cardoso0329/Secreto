@@ -4,43 +4,21 @@
 <div class="container mt-4">
 
     {{-- Cabeçalho --}}
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <h2 class="mb-0">Recados</h2>
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h2 class="mb-0">Recados</h2>
+
+    <div class="d-flex gap-2">
+        {{-- Exportar TODOS --}}
         <a href="{{ route('recados.export') }}" class="btn btn-outline-success">
-            Exportar Recados
+            Exportar Todos
+        </a>
+
+        {{-- Exportar FILTRADOS --}}
+        <a href="{{ route('recados.export.filtered', request()->query()) }}" class="btn btn-success">
+            Exportar Filtrados
         </a>
     </div>
-
-
-
-    {{-- Filtros (Estado e Tipo) --}}
-    <div class="card mb-4">
-        <div class="card-body">
-            <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
-                <div class="col-md-6">
-                    <select name="estado_id" class="form-select" onchange="this.form.submit()">
-                        <option value="">Todos os Estados</option>
-                        @foreach($estados as $estado)
-                            <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
-                                {{ $estado->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="col-md-6">
-                    <select name="tipo_formulario_id" class="form-select" onchange="this.form.submit()">
-                        <option value="">Todos os Tipos</option>
-                        @foreach($tiposFormulario as $tipo_formulario)
-                            <option value="{{ $tipo_formulario->id }}" {{ request('tipo_formulario_id') == $tipo_formulario->id ? 'selected' : '' }}>
-                                {{ $tipo_formulario->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-            </form>
-        </div>
-    </div>
+</div>
 
     {{-- Card para escolher tipo de formulário --}}
     <div class="mb-4">
@@ -67,32 +45,72 @@
         </div>
     </div>
 
-    {{-- Barra de Pesquisa Automática --}}
+{{-- Filtros Combinados --}}
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET" action="{{ route('recados.index') }}" id="searchForm" class="row g-3">
-            <div class="col-md-6">
+        <form action="{{ route('recados.index') }}" method="GET" id="filtersForm" class="row g-3">
+            
+
+            {{-- ID --}}
+            <div class="col-md-2">
+                <input
+                    type="text"
+                    name="id"
+                    class="form-control"
+                    placeholder="ID..."
+                    value="{{ request('id') }}"
+                    oninput="document.getElementById('filtersForm').submit()">
+            </div>
+
+            {{-- Contacto do Cliente --}}
+            <div class="col-md-2">
                 <input
                     type="text"
                     name="contact_client"
                     class="form-control"
-                    placeholder="Pesquisar Nº Cliente..."
+                    placeholder="Contacto..."
                     value="{{ request('contact_client') }}"
-                    oninput="document.getElementById('searchForm').submit()">
+                    oninput="document.getElementById('filtersForm').submit()">
             </div>
 
-            <div class="col-md-6">
+            {{-- Matrícula --}}
+            <div class="col-md-2">
                 <input
                     type="text"
                     name="plate"
                     class="form-control"
-                    placeholder="Pesquisar Matrícula..."
+                    placeholder="Matrícula..."
                     value="{{ request('plate') }}"
-                    oninput="document.getElementById('searchForm').submit()">
+                    oninput="document.getElementById('filtersForm').submit()">
+            </div>
+
+             {{-- Estado --}}
+            <div class="col-md-3">
+                <select name="estado_id" class="form-select" onchange="document.getElementById('filtersForm').submit()">
+                    <option value="">Todos os Estados</option>
+                    @foreach($estados as $estado)
+                        <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
+                            {{ $estado->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Tipo de Formulário --}}
+            <div class="col-md-3">
+                <select name="tipo_formulario_id" class="form-select" onchange="document.getElementById('filtersForm').submit()">
+                    <option value="">Todos os Tipos</option>
+                    @foreach($tiposFormulario as $tipo_formulario)
+                        <option value="{{ $tipo_formulario->id }}" {{ request('tipo_formulario_id') == $tipo_formulario->id ? 'selected' : '' }}>
+                            {{ $tipo_formulario->name }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
         </form>
     </div>
 </div>
+
 
     {{-- Mensagem de sucesso --}}
     @if(session('success'))

@@ -66,6 +66,7 @@ Route::post('/users/import', [UserController::class, 'import'])->name('users.imp
 Route::get('recados-export', [RecadoController::class, 'export'])
     ->name('recados.export');
 
+Route::get('/recados/export/filtered', [RecadoController::class, 'exportFiltered'])->name('recados.export.filtered');
 
 
 // Mostrar o recado para convidado (com token)

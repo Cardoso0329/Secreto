@@ -100,6 +100,10 @@ public function index(Request $request)
         ->when($request->filled('tipo_formulario_id'), fn($q) => $q->where('tipo_formulario_id', $request->tipo_formulario_id))
 
         // 🔍 filtros
+
+        ->when($request->filled('id'), fn($q) =>
+    $q->where('id', $request->id)
+)
         ->when($request->filled('contact_client'), fn($q) =>
             $q->where('contact_client', 'like', '%'.$request->contact_client.'%')
         )
@@ -430,9 +434,35 @@ public function guestComment(Request $request, $token)
                      ->with('success', 'Comentário enviado. Obrigado!');
 }
 
+
 public function export()
 {
-    return Excel::download(new RecadosExport, 'recados.xlsx');
+    $recados = Recado::with(['estado', 'tipoFormulario'])->get();
+
+    return Excel::download(new RecadosExport($recados), 'recados_todos.xlsx');
+}
+
+public function exportFiltered(Request $request)
+{
+    $recados = Recado::with(['estado', 'tipoFormulario'])
+        ->when($request->filled('estado_id'), fn($q) =>
+            $q->where('estado_id', $request->estado_id)
+        )
+        ->when($request->filled('tipo_formulario_id'), fn($q) =>
+            $q->where('tipo_formulario_id', $request->tipo_formulario_id)
+        )
+        ->when($request->filled('id'), fn($q) =>
+            $q->where('id', $request->id)
+        )
+        ->when($request->filled('contact_client'), fn($q) =>
+            $q->where('contact_client', 'like', '%'.$request->contact_client.'%')
+        )
+        ->when($request->filled('plate'), fn($q) =>
+            $q->where('plate', 'like', '%'.$request->plate.'%')
+        )
+        ->get();
+
+    return Excel::download(new RecadosExport($recados), 'recados_filtrados.xlsx');
 }
 
 
