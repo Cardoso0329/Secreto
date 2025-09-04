@@ -211,6 +211,7 @@ public function index(Request $request)
 
             RecadoGuestToken::create([
                 'recado_id' => $recado->id,
+                'email' => $livreEmail,
                 'token' => $token,
                 'expires_at' => now()->addMonth(),
                 'is_active' => true,
@@ -231,7 +232,7 @@ public function index(Request $request)
     public function show($id)
     {
         $recado = Recado::with([
-            'sla', 'tipo', 'origem', 'setor', 'departamento', 'destinatarios', 'aviso', 'estado', 'tipoFormulario'
+            'sla', 'tipo', 'origem', 'setor', 'departamento', 'destinatarios', 'aviso', 'estado', 'tipoFormulario', 'guestTokens'
         ])->findOrFail($id);
 
         $user = auth()->user();

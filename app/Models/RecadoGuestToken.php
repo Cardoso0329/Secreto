@@ -6,7 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class RecadoGuestToken extends Model
 {
-    protected $fillable = ['recado_id', 'token', 'expires_at', 'is_active'];
+    protected $fillable = [
+    'recado_id',
+    'email',
+    'token',
+    'expires_at',
+    'is_active',
+];
+
 
     protected $casts = [
         'expires_at' => 'datetime',

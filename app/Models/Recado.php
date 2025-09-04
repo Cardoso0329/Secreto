@@ -38,5 +38,11 @@ public function tipoFormulario()
     return $this->belongsTo(TipoFormulario::class, 'tipo_formulario_id');
 }
 
+public function guestTokens()
+{
+    return $this->hasMany(RecadoGuestToken::class);
+}
+
+
 
 }
