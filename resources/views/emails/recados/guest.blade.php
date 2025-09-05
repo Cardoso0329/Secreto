@@ -82,7 +82,7 @@
                         @endforelse
                     </p>
 
-<p><strong>Destinatário Livre:</strong> {{ $token->email ?? '—' }}</p>
+                    <p><strong>Destinatário Livre:</strong> {{ $token->email ?? '—' }}</p>
                     
                     <p><strong>Ficheiro:</strong></p>
                     @if ($recado->ficheiro)
