@@ -153,19 +153,29 @@
                             <td>{{ $recado->operator_email ?? '—' }}</td>
                             <td>
                                 @php
+                                    // Badge Estado
                                     $estadoNome = strtolower($recado->estado->name ?? '');
-                                    $badgeClass = match($estadoNome) {
-                                        'aguardar' => 'bg-warning text-dark',
-                                        'pendente' => 'bg-info text-dark',
-                                        'tratado' => 'bg-success text-white',
-                                        default => 'bg-secondary text-white'
+                                    $badgeEstado = match($estadoNome) {
+                                        'pendente' => 'bg-warning text-dark',
+                                        'tratado' => 'bg-purple text-white',
+                                    };
+
+                                    // Badge Tipo de Formulário
+                                    $tipoNome = strtolower($recado->tipoFormulario->name ?? '');
+                                    $badgeTipo = match($tipoNome) {
+                                        'central' => 'bg-primary text-white',
+                                        'call center' => 'bg-success text-white',
                                     };
                                 @endphp
-                                <span class="badge rounded-pill {{ $badgeClass }}">
+                                <span class="badge rounded-pill {{ $badgeEstado }}">
                                     {{ ucfirst($estadoNome) ?: '—' }}
                                 </span>
                             </td>
-                            <td>{{ $recado->tipoFormulario->name ?? '—' }}</td>
+                            <td>
+                                <span class="badge rounded-pill {{ $badgeTipo }}">
+                                    {{ ucfirst($tipoNome) ?: '—' }}
+                                </span>
+                            </td>
                             <td class="text-nowrap">{{ $recado->created_at->format('d/m/Y H:i') }}</td>
                             <td class="text-end">
                                 <a href="{{ route('recados.show', $recado) }}" class="btn btn-sm btn-info me-1">
@@ -200,3 +210,10 @@
     </div>
 </div>
 @endsection
+
+<style>
+.bg-purple {
+    background-color: #6f42c1 !important;
+}
+</style>
+
