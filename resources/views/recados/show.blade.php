@@ -73,14 +73,22 @@
                 <div class="card-body">
                     <h5 class="fw-semibold mb-3">👥 Destinatários & Mensagem</h5>
                     <p><strong>Destinatários:</strong>
-                        @forelse($recado->destinatarios as $user)
-                            {{ $user->name }}{{ !$loop->last ? ',' : '' }}
-                        @empty
-                            <span class="text-muted">Nenhum</span>
-                        @endforelse
-                    </p>
+    @forelse($recado->destinatarios as $user)
+        {{ $user->name }}{{ !$loop->last ? ',' : '' }}
+    @empty
+        <span class="text-muted">Nenhum</span>
+    @endforelse
+</p>
 
-                    @if($recado->guestTokens->count())
+@if($recado->grupos?->count())
+    <p><strong>Grupos:</strong>
+        @foreach($recado->grupos as $grupo)
+            {{ $grupo->name }}{{ !$loop->last ? ',' : '' }}
+        @endforeach
+    </p>
+@endif
+
+@if($recado->guestTokens?->count())
     <p><strong>Destinatários Livres:</strong></p>
     <ul>
         @foreach($recado->guestTokens as $token)
@@ -90,6 +98,7 @@
 @else
     <p><strong>Destinatários Livres:</strong> —</p>
 @endif
+
 
 
                     <p><strong>Mensagem:</strong> {{ $recado->mensagem }}</p>

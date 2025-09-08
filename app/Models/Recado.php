@@ -43,6 +43,12 @@ public function guestTokens()
     return $this->hasMany(RecadoGuestToken::class);
 }
 
+public function grupos()
+{
+    return $this->belongsToMany(Grupo::class, 'recado_grupo');
+}
+
+
 
 
 }

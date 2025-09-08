@@ -14,6 +14,12 @@ public function users()
     return $this->belongsToMany(User::class, 'grupo_user', 'grupo_id', 'user_id');
 }
 
+public function recados()
+{
+    return $this->belongsToMany(Recado::class, 'recado_grupo');
+}
+
+
 
 }
 

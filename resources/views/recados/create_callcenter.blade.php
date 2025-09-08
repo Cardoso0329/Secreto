@@ -139,18 +139,11 @@
                     </select>
                 </div>
 
-                {{-- Estado --}}
-                <div class="mb-4">
-                    <label for="estado_id" class="form-label fw-semibold">Estado *</label>
-                    <select name="estado_id" id="estado_id" class="form-select rounded-3" required>
-                        <option value="">-- Selecione --</option>
-                        @foreach ($estados as $estado)
-                            <option value="{{ $estado->id }}" {{ $estado->name === 'Aguardar' ? 'selected' : '' }}>
-                                {{ $estado->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+               {{-- Estado fixo em Pendente --}}
+@php
+    $estadoPendente = $estados->firstWhere('name', 'Pendente');
+@endphp
+<input type="hidden" name="estado_id" value="{{ $estadoPendente?->id }}">
 
                 {{-- Abertura --}}
                 <div class="form-floating mb-4">

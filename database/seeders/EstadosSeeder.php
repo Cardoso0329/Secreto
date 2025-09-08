@@ -20,7 +20,6 @@ class EstadosSeeder extends Seeder
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         DB::table('estados')->insert([
-            ['name' => 'Aguardar'],
             ['name' => 'Pendente'],
             ['name' => 'Tratado'],
         ]);
