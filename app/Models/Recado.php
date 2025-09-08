@@ -16,31 +16,14 @@ class Recado extends Model
     'termino' => 'datetime',];
 
     // Adicione o setor_id, origem_id, departamento_id, etc., aqui
-    protected $fillable = [
-        'name',
-        'contact_client',
-        'plate',
-        'operator_email',
-        'sla_id',
-        'tipo_id',
-        'origem_id',
-        'setor_id',
-        'departamento_id',
-        'destinatario_id',
-        'destinatario_livre',
-        'mensagem',
-        'ficheiro',
-        'aviso_nivel',
-        'aviso_id',
-        'estado_id',
-        'observacoes',
-        'tipo_formulario_id',
-        'wip',
-        'abertura',
-        'termino',
-             
-    ];
-    
+   protected $fillable = [
+    'name', 'contact_client', 'operator_email', 'sla_id', 'tipo_id', 
+    'origem_id', 'setor_id', 'departamento_id', 'mensagem', 'ficheiro',
+    'aviso_id', 'estado_id', 'observacoes', 'abertura', 'termino',
+    'tipo_formulario_id', 'wip', 'destinatario_livre', 'plate',
+    'user_id'  
+];
+
 
 public function setor() { return $this->belongsTo(Setor::class); }
 public function origem() { return $this->belongsTo(Origem::class); }
@@ -54,6 +37,12 @@ public function tipoFormulario()
 {
     return $this->belongsTo(TipoFormulario::class, 'tipo_formulario_id');
 }
+
+public function guestTokens()
+{
+    return $this->hasMany(RecadoGuestToken::class);
+}
+
 
 
 }

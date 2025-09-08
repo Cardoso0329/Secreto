@@ -40,7 +40,13 @@ class RecadoController extends Controller
         $origens = Origem::all();
         $departamentos = Departamento::all();
         $slas = SLA::all();
-        $tipos = Tipo::all();
+        $tipos = Tipo::whereIn('name', [
+    'Pedido de contacto',
+    'Pedido de informação',
+    'Pedido de marcação',
+    'Pedido de orçamento'
+])->get();
+
         $estados = Estado::all();
         $avisos = Aviso::all();
         $destinatarios = Destinatario::with('user')->get();
@@ -62,7 +68,7 @@ class RecadoController extends Controller
         }
     }
 
-    public function index(Request $request)
+public function index(Request $request)
 {
     $user = auth()->user();
     $estados = Estado::all();
@@ -82,17 +88,35 @@ class RecadoController extends Controller
     $recados = Recado::with([
         'setor', 'origem', 'departamento', 'destinatarios', 'estado', 'sla', 'tipo', 'aviso', 'tipoFormulario'
     ])
-        ->when(!$user->cargo || $user->cargo->name !== 'admin', function ($query) use ($user) {
-            $query->whereHas('destinatarios', function ($q) use ($user) {
-                $q->where('users.id', $user->id);
+        ->when($user->cargo?->name === 'Funcionário', function ($query) use ($user) {
+            // Funcionário só pode ver os recados que criou ou que lhe foram destinados
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('destinatarios', function ($q2) use ($user) {
+                      $q2->where('users.id', $user->id);
+                  });
             });
         })
-        ->when($request->filled('estado_id'), function ($query) use ($request) {
-            $query->where('estado_id', $request->estado_id);
+        ->when(!$user->cargo || !in_array($user->cargo->name, ['admin','Funcionário']), function ($query) use ($user) {
+            // Outros cargos → por agora restringes como quiseres, aqui coloco a mesma regra de funcionário
+            $query->where('user_id', $user->id);
         })
-        ->when($request->filled('tipo_formulario_id'), function ($query) use ($request) {
-            $query->where('tipo_formulario_id', $request->tipo_formulario_id);
-        })
+
+        ->when($request->filled('estado_id'), fn($q) => $q->where('estado_id', $request->estado_id))
+        ->when($request->filled('tipo_formulario_id'), fn($q) => $q->where('tipo_formulario_id', $request->tipo_formulario_id))
+
+        // 🔍 filtros
+
+        ->when($request->filled('id'), fn($q) =>
+    $q->where('id', $request->id)
+)
+        ->when($request->filled('contact_client'), fn($q) =>
+            $q->where('contact_client', 'like', '%'.$request->contact_client.'%')
+        )
+        ->when($request->filled('plate'), fn($q) =>
+            $q->where('plate', 'like', '%'.$request->plate.'%')
+        )
+
         ->orderBy($sortBy, $sortDir)
         ->paginate(10)
         ->withQueryString();
@@ -100,85 +124,94 @@ class RecadoController extends Controller
     return view('recados.index', compact('recados', 'estados', 'tiposFormulario'));
 }
 
+
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'contact_client' => 'required|string|max:255',
-            'operator_email' => 'nullable|email',
-            'sla_id' => 'required|exists:slas,id',
-            'tipo_id' => 'required|exists:tipos,id',
-            'origem_id' => 'required|exists:origens,id',
-            'setor_id' => 'required|exists:setores,id',
-            'departamento_id' => 'required|exists:departamentos,id',
-            'mensagem' => 'required|string',
-            'ficheiro' => 'nullable|file',
-            'aviso_id' => 'nullable|exists:avisos,id',
-            'estado_id' => 'required|exists:estados,id',
-            'observacoes' => 'nullable|string',
-            'abertura' => 'nullable|date',
-            'termino' => 'nullable|date',
-            'destinatarios_users' => 'array',
-            'destinatarios_users.*' => 'exists:users,id',
-            'destinatarios_grupos' => 'array',
-            'destinatarios_grupos.*' => 'exists:grupos,id',
-            'tipo_formulario_id' => 'nullable|exists:tipo_formularios,id',
-            'wip' => 'nullable|string|max:255',
-            'destinatario_livre' => 'nullable|string',
-            'destinatario_livre_email' => 'nullable|email',
-        ]);
+{
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'contact_client' => 'required|string|max:255',
+        'operator_email' => 'nullable|email',
+        'sla_id' => 'required|exists:slas,id',
+        'tipo_id' => 'required|exists:tipos,id',
+        'origem_id' => 'required|exists:origens,id',
+        'setor_id' => 'required|exists:setores,id',
+        'departamento_id' => 'required|exists:departamentos,id',
+        'mensagem' => 'required|string',
+        'ficheiro' => 'nullable|file',
+        'aviso_id' => 'nullable|exists:avisos,id',
+        'estado_id' => 'required|exists:estados,id',
+        'observacoes' => 'nullable|string',
+        'abertura' => 'nullable|date',
+        'termino' => 'nullable|date',
+        'destinatarios_users' => 'array',
+        'destinatarios_users.*' => 'exists:users,id',
+        'destinatarios_grupos' => 'array',
+        'destinatarios_grupos.*' => 'exists:grupos,id',
+        'tipo_formulario_id' => 'nullable|exists:tipo_formularios,id',
+        'wip' => 'nullable|string|max:255',
+        'destinatarios_livres' => 'array',
+        'destinatarios_livres.*' => 'email',
 
-        if ($request->hasFile('ficheiro')) {
-            $path = $request->file('ficheiro')->store('recados', 'public');
-            $validated['ficheiro'] = basename($path);
+    ]);
+
+    if ($request->hasFile('ficheiro')) {
+        $path = $request->file('ficheiro')->store('recados', 'public');
+        $validated['ficheiro'] = basename($path);
+    }
+
+    $validated['plate'] = $request->input('plate');
+    $validated['destinatario_livre'] = $request->input('destinatario_livre');
+
+    // 🔹 Adiciona o user_id do utilizador autenticado
+    $validated['user_id'] = auth()->id();
+
+    $recado = Recado::create($validated);
+
+    $emails = [];
+
+    if ($request->has('destinatarios_users')) {
+        $emails = array_merge(
+            $emails,
+            User::whereIn('id', $request->destinatarios_users)->pluck('email')->toArray()
+        );
+    }
+
+    if ($request->filled('destinatarios_grupos')) {
+    $grupos = Grupo::with('users')
+        ->whereIn('id', $request->destinatarios_grupos)
+        ->get();
+
+    foreach ($grupos as $grupo) {
+        $recado->destinatarios()->syncWithoutDetaching($grupo->users->pluck('id')->toArray());
+    }
+}
+
+
+    if ($request->filled('destinatarios_users')) {
+        $recado->destinatarios()->syncWithoutDetaching($request->destinatarios_users);
+    }
+
+    if ($request->filled('destinatarios_grupos')) {
+        $grupos = Grupo::with('users')->whereIn('destinatarios_grupos')->get();
+        foreach ($grupos as $grupo) {
+            $recado->destinatarios()->syncWithoutDetaching($grupo->users->pluck('id')->toArray());
         }
+    }
 
-        $validated['plate'] = $request->input('plate');
-        $validated['destinatario_livre'] = $request->input('destinatario_livre');
+    $emails = array_unique($emails);
 
-        $recado = Recado::create($validated);
+    foreach ($emails as $email) {
+        Mail::to($email)->send(new RecadoCriadoMail($recado));
+    }
 
-        $emails = [];
-
-        if ($request->has('destinatarios_users')) {
-            $emails = array_merge(
-                $emails,
-                User::whereIn('id', $request->destinatarios_users)->pluck('email')->toArray()
-            );
-        }
-
-        if ($request->has('destinatarios_grupos')) {
-            $grupos = Grupo::with('users')->whereIn('id', $request->destinatarios_grupos)->get();
-            foreach ($grupos as $grupo) {
-                $emails = array_merge($emails, $grupo->users->pluck('email')->toArray());
-            }
-        }
-
-        if ($request->filled('destinatarios_users')) {
-            $recado->destinatarios()->syncWithoutDetaching($request->destinatarios_users);
-        }
-
-        if ($request->filled('destinatarios_grupos')) {
-            $grupos = Grupo::with('users')->whereIn('id', $request->destinatarios_grupos)->get();
-            foreach ($grupos as $grupo) {
-                $recado->destinatarios()->syncWithoutDetaching($grupo->users->pluck('id')->toArray());
-            }
-        }
-
-        $emails = array_unique($emails);
-
-        // Enviar mail para utilizadores/grupos
-        foreach ($emails as $email) {
-            Mail::to($email)->send(new RecadoCriadoMail($recado));
-        }
-
-        // Se houver destinatário livre válido (email), criar token e enviar email com guestUrl
-        if ($request->filled('destinatario_livre') && filter_var($request->destinatario_livre, FILTER_VALIDATE_EMAIL)) {
-            // criar token
+    if ($request->filled('destinatarios_livres')) {
+    foreach ($request->destinatarios_livres as $livreEmail) {
+        if (filter_var($livreEmail, FILTER_VALIDATE_EMAIL)) {
             $token = Str::random(60);
 
             RecadoGuestToken::create([
                 'recado_id' => $recado->id,
+                'email' => $livreEmail,
                 'token' => $token,
                 'expires_at' => now()->addMonth(),
                 'is_active' => true,
@@ -186,17 +219,20 @@ class RecadoController extends Controller
 
             $guestUrl = route('recados.guest', ['token' => $token]);
 
-            // enviar email com guestUrl
-            Mail::to($request->destinatario_livre)->send(new RecadoCriadoMail($recado, $guestUrl));
+            Mail::to($livreEmail)->send(new RecadoCriadoMail($recado, $guestUrl));
         }
-
-        return redirect()->route('recados.index')->with('success', 'Recado criado e emails enviados.');
     }
+}
+
+
+    return redirect()->route('recados.index')->with('success', 'Recado criado e emails enviados.');
+}
+
 
     public function show($id)
     {
         $recado = Recado::with([
-            'sla', 'tipo', 'origem', 'setor', 'departamento', 'destinatarios', 'aviso', 'estado', 'tipoFormulario'
+            'sla', 'tipo', 'origem', 'setor', 'departamento', 'destinatarios', 'aviso', 'estado', 'tipoFormulario', 'guestTokens'
         ])->findOrFail($id);
 
         $user = auth()->user();
@@ -323,28 +359,26 @@ class RecadoController extends Controller
 
     $recado = $guestToken->recado;
 
-    // Validação: só permitimos campos seguros
     $validated = $request->validate([
         'mensagem' => 'nullable|string|max:5000',
         'estado_id' => 'nullable|exists:estados,id',
         'comentario' => 'nullable|string|max:2000',
     ]);
 
-    // Atualiza mensagem se vier
+    // Atualiza mensagem
     if (!empty($validated['mensagem'])) {
         $recado->mensagem = $validated['mensagem'];
     }
 
-    // Atualiza estado com **regras**: aqui limitamos transições (ajusta conforme a tua lógica)
+    // Atualiza estado (bloquear concluir/concluído)
     if (!empty($validated['estado_id'])) {
         $novo = Estado::find($validated['estado_id']);
-        // Exemplo de bloqueio: não permitir que convidado defina 'Concluído' diretamente
-        if ($novo && strtolower($novo->name) !== 'concluído') {
+        if ($novo && strtolower($novo->name) !== 'concluído' && strtolower($novo->name) !== 'tratado') {
             $recado->estado_id = $novo->id;
         }
     }
 
-    // Comentário opcional
+    // Comentário
     if (!empty($validated['comentario'])) {
         $nomeOuEmail = $recado->destinatario_livre ?? 'Convidado';
         $novaLinha = now()->format('d/m/Y H:i') . ' - ' . $nomeOuEmail . ': ' . $validated['comentario'];
@@ -352,16 +386,19 @@ class RecadoController extends Controller
             ? $recado->observacoes . "\n" . $novaLinha
             : $novaLinha;
     }
-    
 
     $recado->save();
 
-    // Segurança: invalidar o token após edição para evitar edições repetidas (recomendado)
-    $guestToken->update(['is_active' => false]);
+    // ⚠️ Agora NÃO invalidamos sempre o token.
+    // Só expira se o estado já for "Tratado".
+    if ($recado->estado && strtolower($recado->estado->name) === 'tratado') {
+        $guestToken->update(['is_active' => false]);
+    }
 
     return redirect()->route('recados.guest', ['token' => $token])
-                     ->with('success', 'Recado atualizado e comentário adicionado com sucesso!');
+                     ->with('success', 'Recado atualizado com sucesso!');
 }
+
 
 
 
@@ -410,10 +447,37 @@ public function guestComment(Request $request, $token)
                      ->with('success', 'Comentário enviado. Obrigado!');
 }
 
+
 public function export()
 {
-    return Excel::download(new RecadosExport, 'recados.xlsx');
+    $recados = Recado::with(['estado', 'tipoFormulario'])->get();
+
+    return Excel::download(new RecadosExport($recados), 'recados_todos.xlsx');
 }
+
+public function exportFiltered(Request $request)
+{
+    $recados = Recado::with(['estado', 'tipoFormulario'])
+        ->when($request->filled('estado_id'), fn($q) =>
+            $q->where('estado_id', $request->estado_id)
+        )
+        ->when($request->filled('tipo_formulario_id'), fn($q) =>
+            $q->where('tipo_formulario_id', $request->tipo_formulario_id)
+        )
+        ->when($request->filled('id'), fn($q) =>
+            $q->where('id', $request->id)
+        )
+        ->when($request->filled('contact_client'), fn($q) =>
+            $q->where('contact_client', 'like', '%'.$request->contact_client.'%')
+        )
+        ->when($request->filled('plate'), fn($q) =>
+            $q->where('plate', 'like', '%'.$request->plate.'%')
+        )
+        ->get();
+
+    return Excel::download(new RecadosExport($recados), 'recados_filtrados.xlsx');
+}
+
 
 
 

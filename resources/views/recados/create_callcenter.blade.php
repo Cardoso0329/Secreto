@@ -28,53 +28,51 @@
                     <label for="plate">Matrícula</label>
                 </div>
 
-                {{-- Email do Operador --}}
+                 {{-- Email do Operador --}}
                 <div class="form-floating mb-4">
-                    <input type="email" name="operator_email" id="operator_email" class="form-control rounded-3 bg-light" 
-                        value="{{ Auth::user()->email }}" readonly>
+                    <input type="email" name="operator_email" id="operator_email" class="form-control rounded-3 bg-light" value="{{ Auth::user()->email }}" readonly>
                     <label for="operator_email">Email do Operador *</label>
                 </div>
 
                 {{-- Campo WIP --}}
                 <div class="form-floating mb-4">
                     <input type="text" name="wip" id="wip" class="form-control rounded-3" placeholder="WIP" required>
-                    <label for="wip">WIP *</label>
+                    <label for="wip">WIP</label>
                 </div>
 
                 {{-- Relações exceto Setor --}}
-@foreach (['sla' => $slas, 'tipo' => $tipos, 'origem' => $origens, 'departamento' => $departamentos] as $field => $items)
-    <div class="mb-4">
-        <label class="form-label fw-semibold">{{ ucfirst($field) }} *</label>
-        <select name="{{ $field }}_id" id="{{ $field }}_id" class="form-select rounded-3" required>
-            <option value="">-- Selecione --</option>
-            @foreach ($items as $item)
-                <option value="{{ $item->id }}">{{ $item->name }}</option>
-            @endforeach
-        </select>
-    </div>
-@endforeach
+                @foreach (['sla' => $slas, 'tipo' => $tipos, 'origem' => $origens, 'departamento' => $departamentos] as $field => $items)
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">{{ ucfirst($field) }} *</label>
+                        <select name="{{ $field }}_id" id="{{ $field }}_id" class="form-select rounded-3" required>
+                            <option value="">-- Selecione --</option>
+                            @foreach ($items as $item)
+                                <option value="{{ $item->id }}">{{ $item->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endforeach
 
-{{-- Setor filtrado --}}
-@php
-    $setoresPermitidos = [
-        'Novos VLP', 'Novos VCL', 'Novos Smart', 'Usados', 'Novos VCP',
-        'Colisão', 'APV - VLP', 'APV - VCL', 'APV - VCP',
-        'Peças', 'VCL', 'Marketing', 'Informática'
-    ];
-@endphp
+                {{-- Setor filtrado --}}
+                @php
+                    $setoresPermitidos = [
+                        'Novos VLP', 'Novos VCL', 'Novos Smart', 'Usados', 'Novos VCP',
+                        'Colisão', 'APV - VLP', 'APV - VCL', 'APV - VCP',
+                        'Peças', 'VCL', 'Marketing', 'Informática'
+                    ];
+                @endphp
 
-<div class="mb-4">
-    <label class="form-label fw-semibold">Chefias *</label>
-    <select name="setor_id" id="setor_id" class="form-select rounded-3" required>
-        <option value="">-- Selecione --</option>
-        @foreach ($setores as $setor)
-            @if(in_array($setor->name, $setoresPermitidos))
-                <option value="{{ $setor->id }}">{{ $setor->name }}</option>
-            @endif
-        @endforeach
-    </select>
-</div>
-
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Chefias *</label>
+                    <select name="setor_id" id="setor_id" class="form-select rounded-3" required>
+                        <option value="">-- Selecione --</option>
+                        @foreach ($setores as $setor)
+                            @if(in_array($setor->name, $setoresPermitidos))
+                                <option value="{{ $setor->id }}">{{ $setor->name }}</option>
+                            @endif
+                        @endforeach
+                    </select>
+                </div>
 
                 {{-- Destinatários Dinâmicos --}}
                 <div class="mb-4">
@@ -105,10 +103,17 @@
                     <div class="form-text">Todos os membros dos grupos selecionados serão notificados.</div>
                 </div>
 
-                {{-- Destinatário Livre --}}
-                <div class="form-floating mb-4">
-                    <input type="text" name="destinatario_livre" id="destinatario_livre" class="form-control rounded-3" placeholder="Destinatário livre">
-                    <label for="destinatario_livre">Destinatário Livre</label>
+                {{-- Destinatários Livres --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Destinatários Livres</label>
+                    <div class="input-group">
+                        <input type="text" id="novoDestinatarioLivre" class="form-control rounded-start" placeholder="Adicionar destinatário livre">
+                        <button type="button" id="adicionarDestinatarioLivre" class="btn btn-success rounded-end" disabled>
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                    <div id="listaDestinatariosLivres" class="mt-3 d-flex flex-wrap gap-2"></div>
+                    <div id="destinatariosLivresInputs"></div>
                 </div>
 
                 {{-- Mensagem --}}
@@ -169,6 +174,9 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', () => {
+        // =======================
+        // Destinatários Dinâmicos
+        // =======================
         const destinatarios = new Map();
         const select = document.getElementById('novoDestinatario');
         const addBtn = document.getElementById('adicionarDestinatario');
@@ -218,12 +226,62 @@
             atualizarBotao();
         });
 
+        // =======================
+        // Destinatários Livres
+        // =======================
+        const destinatariosLivres = new Map();
+        const inputLivre = document.getElementById('novoDestinatarioLivre');
+        const addBtnLivre = document.getElementById('adicionarDestinatarioLivre');
+        const badgeContainerLivre = document.getElementById('listaDestinatariosLivres');
+        const inputContainerLivre = document.getElementById('destinatariosLivresInputs');
+
+        const atualizarBotaoLivre = () => {
+            addBtnLivre.disabled = !inputLivre.value.trim();
+        };
+
+        inputLivre.addEventListener('input', atualizarBotaoLivre);
+
+        addBtnLivre.addEventListener('click', () => {
+            const valor = inputLivre.value.trim();
+            if (!valor || destinatariosLivres.has(valor)) return;
+
+            destinatariosLivres.set(valor, valor);
+
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-secondary d-flex align-items-center gap-2 px-2 py-1 rounded-pill';
+            badge.innerHTML = `
+                <span>${valor}</span>
+                <button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remover"></button>
+            `;
+
+            badge.querySelector('button').addEventListener('click', () => {
+                destinatariosLivres.delete(valor);
+                badge.remove();
+                document.getElementById(`destinatario-livre-input-${valor}`)?.remove();
+            });
+
+            badgeContainerLivre.appendChild(badge);
+
+            const inputHidden = document.createElement('input');
+            inputHidden.type = 'hidden';
+            inputHidden.name = 'destinatarios_livres[]';
+            inputHidden.value = valor;
+            inputHidden.id = `destinatario-livre-input-${valor}`;
+            inputContainerLivre.appendChild(inputHidden);
+
+            inputLivre.value = '';
+            atualizarBotaoLivre();
+        });
+
+        // =======================
+        // Validação no Submit
+        // =======================
         document.querySelector('form').addEventListener('submit', function (e) {
             const temUsers = document.querySelectorAll('input[name="destinatarios_users[]"]').length > 0;
             const temGrupos = document.querySelector('#destinatarios_grupos')?.selectedOptions.length > 0;
-            const livre = document.getElementById('destinatario_livre').value.trim();
+            const temLivres = document.querySelectorAll('input[name="destinatarios_livres[]"]').length > 0;
 
-            if (!temUsers && !temGrupos && !livre) {
+            if (!temUsers && !temGrupos && !temLivres) {
                 e.preventDefault();
                 alert('Por favor, selecione ao menos um destinatário (usuário, grupo ou livre).');
             }

@@ -24,6 +24,7 @@ Route::middleware('auth')->group(function () {
 
     // Painel principal
     Route::get('/painel', [PainelController::class, 'index'])->name('painel');
+    Route::get('/users/search', [UserController::class, 'search'])->name('users.search');
 
 
     
@@ -65,6 +66,7 @@ Route::post('/users/import', [UserController::class, 'import'])->name('users.imp
 Route::get('recados-export', [RecadoController::class, 'export'])
     ->name('recados.export');
 
+Route::get('/recados/export/filtered', [RecadoController::class, 'exportFiltered'])->name('recados.export.filtered');
 
 
 // Mostrar o recado para convidado (com token)
@@ -77,6 +79,8 @@ Route::match(['put', 'post'], '/recados/guest/{token}', [RecadoController::class
 // **Novo** - comentário por convidado (POST)
 Route::post('/recados/guest/{token}/comment', [RecadoController::class, 'guestComment'])
      ->name('recados.guest.comment');
+
+
 
 
 
