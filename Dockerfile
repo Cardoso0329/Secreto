@@ -1,6 +1,6 @@
 FROM php:8.2-cli
 
-# Instalar dependências necessárias do sistema
+# Instalar dependências necessárias
 RUN apt-get update && apt-get install -y \
     unzip \
     git \
@@ -12,10 +12,8 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libpq-dev \
-    default-mysql-client \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
-       pdo_mysql \
        pdo_pgsql \
        mbstring \
        bcmath \
