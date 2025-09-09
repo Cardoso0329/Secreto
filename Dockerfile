@@ -1,6 +1,6 @@
 FROM php:8.2-cli
 
-# Instalar dependências do sistema e extensões do PHP
+# Instalar dependências necessárias do sistema
 RUN apt-get update && apt-get install -y \
     unzip \
     git \
@@ -12,24 +12,32 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libpq-dev \
+    default-mysql-client \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo_mysql pdo_pgsql mbstring bcmath gd tokenizer ctype fileinfo xml opcache \
+    && docker-php-ext-install \
+       pdo_mysql \
+       pdo_pgsql \
+       mbstring \
+       bcmath \
+       gd \
+       tokenizer \
+       ctype \
+       fileinfo \
+       xml \
+       opcache \
     && rm -rf /var/lib/apt/lists/*
-
 
 # Instalar Composer
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
+# Definir pasta de trabalho
 WORKDIR /app
 
-# Copiar projeto
+# Copiar código do Laravel
 COPY . .
 
-# Garantir que storage existe
-RUN mkdir -p public/storage
+# Instalar dependências do Laravel
+RUN composer install --no-dev --optimize-autoloader
 
-# Expor porta usada no Render
-EXPOSE 10000
-
-# Rodar servidor Laravel
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=10000"]
+# Dar permissões ao storage e bootstrap/cache
+RUN chmod -R 777 storage bootstrap/cache
