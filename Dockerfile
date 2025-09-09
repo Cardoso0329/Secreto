@@ -38,3 +38,10 @@ RUN mkdir -p storage/app/public \
     && mkdir -p storage/logs \
     && chmod -R 777 storage bootstrap/cache \
     && php artisan storage:link
+
+    # Expor porta 8080 (Render usa 8080)
+EXPOSE 8080
+
+# Comando para manter o Laravel rodando
+CMD php artisan serve --host=0.0.0.0 --port=8080
+
