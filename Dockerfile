@@ -1,9 +1,18 @@
-# Imagem base PHP 8.2 CLI
 FROM php:8.2-cli
 
-# Instalar dependências do sistema e extensões PHP necessárias
+# Instalar dependências do sistema necessárias para Laravel + GD
 RUN apt-get update && apt-get install -y \
-    unzip git libzip-dev zip libpng-dev libonig-dev libxml2-dev libssl-dev \
+    unzip \
+    git \
+    libzip-dev \
+    zip \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libonig-dev \
+    libxml2-dev \
+    libssl-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_mysql mbstring bcmath gd tokenizer ctype fileinfo xml opcache \
     && rm -rf /var/lib/apt/lists/*
 
