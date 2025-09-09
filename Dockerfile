@@ -1,17 +1,22 @@
-# Usar PHP CLI 8.2
 FROM php:8.2-cli
 
-# Definir diretório de trabalho
+# Instalar extensões do PHP necessárias
+RUN apt-get update && apt-get install -y \
+    libzip-dev zip \
+    libonig-dev \
+    libxml2-dev \
+    default-mysql-client \
+    && docker-php-ext-install pdo_mysql mbstring bcmath tokenizer ctype fileinfo xml opcache \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Copiar todo o projeto (incluindo vendor e public/build)
+# Copiar projeto completo (incluindo vendor e public/build)
 COPY . .
 
-# Criar pasta de storage pública para evitar erros
+# Criar storage
 RUN mkdir -p public/storage
 
-# Expor porta que o Render vai usar
 EXPOSE 10000
 
-# Comando padrão para rodar Laravel
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=10000"]
