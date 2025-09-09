@@ -11,9 +11,11 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libonig-dev \
     libxml2-dev \
+    libpq-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo_mysql mbstring bcmath gd tokenizer ctype fileinfo xml opcache \
+    && docker-php-ext-install pdo_mysql pdo_pgsql mbstring bcmath gd tokenizer ctype fileinfo xml opcache \
     && rm -rf /var/lib/apt/lists/*
+
 
 # Instalar Composer
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
