@@ -5,7 +5,9 @@
 /public/storage
 /storage/*.key
 /storage/pail
-/vendor
+# Comentar a linha que ignora vendor/
+# /vendor
+
 .env
 .env.backup
 .env.production
