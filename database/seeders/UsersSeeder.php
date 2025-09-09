@@ -18,10 +18,6 @@ class UsersSeeder extends Seeder
         $adminCargo = Cargo::where('name', 'admin')->first();
         $funcCargo = Cargo::where('name', 'Funcionário')->first();
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-        DB::table('destinatarios')->truncate();
-        User::truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         User::create([
             'name' => 'Admin Principal',
