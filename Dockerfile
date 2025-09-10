@@ -47,12 +47,9 @@ RUN mkdir -p storage/app/public \
 
 # 8. Limpar cache do Laravel e gerar cache de configs
 RUN php artisan config:clear \
-    && php artisan cache:clear \
     && php artisan route:clear \
-    && php artisan view:clear \
-    && php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache
+    && php artisan view:clear
+
 
 # 9. Expor porta
 EXPOSE 8000
