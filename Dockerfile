@@ -8,11 +8,11 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     zip \
     libpng-dev \
-    libjpeg-dev \
+    libjpeg62-turbo-dev \
     libfreetype6-dev \
     libonig-dev \
     libxml2-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ \
     && docker-php-ext-install \
         pdo_sqlite \
         mbstring \
@@ -46,7 +46,7 @@ RUN mkdir -p storage/app/public \
     && touch database/database.sqlite \
     && chmod -R 777 storage bootstrap/cache database
 
-# 8. Limpar caches do Laravel
+# 8. Limpar caches do Laravel (sem acessar DB)
 RUN php artisan config:clear \
     && php artisan route:clear \
     && php artisan view:clear

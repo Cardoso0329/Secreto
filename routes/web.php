@@ -81,16 +81,6 @@ Route::post('/recados/guest/{token}/comment', [RecadoController::class, 'guestCo
      ->name('recados.guest.comment');
 
 
-Route::get('/run-migrations', function () {
-    try {
-        \Artisan::call('migrate', ['--force' => true]);
-        \Artisan::call('db:seed', ['--force' => true]);
-        return 'Migrations e seeders executados!';
-    } catch (\Exception $e) {
-        return $e->getMessage();
-    }
-});
-
 
 
        
