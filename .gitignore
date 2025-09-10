@@ -1,11 +1,14 @@
 /.phpunit.cache
 /node_modules
-/public/build
+# /public/build
+
 /public/hot
 /public/storage
 /storage/*.key
 /storage/pail
-/vendor
+# Comentar a linha que ignora vendor/
+# /vendor
+
 .env
 .env.backup
 .env.production
