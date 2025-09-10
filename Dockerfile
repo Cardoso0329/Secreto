@@ -45,8 +45,17 @@ RUN mkdir -p storage/app/public \
     && mkdir -p storage/logs \
     && chmod -R 777 storage bootstrap/cache
 
-# 8. Expor porta (opcional, só se usar PHP builtin server)
+# 8. Limpar cache do Laravel e gerar cache de configs
+RUN php artisan config:clear \
+    && php artisan cache:clear \
+    && php artisan route:clear \
+    && php artisan view:clear \
+    && php artisan config:cache \
+    && php artisan route:cache \
+    && php artisan view:cache
+
+# 9. Expor porta
 EXPOSE 8000
 
-# 9. Comando padrão
+# 10. Comando padrão
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
