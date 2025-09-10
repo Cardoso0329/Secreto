@@ -1,23 +1,18 @@
 # 1. Base PHP
 FROM php:8.2-cli
 
-# 2. Instalar dependências do sistema
+# 2. Instalar dependências essenciais do sistema
 RUN apt-get update && apt-get install -y \
     unzip \
     git \
     libzip-dev \
     zip \
-    libpng-dev \
-    libjpeg62-turbo-dev \
-    libfreetype6-dev \
     libonig-dev \
     libxml2-dev \
-    && docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ \
     && docker-php-ext-install \
         pdo_sqlite \
         mbstring \
         bcmath \
-        gd \
         zip \
         xml \
         fileinfo \
