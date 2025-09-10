@@ -1,7 +1,7 @@
 # 1. Base PHP
 FROM php:8.2-cli
 
-# 2. Instalar dependências do sistema e PostgreSQL
+# 2. Instalar dependências do sistema
 RUN apt-get update && apt-get install -y \
     unzip \
     git \
@@ -12,10 +12,9 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libonig-dev \
     libxml2-dev \
-    libpq-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
-        pdo_pgsql \
+        pdo_sqlite \
         mbstring \
         bcmath \
         gd \
@@ -43,13 +42,14 @@ RUN mkdir -p storage/app/public \
     && mkdir -p storage/framework/sessions \
     && mkdir -p storage/framework/views \
     && mkdir -p storage/logs \
-    && chmod -R 777 storage bootstrap/cache
+    && mkdir -p database \
+    && touch database/database.sqlite \
+    && chmod -R 777 storage bootstrap/cache database
 
-# 8. Limpar cache do Laravel e gerar cache de configs
+# 8. Limpar caches do Laravel
 RUN php artisan config:clear \
     && php artisan route:clear \
     && php artisan view:clear
-
 
 # 9. Expor porta
 EXPOSE 8000
