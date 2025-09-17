@@ -21,14 +21,14 @@ class Recado extends Model
     'origem_id', 'setor_id', 'departamento_id', 'mensagem', 'ficheiro',
     'aviso_id', 'estado_id', 'observacoes', 'abertura', 'termino',
     'tipo_formulario_id', 'wip', 'destinatario_livre', 'plate',
-    'user_id'  
+    
 ];
 
 
 public function setor() { return $this->belongsTo(Setor::class); }
 public function origem() { return $this->belongsTo(Origem::class); }
 public function departamento() { return $this->belongsTo(Departamento::class); }
-public function destinatarios() { return $this->belongsToMany(User::class, 'recado_user', 'recado_id', 'user_id'); }
+public function destinatarios() { return $this->belongsToMany(User::class, 'recado_user', 'recado_id', ); }
 public function estado() { return $this->belongsTo(Estado::class); }
 public function sla() { return $this->belongsTo(SLA::class); }
 public function tipo() { return $this->belongsTo(Tipo::class); }
