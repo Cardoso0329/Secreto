@@ -80,11 +80,12 @@ class RecadoController extends Controller
             'setor', 'origem', 'departamento', 'destinatarios', 'estado', 'sla', 'tipo', 'aviso', 'tipoFormulario', 'grupos', 'guestTokens'
         ])
         ->when($user->cargo?->name === 'Funcionário', function($query) use ($user) {
-            $query->where(function($q) use ($user) {
-                $q->where('user_id', $user->id)
-                  ->orWhereHas('destinatarios', fn($q2) => $q2->where('users.id', $user->id));
-            });
-        })
+    $query->whereHas('destinatarios', fn($q2) => $q2->where('users.id', $user->id));
+})
+->when(!$user->cargo || !in_array($user->cargo->name, ['admin','Funcionário']), function($query) use ($user) {
+    $query->whereHas('destinatarios', fn($q2) => $q2->where('users.id', $user->id));
+})
+
         ->when(!$user->cargo || !in_array($user->cargo->name, ['admin','Funcionário']), fn($q) => $q->where('user_id', $user->id))
         ->when($request->filled('estado_id'), fn($q) => $q->where('estado_id', $request->estado_id))
         ->when($request->filled('tipo_formulario_id'), fn($q) => $q->where('tipo_formulario_id', $request->tipo_formulario_id))
