@@ -16,7 +16,6 @@ Route::get('/', function () {
 });
 
 // Rotas de autenticação (login, registro, etc)
-Auth::routes();
 require __DIR__.'/auth.php';
 
 // Rotas protegidas - apenas usuários autenticados
