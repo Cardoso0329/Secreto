@@ -35,7 +35,7 @@
 
     <div class="welcome-section">
         <div>
-            <h1 class="display-4">Bem-vindo à Mercedes-Benz</h1>
+            <h1 class="display-4">Bem-vindo à Sociedade Comercial C. Santos</h1>
             <p class="lead mt-3">A excelência em movimento.</p>
             @guest
                 <a href="{{ route('login') }}" class="btn btn-light btn-lg mt-4">Entrar na plataforma</a>
