@@ -38,10 +38,12 @@ class RecadoController extends Controller
         $departamentos = Departamento::all();
         $slas = SLA::all();
         $tipos = Tipo::whereIn('name', [
-            'Pedido de contacto',
-            'Pedido de informação',
-            'Pedido de marcação',
-            'Pedido de orçamento'
+            'Pedido de Contacto',
+            'Pedido de Informação',
+            'Pedido de Marcação',
+            'Pedido de Orçamento',
+            'Tomada de Conhecimento',
+            'Reclamação/Insatisfação',
         ])->get();
         $estados = Estado::all();
         $avisos = Aviso::all();

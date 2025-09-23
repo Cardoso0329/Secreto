@@ -17,7 +17,6 @@ class TiposSeeder extends Seeder
 
     DB::table('tipos')->insert([
         ['name' => 'Pedido de Informação Sem Lead'],
-        ['name' => 'Evento Dias Mercedes'],
         ['name' => 'Reclamação/Insatisfação'],
         ['name' => 'Pedido de Contacto'],
         ['name' => 'Pedido de Informação'],
