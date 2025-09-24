@@ -4,7 +4,12 @@
 <div class="container py-5" style="max-width: 900px;">
     <div class="card shadow-lg border-0 rounded-4">
         <div class="card-body p-5">
-            <h2 class="text-center fw-bold mb-5">📨 Criar Novo Recado</h2>
+<div class="d-flex justify-content-between align-items-center mb-5">
+    <h2 class="fw-bold m-0">📨 Criar Novo Recado</h2>
+    <a href="{{ route('recados.index') }}" class="btn btn-light btn-sm rounded-circle border" title="Voltar">
+        <i class="bi bi-x-lg"></i>
+    </a>
+</div>
 
             <form action="{{ route('recados.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
