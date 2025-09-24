@@ -104,19 +104,39 @@
                     <p><strong>Mensagem:</strong> {{ $recado->mensagem }}</p>
 
                     <p><strong>Ficheiro:</strong></p>
-                    @if ($recado->ficheiro)
-                        <div class="d-flex gap-2">
-                            <a href="{{ asset('storage/recados/' . $recado->ficheiro) }}" target="_blank" class="btn btn-outline-primary btn-sm">
-                                <i class="bi bi-eye"></i> Ver
-                            </a>
-                            <a href="{{ asset('storage/recados/' . $recado->ficheiro) }}" download class="btn btn-success btn-sm">
-                                <i class="bi bi-download"></i> Download
-                            </a>
-                        </div>
-                    @else
-                        <span class="text-muted">Sem ficheiro</span>
-                    @endif
-                </div>
+@if ($recado->ficheiro)
+    @php
+        $ext = pathinfo($recado->ficheiro, PATHINFO_EXTENSION);
+        $fileUrl = asset('storage/recados/' . $recado->ficheiro);
+        $imageExtensions = ['jpg','jpeg','png','gif','webp'];
+    @endphp
+
+    {{-- Pré-visualização para imagens --}}
+    @if(in_array(strtolower($ext), $imageExtensions))
+        <div class="mb-2">
+            <img src="{{ $fileUrl }}" alt="Pré-visualização" class="img-fluid rounded" style="max-height: 300px;">
+        </div>
+    @elseif(strtolower($ext) === 'pdf')
+        <div class="mb-2">
+            <iframe src="{{ $fileUrl }}" class="w-100 rounded" style="height: 400px;"></iframe>
+        </div>
+    @else
+        <p class="text-muted">Pré-visualização não disponível para este tipo de ficheiro.</p>
+    @endif
+
+    {{-- Botões de Ver e Download --}}
+    <div class="d-flex gap-2">
+        <a href="{{ $fileUrl }}" target="_blank" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-eye"></i> Abrir
+        </a>
+        <a href="{{ $fileUrl }}" download class="btn btn-success btn-sm">
+            <i class="bi bi-download"></i> Download
+        </a>
+    </div>
+@else
+    <span class="text-muted">Sem ficheiro</span>
+@endif
+
             </div>
         </div>
     </div>
