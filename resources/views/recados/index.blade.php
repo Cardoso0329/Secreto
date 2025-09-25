@@ -9,17 +9,45 @@
             📋 Recados
         </h2>
 
-        <div class="d-flex gap-2">
-            {{-- Exportar TODOS --}}
-            <a href="{{ route('recados.export') }}" class="btn btn-outline-success d-flex align-items-center gap-1">
-                <i class="bi bi-file-earmark-arrow-down"></i> Exportar Todos
-            </a>
+       <div class="d-flex flex-wrap gap-2 mb-4">
 
-            {{-- Exportar FILTRADOS --}}
-            <a href="{{ route('recados.export.filtered', request()->query()) }}" class="btn btn-success d-flex align-items-center gap-1">
-                <i class="bi bi-funnel"></i> Exportar Filtrados
+    {{-- Exportar Todos --}}
+    <div class="card flex-grow-1 shadow-sm border-0 hover-shadow transition" style="min-width: 200px;">
+        <div class="card-body d-flex flex-column align-items-center text-center py-3">
+            <i class="bi bi-file-earmark-arrow-down fs-2 text-success mb-2"></i>
+            <h6 class="fw-bold">Exportar Todos</h6>
+            <a href="{{ route('recados.export') }}" class="btn btn-outline-success btn-sm mt-2 w-100">
+                Exportar
             </a>
         </div>
+    </div>
+
+    {{-- Exportar Filtrados --}}
+    <div class="card flex-grow-1 shadow-sm border-0 hover-shadow transition" style="min-width: 200px;">
+        <div class="card-body d-flex flex-column align-items-center text-center py-3">
+            <i class="bi bi-funnel fs-2 text-success mb-2"></i>
+            <h6 class="fw-bold">Exportar Filtrados</h6>
+            <a href="{{ route('recados.export.filtered', request()->query()) }}" class="btn btn-success btn-sm mt-2 w-100">
+                Exportar
+            </a>
+        </div>
+    </div>
+
+    {{-- Importar Recados --}}
+    <div class="card flex-grow-1 shadow-sm border-0 hover-shadow transition" style="min-width: 200px;">
+        <div class="card-body d-flex flex-column align-items-center text-center py-3">
+            <i class="bi bi-file-earmark-arrow-up fs-2 text-primary mb-2"></i>
+            <h6 class="fw-bold">Importar Recados</h6>
+            <form action="{{ route('recados.importar') }}" method="POST" enctype="multipart/form-data" class="w-100 mt-2 d-flex flex-column gap-2">
+                @csrf
+                <input type="file" name="file" class="form-control form-control-sm" required>
+                <button type="submit" class="btn btn-primary btn-sm w-100">Importar</button>
+            </form>
+        </div>
+    </div>
+
+</div>
+
     </div>
 
     {{-- Card para escolher tipo de formulário --}}

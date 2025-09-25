@@ -2,45 +2,15 @@
 
 namespace App\Exports;
 
+use App\Models\Recado;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 
-class RecadosExport implements FromCollection, WithHeadings
+
+class RecadosExport implements FromCollection
 {
-    protected $recados;
 
-    public function __construct($recados)
+     public function collection()
     {
-        $this->recados = $recados;
-    }
-
-    public function collection()
-    {
-        return $this->recados->map(function ($recado) {
-            return [
-                'ID' => $recado->id,
-                'Cliente' => $recado->contact_client,
-                'Matrícula' => $recado->plate,
-                'Estado' => $recado->estado->name ?? '',
-                'Tipo Formulário' => $recado->tipoFormulario->name ?? '',
-                'Mensagem' => $recado->mensagem,
-                'Data Abertura' => $recado->abertura,
-                'Data Término' => $recado->termino,
-            ];
-        });
-    }
-
-    public function headings(): array
-    {
-        return [
-            'ID',
-            'Cliente',
-            'Matrícula',
-            'Estado',
-            'Tipo Formulário',
-            'Mensagem',
-            'Data Abertura',
-            'Data Término',
-        ];
+        return Recado::all(); 
     }
 }

@@ -79,6 +79,7 @@ Route::match(['put', 'post'], '/recados/guest/{token}', [RecadoController::class
 Route::post('/recados/guest/{token}/comment', [RecadoController::class, 'guestComment'])
      ->name('recados.guest.comment');
 
+Route::post('/recados/importar', [RecadoController::class, 'importar'])->name('recados.importar');
 
 
 

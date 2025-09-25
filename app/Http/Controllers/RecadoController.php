@@ -19,6 +19,7 @@ use App\Mail\RecadoCriadoMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
 use App\Exports\RecadosExport;
+use App\Imports\RecadosImport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Str;
 
@@ -361,4 +362,17 @@ class RecadoController extends Controller
 
         return Excel::download(new RecadosExport($recados),'recados_filtrados.xlsx');
     }
+
+
+public function importar(Request $request)
+{
+    $request->validate([
+        'file' => 'required|mimes:xlsx,csv'
+    ]);
+
+    Excel::import(new RecadosImport, $request->file('file'));
+
+    return redirect()->back()->with('success', 'Recados importados com sucesso!');
+}
+
 }
