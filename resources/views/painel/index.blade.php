@@ -100,23 +100,11 @@
         </div>
 
         @if(Auth::check() && Auth::user()->cargo_id === 1)
-        <button class="dropdown-btn">
-          <i class="bi bi-gear"></i> Configurações <span class="ms-auto">▾</span>
-        </button>
-        <div class="dropdown-container mb-3 ps-3">
-          <a href="/users" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/users';"><i class="bi bi-people"></i> Users</a>
-          <a href="/cargos" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/cargos';"><i class="bi bi-diagram-3"></i> Cargos</a>
-          <a href="/slas" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/slas';"><i class="bi bi-clock"></i> SLAs</a>
-          <a href="/setores" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/setores';"><i class="bi bi-building"></i> Setores</a>
-          <a href="/origens" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/origens';"><i class="bi bi-globe2"></i> Origens</a>
-          <a href="/departamentos" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/departamentos';"><i class="bi bi-diagram-2"></i> Departamentos</a>
-          <a href="/destinatarios" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/destinatarios';"><i class="bi bi-send"></i> Destinatários</a>
-          <a href="/avisos" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/avisos';"><i class="bi bi-bell"></i> Avisos</a>
-          <a href="/estados" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/estados';"><i class="bi bi-check2-square"></i> Estados</a>
-          <a href="/grupos" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/grupos';"><i class="bi bi-collection"></i> Grupos</a>
-          <a href="/tipos" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/tipos';"><i class="bi bi-tags"></i> Tipos</a>
-        </div>
-        @endif
+  <a href="/configuracoes" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/configuracoes';">
+    <i class="bi bi-gear"></i> Configurações
+  </a>
+@endif
+
 
         <form method="POST" action="{{ route('logout') }}">
           @csrf

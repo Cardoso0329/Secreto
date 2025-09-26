@@ -62,10 +62,11 @@ Route::get('users-export', [UserController::class, 'export'])->name('users.expor
 Route::get('users-import', [UserController::class, 'importForm'])->name('users.importForm');
 Route::post('/users/import', [UserController::class, 'import'])->name('users.import');
 
-Route::get('recados-export', [RecadoController::class, 'export'])
+Route::get('recados-export', [PainelController::class, 'export'])
     ->name('recados.export');
 
-Route::get('/recados/export/filtered', [RecadoController::class, 'exportFiltered'])->name('recados.export.filtered');
+Route::get('/configuracoes/recados/export/filtered', [RecadoController::class, 'exportFiltered'])
+    ->name('configuracoes.recados.export.filtered');
 
 
 // Mostrar o recado para convidado (com token)
@@ -79,7 +80,20 @@ Route::match(['put', 'post'], '/recados/guest/{token}', [RecadoController::class
 Route::post('/recados/guest/{token}/comment', [RecadoController::class, 'guestComment'])
      ->name('recados.guest.comment');
 
-Route::post('/recados/importar', [RecadoController::class, 'importar'])->name('recados.importar');
+Route::post('/recados/importar', [PainelController::class, 'importar'])->name('recados.importar');
+
+
+Route::get('/configuracoes', [PainelController::class, 'configuracoes'])
+    ->name('configuracoes.index')
+    ->middleware('auth');
+
+    Route::get('/configuracoes/recados', [PainelController::class, 'indexConfiguracoes'])
+     ->name('configuracoes.recados')
+     ->middleware('auth');
+
+
+
+
 
 
 

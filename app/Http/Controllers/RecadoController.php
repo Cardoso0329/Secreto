@@ -186,7 +186,7 @@ class RecadoController extends Controller
         $recado->estado_id = $estadoPendente->id;
         $recado->save();
 
-        return redirect()->route('recados.index')->with('success', 'Recado criado e emails enviados.');
+        return redirect()->route('recados.index')->with('squando é uccess', 'Recado criado e emails enviados.');
     }
 
     public function show($id)
@@ -344,35 +344,43 @@ class RecadoController extends Controller
         return redirect()->route('recados.guest',['token'=>$token])->with('success','Comentário enviado. Obrigado!');
     }
 
-    public function export()
-    {
-        $recados = Recado::with(['estado','tipoFormulario'])->get();
-        return Excel::download(new RecadosExport($recados),'recados_todos.xlsx');
-    }
 
-    public function exportFiltered(Request $request)
-    {
-        $recados = Recado::with(['estado','tipoFormulario'])
-            ->when($request->filled('estado_id'), fn($q)=>$q->where('estado_id',$request->estado_id))
-            ->when($request->filled('tipo_formulario_id'), fn($q)=>$q->where('tipo_formulario_id',$request->tipo_formulario_id))
-            ->when($request->filled('id'), fn($q)=>$q->where('id',$request->id))
-            ->when($request->filled('contact_client'), fn($q)=>$q->where('contact_client','like','%'.$request->contact_client.'%'))
-            ->when($request->filled('plate'), fn($q)=>$q->where('plate','like','%'.$request->plate.'%'))
-            ->get();
-
-        return Excel::download(new RecadosExport($recados),'recados_filtrados.xlsx');
-    }
-
-
-public function importar(Request $request)
+public function exportFiltered(Request $request)
 {
-    $request->validate([
-        'file' => 'required|mimes:xlsx,csv'
-    ]);
+    // Guardar filtros do request
+    $filters = $request->only(['id','contact_client','plate','estado_id','tipo_formulario_id']);
 
-    Excel::import(new RecadosImport, $request->file('file'));
+    // Criar query base
+    $query = Recado::query()->with(['estado', 'tipoFormulario']);
 
-    return redirect()->back()->with('success', 'Recados importados com sucesso!');
+    // Aplicar filtros
+    if(!empty($filters['id'])) {
+        $query->where('id', $filters['id']);
+    }
+    if(!empty($filters['contact_client'])) {
+        $query->where('contact_client', 'like', '%' . $filters['contact_client'] . '%');
+    }
+    if(!empty($filters['plate'])) {
+        $query->where('plate', 'like', '%' . $filters['plate'] . '%');
+    }
+    if(!empty($filters['estado_id'])) {
+        $query->where('estado_id', $filters['estado_id']);
+    }
+    if(!empty($filters['tipo_formulario_id'])) {
+        $query->where('tipo_formulario_id', $filters['tipo_formulario_id']);
+    }
+
+    $recados = $query->get();
+
+    // Export usando Maatwebsite Excel
+    return Excel::download(new RecadosExport($recados), 'recados_filtrados.xlsx');
 }
+
+
+
+
+
+
+
 
 }

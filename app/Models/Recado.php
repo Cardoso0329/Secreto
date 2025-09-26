@@ -48,6 +48,32 @@ public function grupos()
     return $this->belongsToMany(Grupo::class, 'recado_grupo');
 }
 
+public function scopeFilter($query, $filters)
+{
+    if (!empty($filters['id'])) {
+        $query->where('id', $filters['id']);
+    }
+
+    if (!empty($filters['contact_client'])) {
+        $query->where('contact_client', 'like', '%' . $filters['contact_client'] . '%');
+    }
+
+    if (!empty($filters['plate'])) {
+        $query->where('plate', 'like', '%' . $filters['plate'] . '%');
+    }
+
+    if (!empty($filters['estado_id'])) {
+        $query->where('estado_id', $filters['estado_id']);
+    }
+
+    if (!empty($filters['tipo_formulario_id'])) {
+        $query->where('tipo_formulario_id', $filters['tipo_formulario_id']);
+    }
+
+    return $query;
+}
+
+
 
 
 

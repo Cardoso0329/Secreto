@@ -8,46 +8,6 @@
         <h2 class="fw-bold mb-0">
             📋 Recados
         </h2>
-
-       <div class="d-flex flex-wrap gap-2 mb-4">
-
-    {{-- Exportar Todos --}}
-    <div class="card flex-grow-1 shadow-sm border-0 hover-shadow transition" style="min-width: 200px;">
-        <div class="card-body d-flex flex-column align-items-center text-center py-3">
-            <i class="bi bi-file-earmark-arrow-down fs-2 text-success mb-2"></i>
-            <h6 class="fw-bold">Exportar Todos</h6>
-            <a href="{{ route('recados.export') }}" class="btn btn-outline-success btn-sm mt-2 w-100">
-                Exportar
-            </a>
-        </div>
-    </div>
-
-    {{-- Exportar Filtrados --}}
-    <div class="card flex-grow-1 shadow-sm border-0 hover-shadow transition" style="min-width: 200px;">
-        <div class="card-body d-flex flex-column align-items-center text-center py-3">
-            <i class="bi bi-funnel fs-2 text-success mb-2"></i>
-            <h6 class="fw-bold">Exportar Filtrados</h6>
-            <a href="{{ route('recados.export.filtered', request()->query()) }}" class="btn btn-success btn-sm mt-2 w-100">
-                Exportar
-            </a>
-        </div>
-    </div>
-
-    {{-- Importar Recados --}}
-    <div class="card flex-grow-1 shadow-sm border-0 hover-shadow transition" style="min-width: 200px;">
-        <div class="card-body d-flex flex-column align-items-center text-center py-3">
-            <i class="bi bi-file-earmark-arrow-up fs-2 text-primary mb-2"></i>
-            <h6 class="fw-bold">Importar Recados</h6>
-            <form action="{{ route('recados.importar') }}" method="POST" enctype="multipart/form-data" class="w-100 mt-2 d-flex flex-column gap-2">
-                @csrf
-                <input type="file" name="file" class="form-control form-control-sm" required>
-                <button type="submit" class="btn btn-primary btn-sm w-100">Importar</button>
-            </form>
-        </div>
-    </div>
-
-</div>
-
     </div>
 
     {{-- Card para escolher tipo de formulário --}}
@@ -77,65 +37,50 @@
         </div>
     </div>
 
-    {{-- Filtros em Accordion --}}
-    <div class="accordion mb-4" id="filtersAccordion">
-        <div class="accordion-item">
-            <h2 class="accordion-header" id="headingFilters">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFilters">
-                    🔍 Filtros Avançados
-                </button>
-            </h2>
-            <div id="collapseFilters" class="accordion-collapse collapse" data-bs-parent="#filtersAccordion">
-                <div class="accordion-body">
-                    <form action="{{ route('recados.index') }}" method="GET" id="filtersForm" class="row g-3">
-
-                        {{-- ID --}}
-                        <div class="col-md-2">
-                            <input type="text" name="id" class="form-control" placeholder="ID..." value="{{ request('id') }}"
-                                oninput="this.form.submit()">
-                        </div>
-
-                        {{-- Contacto --}}
-                        <div class="col-md-2">
-                            <input type="text" name="contact_client" class="form-control" placeholder="Contacto..." value="{{ request('contact_client') }}"
-                                oninput="this.form.submit()">
-                        </div>
-
-                        {{-- Matrícula --}}
-                        <div class="col-md-2">
-                            <input type="text" name="plate" class="form-control" placeholder="Matrícula..." value="{{ request('plate') }}"
-                                oninput="this.form.submit()">
-                        </div>
-
-                        {{-- Estado --}}
-                        <div class="col-md-3">
-                            <select name="estado_id" class="form-select" onchange="this.form.submit()">
-                                <option value="">Todos os Estados</option>
-                                @foreach($estados as $estado)
-                                    <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
-                                        {{ $estado->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        {{-- Tipo --}}
-                        <div class="col-md-3">
-                            <select name="tipo_formulario_id" class="form-select" onchange="this.form.submit()">
-                                <option value="">Todos os Tipos</option>
-                                @foreach($tiposFormulario as $tipo_formulario)
-                                    <option value="{{ $tipo_formulario->id }}" {{ request('tipo_formulario_id') == $tipo_formulario->id ? 'selected' : '' }}>
-                                        {{ $tipo_formulario->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                    </form>
-                </div>
-            </div>
-        </div>
+{{-- Filtros em Accordion estático sem seta --}}
+<div class="mb-4">
+    <div class="p-2 mb-2 bg-light border rounded">
+        <h5 class="mb-0">🔍 Filtros Avançados</h5>
     </div>
+    <div class="p-3 border rounded">
+        <form action="{{ route('configuracoes.index') }}" method="GET" class="row g-3">
+            <div class="col-md-2">
+                <input type="text" name="id" class="form-control" placeholder="ID..." value="{{ request('id') }}">
+            </div>
+            <div class="col-md-2">
+                <input type="text" name="contact_client" class="form-control" placeholder="Contacto..." value="{{ request('contact_client') }}">
+            </div>
+            <div class="col-md-2">
+                <input type="text" name="plate" class="form-control" placeholder="Matrícula..." value="{{ request('plate') }}">
+            </div>
+            <div class="col-md-3">
+                <select name="estado_id" class="form-select">
+                    <option value="">Todos os Estados</option>
+                    @foreach($estados as $estado)
+                        <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
+                            {{ $estado->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="tipo_formulario_id" class="form-select">
+                    <option value="">Todos os Tipos</option>
+                    @foreach($tiposFormulario as $tipo_formulario)
+                        <option value="{{ $tipo_formulario->id }}" {{ request('tipo_formulario_id') == $tipo_formulario->id ? 'selected' : '' }}>
+                            {{ $tipo_formulario->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 
     {{-- Mensagem de sucesso --}}
     @if(session('success'))
@@ -144,15 +89,13 @@
         </div>
     @endif
 
-    {{-- Tabela --}}
+    {{-- Tabela de Recados --}}
     <div class="card shadow-sm border-0">
         <div class="card-body table-responsive">
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        @php
-                            $sortDir = request('sort_dir', 'desc') === 'asc' ? 'desc' : 'asc';
-                        @endphp
+                        @php $sortDir = request('sort_dir', 'desc') === 'asc' ? 'desc' : 'asc'; @endphp
                         <th>
                             <a href="{{ route('recados.index', array_merge(request()->query(), ['sort_by' => 'id', 'sort_dir' => $sortDir])) }}" class="text-decoration-none">
                                 ID
@@ -168,7 +111,6 @@
                         <th>Estado</th>
                         <th>Tipo</th>
                         <th class="text-nowrap">Criado em</th>
-                        <th class="text-end">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -181,18 +123,10 @@
                             <td>{{ $recado->operator_email ?? '—' }}</td>
                             <td>
                                 @php
-                                    // Badge Estado
                                     $estadoNome = strtolower($recado->estado->name ?? '');
                                     $badgeEstado = match($estadoNome) {
                                         'pendente' => 'bg-warning text-dark',
                                         'tratado' => 'bg-purple text-white',
-                                    };
-
-                                    // Badge Tipo de Formulário
-                                    $tipoNome = strtolower($recado->tipoFormulario->name ?? '');
-                                    $badgeTipo = match($tipoNome) {
-                                        'central' => 'bg-primary text-white',
-                                        'call center' => 'bg-success text-white',
                                     };
                                 @endphp
                                 <span class="badge rounded-pill {{ $badgeEstado }}">
@@ -200,31 +134,22 @@
                                 </span>
                             </td>
                             <td>
+                                @php
+                                    $tipoNome = strtolower($recado->tipoFormulario->name ?? '');
+                                    $badgeTipo = match($tipoNome) {
+                                        'central' => 'bg-primary text-white',
+                                        'call center' => 'bg-success text-white',
+                                    };
+                                @endphp
                                 <span class="badge rounded-pill {{ $badgeTipo }}">
                                     {{ ucfirst($tipoNome) ?: '—' }}
                                 </span>
                             </td>
                             <td class="text-nowrap">{{ $recado->created_at->format('d/m/Y H:i') }}</td>
-                            <td class="text-end">
-                                <a href="{{ route('recados.show', $recado) }}" class="btn btn-sm btn-info me-1">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                @auth
-                                    @if(auth()->user()->cargo_id === 1)
-                                        <form action="{{ route('recados.destroy', $recado) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Apagar este recado?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-danger">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
-                                    @endif
-                                @endauth
-                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center text-muted">Nenhum recado encontrado.</td>
+                            <td colspan="8" class="text-center text-muted">Nenhum recado encontrado.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -236,6 +161,7 @@
             </div>
         </div>
     </div>
+
 </div>
 @endsection
 
@@ -244,4 +170,3 @@
     background-color: #6f42c1 !important;
 }
 </style>
-
