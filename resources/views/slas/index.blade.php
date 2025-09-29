@@ -46,7 +46,6 @@
                         <tr>
                             <td>{{ $sla->name }}</td>
                             <td class="text-end">
-                                <a href="{{ route('slas.show', $sla->id) }}" class="btn btn-sm btn-outline-success me-1">Ver</a>
                                 <a href="{{ route('slas.edit', $sla->id) }}" class="btn btn-sm btn-outline-warning me-1">Editar</a>
                                 <form action="{{ route('slas.destroy', $sla->id) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Tem a certeza que deseja excluir?')">
                                     @csrf

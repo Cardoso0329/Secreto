@@ -26,7 +26,7 @@
                 >
             </div>
 
-            <button type="submit" class="btn btn-success">Atualizar</button>
+            <button type="submit" class="btn btn-primary">Atualizar</button>
             <a href="{{ route('slas.index') }}" class="btn btn-secondary ms-2">Voltar</a>
         </form>
     </div>

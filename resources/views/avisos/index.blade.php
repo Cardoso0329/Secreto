@@ -44,7 +44,6 @@
                         <tr>
                             <td>{{ $aviso->name }}</td>
                             <td class="text-end">
-                                <a href="{{ route('avisos.show', $aviso->id) }}" class="btn btn-sm btn-outline-success me-1">Ver</a>
                                 <a href="{{ route('avisos.edit', $aviso->id) }}" class="btn btn-sm btn-outline-warning me-1">Editar</a>
                                 <form action="{{ route('avisos.destroy', $aviso->id) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Tem certeza que deseja excluir este aviso?')">
                                     @csrf

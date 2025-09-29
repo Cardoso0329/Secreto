@@ -42,7 +42,6 @@
                         <tr>
                             <td>{{ $cargo->name }}</td>
                             <td class="text-end">
-                                <a href="{{ route('cargos.show', $cargo) }}" class="btn btn-sm btn-outline-success me-1">Ver</a>
                                 <a href="{{ route('cargos.edit', $cargo) }}" class="btn btn-sm btn-outline-warning me-1">Editar</a>
                                 <form action="{{ route('cargos.destroy', $cargo) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Tem a certeza que deseja excluir?');">
                                     @csrf

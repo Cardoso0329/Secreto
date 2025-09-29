@@ -10,7 +10,7 @@
             <button class="nav-link active" id="recados-tab" data-bs-toggle="tab" data-bs-target="#recados" type="button" role="tab">📋 Recados</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">👥 Usuários</button>
+            <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">👥 Utilizadores</button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="setores-tab" data-bs-toggle="tab" data-bs-target="#setores" type="button" role="tab">🏢 Setores</button>
@@ -200,7 +200,7 @@
 </div>
 
 
-        <!-- Usuários -->
+        <!-- Utilizadores -->
         <div class="tab-pane fade" id="users" role="tabpanel">
             <iframe src="{{ route('users.index') }}" width="100%" height="600" frameborder="0"></iframe>
         </div>

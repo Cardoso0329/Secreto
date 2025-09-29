@@ -46,7 +46,6 @@
                             <td>{{ $destinatario->name }}</td>
                             <td>{{ $destinatario->email }}</td>
                             <td class="text-end">
-                                <a href="{{ route('destinatarios.show', $destinatario->id) }}" class="btn btn-sm btn-outline-success me-1">Ver</a>
                                 <a href="{{ route('destinatarios.edit', $destinatario->id) }}" class="btn btn-sm btn-outline-warning me-1">Editar</a>
                                 <form action="{{ route('destinatarios.destroy', $destinatario->id) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Tem certeza que deseja excluir?')">
                                     @csrf

@@ -46,7 +46,6 @@
                         <tr>
                             <td>{{ $tipo->name }}</td>
                             <td class="text-end">
-                                <a href="{{ route('tipos.show', $tipo->id) }}" class="btn btn-sm btn-outline-success me-1">Ver</a>
                                 <a href="{{ route('tipos.edit', $tipo->id) }}" class="btn btn-sm btn-outline-warning me-1">Editar</a>
                                 <form action="{{ route('tipos.destroy', $tipo->id) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Tem certeza que deseja excluir este tipo?')">
                                     @csrf

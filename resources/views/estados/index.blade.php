@@ -44,7 +44,6 @@
                         <tr>
                             <td>{{ $estado->name }}</td>
                             <td class="text-end">
-                                <a href="{{ route('estados.show', $estado->id) }}" class="btn btn-sm btn-outline-success me-1">Ver</a>
                                 <a href="{{ route('estados.edit', $estado->id) }}" class="btn btn-sm btn-outline-warning me-1">Editar</a>
                                 <form action="{{ route('estados.destroy', $estado->id) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Tem certeza que deseja excluir?')">
                                     @csrf
