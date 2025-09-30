@@ -21,8 +21,15 @@ return new class extends Migration
     /**
      * Reverse the migrations.
      */
-    public function down(): void
-    {
-        Schema::dropIfExists('tipo_formularios');
-    }
+   public function down(): void
+{
+    // Antes de dropar, remover FKs que dependem dela
+    Schema::table('recados', function (Blueprint $table) {
+        $table->dropForeign(['tipo_formulario_id']);
+        $table->dropColumn('tipo_formulario_id');
+    });
+
+    Schema::dropIfExists('tipo_formularios');
+}
+
 };

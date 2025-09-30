@@ -7,7 +7,11 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void {
         Schema::table('recados', function (Blueprint $table) {
-            $table->foreignId('tipo_formulario_id')->nullable()->constrained('tipo_formularios');
+            $table->foreignId('tipo_formulario_id')
+      ->nullable()
+      ->constrained('tipo_formularios')
+      ->onDelete('set null');
+// Só será usado em "Call Center"
         });
     }
 
