@@ -9,7 +9,7 @@ use App\Models\Setor;
 use App\Models\Departamento;
 use App\Models\Aviso;
 use App\Models\Estado;
-use App\Models\Sla;
+use App\Models\SLA;
 use App\Models\Tipo;
 use App\Models\Origem;
 use Illuminate\Support\Facades\Log;
