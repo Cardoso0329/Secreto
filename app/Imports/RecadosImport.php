@@ -5,6 +5,13 @@ namespace App\Imports;
 use App\Models\Recado;
 use App\Models\User;
 use App\Models\Grupo;
+use App\Models\Setor;
+use App\Models\Departamento;
+use App\Models\Aviso;
+use App\Models\Estado;
+use App\Models\Sla;
+use App\Models\Tipo;
+use App\Models\Origem;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -16,8 +23,8 @@ class RecadosImport implements ToModel, WithHeadingRow, WithChunkReading
     {
         $row = array_map('trim', $row);
 
-        // Campos obrigatórios
-        $required = ['name', 'sla_id', 'tipo_id', 'setor_id', 'departamento_id', 'mensagem'];
+        // Campos obrigatórios (com nomes, não IDs)
+        $required = ['name', 'sla', 'tipo', 'setor', 'departamento', 'mensagem'];
         foreach ($required as $field) {
             if (empty($row[$field])) {
                 Log::warning("Linha ignorada: campo obrigatório {$field} vazio", $row);
@@ -25,7 +32,16 @@ class RecadosImport implements ToModel, WithHeadingRow, WithChunkReading
             }
         }
 
-        // Verificação de duplicados (todos os campos importantes)
+        // Normaliza tabelas relacionadas (cria se não existir)
+        $setor = !empty($row['setor']) ? Setor::firstOrCreate(['name' => $row['setor']]) : null;
+        $departamento = !empty($row['departamento']) ? Departamento::firstOrCreate(['name' => $row['departamento']]) : null;
+        $aviso = !empty($row['aviso']) ? Aviso::firstOrCreate(['name' => $row['aviso']]) : null;
+        $estado = !empty($row['estado']) ? Estado::firstOrCreate(['name' => $row['estado']]) : null;
+        $sla = !empty($row['sla']) ? Sla::firstOrCreate(['name' => $row['sla']]) : null;
+        $tipo = !empty($row['tipo']) ? Tipo::firstOrCreate(['name' => $row['tipo']]) : null;
+        $origem = !empty($row['origem']) ? Origem::firstOrCreate(['name' => $row['origem']]) : null;
+
+        // Verificação de duplicados
         $uniqueFields = [
             'name', 'contact_client', 'plate', 'operator_email',
             'tipo_formulario_id', 'estado_id', 'sla_id', 'tipo_id',
@@ -35,12 +51,12 @@ class RecadosImport implements ToModel, WithHeadingRow, WithChunkReading
 
         $query = Recado::query();
         foreach ($uniqueFields as $field) {
-            $query->where($field, $row[$field] ?? null);
+            $query->where($field, $$field ?? $row[$field] ?? null);
         }
 
         if ($query->exists()) {
             Log::info("Recado já existe com todos os campos iguais, ignorando importação", $row);
-            return null; // Não duplica se tudo for igual
+            return null;
         }
 
         // Cria recado
@@ -50,13 +66,13 @@ class RecadosImport implements ToModel, WithHeadingRow, WithChunkReading
             'plate' => $row['plate'] ?? null,
             'operator_email' => $row['operator_email'] ?? auth()->user()->email,
             'tipo_formulario_id' => $row['tipo_formulario_id'] ?? 1,
-            'estado_id' => $row['estado_id'] ?? 1,
-            'sla_id' => $row['sla_id'],
-            'tipo_id' => $row['tipo_id'],
-            'origem_id' => $row['origem_id'] ?? null,
-            'setor_id' => $row['setor_id'],
-            'departamento_id' => $row['departamento_id'],
-            'aviso_id' => $row['aviso_id'] ?? null,
+            'estado_id' => $estado?->id ?? 1,
+            'sla_id' => $sla?->id,
+            'tipo_id' => $tipo?->id,
+            'origem_id' => $origem?->id,
+            'setor_id' => $setor?->id,
+            'departamento_id' => $departamento?->id,
+            'aviso_id' => $aviso?->id,
             'mensagem' => $row['mensagem'],
             'wip' => $row['wip'] ?? null,
             'abertura' => $row['abertura'] ?? now(),
@@ -66,29 +82,42 @@ class RecadosImport implements ToModel, WithHeadingRow, WithChunkReading
         // Destinatários (opcional)
         // ======================
 
-        // Usuários
+        // Usuários (IDs ou emails separados por vírgula)
         if (!empty($row['destinatarios_users'])) {
-            $userIds = array_filter(array_map('trim', explode(',', $row['destinatarios_users'])));
-            $recado->destinatarios()->sync($userIds);
+            $users = array_filter(array_map('trim', explode(',', $row['destinatarios_users'])));
+            $userIds = [];
+            foreach ($users as $u) {
+                if (is_numeric($u)) {
+                    $user = User::find($u);
+                } else {
+                    $user = User::firstOrCreate(['email' => $u], ['name' => $u]);
+                }
+                if ($user) {
+                    $userIds[] = $user->id;
+                }
+            }
+            if (!empty($userIds)) {
+                $recado->destinatarios()->sync($userIds);
+            }
         }
 
-        // Grupos
+        // Grupos (IDs ou nomes separados por vírgula)
         if (!empty($row['destinatarios_grupos'])) {
-            $grupoIds = array_filter(array_map('trim', explode(',', $row['destinatarios_grupos'])));
+            $grupos = array_filter(array_map('trim', explode(',', $row['destinatarios_grupos'])));
             $allUserIds = [];
-            foreach ($grupoIds as $gid) {
-                $grupo = Grupo::find($gid);
+            foreach ($grupos as $g) {
+                $grupo = is_numeric($g) ? Grupo::find($g) : Grupo::firstOrCreate(['name' => $g]);
                 if ($grupo) {
                     $allUserIds = array_merge($allUserIds, $grupo->users->pluck('id')->toArray());
                 }
             }
-            $allUserIds = array_unique($allUserIds); // Remove duplicados
+            $allUserIds = array_unique($allUserIds);
             if (!empty($allUserIds)) {
                 $recado->destinatarios()->syncWithoutDetaching($allUserIds);
             }
         }
 
-        // Destinatários livres
+        // Destinatários livres (texto separado por vírgula)
         if (!empty($row['destinatario_livre'])) {
             $livres = array_filter(array_map('trim', explode(',', $row['destinatario_livre'])));
             $recado->destinatario_livre = json_encode($livres);
