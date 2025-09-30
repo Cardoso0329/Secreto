@@ -37,24 +37,28 @@ class RecadosImport implements ToModel, WithHeadingRow, WithChunkReading
         $departamento = !empty($row['departamento']) ? Departamento::firstOrCreate(['name' => $row['departamento']]) : null;
         $aviso = !empty($row['aviso']) ? Aviso::firstOrCreate(['name' => $row['aviso']]) : null;
         $estado = !empty($row['estado']) ? Estado::firstOrCreate(['name' => $row['estado']]) : null;
-        $sla = !empty($row['sla']) ? Sla::firstOrCreate(['name' => $row['sla']]) : null;
+        $sla = !empty($row['sla']) ? SLA::firstOrCreate(['name' => $row['sla']]) : null;
         $tipo = !empty($row['tipo']) ? Tipo::firstOrCreate(['name' => $row['tipo']]) : null;
         $origem = !empty($row['origem']) ? Origem::firstOrCreate(['name' => $row['origem']]) : null;
 
-        // Verificação de duplicados
-        $uniqueFields = [
-            'name', 'contact_client', 'plate', 'operator_email',
-            'tipo_formulario_id', 'estado_id', 'sla_id', 'tipo_id',
-            'origem_id', 'setor_id', 'departamento_id', 'aviso_id',
-            'mensagem', 'wip', 'abertura'
-        ];
+        // Verificação de duplicados com todos os campos iguais
+        $duplicateQuery = Recado::where('name', $row['name'])
+            ->where('contact_client', $row['contact_client'] ?? null)
+            ->where('plate', $row['plate'] ?? null)
+            ->where('operator_email', $row['operator_email'] ?? auth()->user()->email)
+            ->where('tipo_formulario_id', $row['tipo_formulario_id'] ?? 1)
+            ->where('estado_id', $estado?->id ?? 1)
+            ->where('sla_id', $sla?->id)
+            ->where('tipo_id', $tipo?->id)
+            ->where('origem_id', $origem?->id)
+            ->where('setor_id', $setor?->id)
+            ->where('departamento_id', $departamento?->id)
+            ->where('aviso_id', $aviso?->id)
+            ->where('mensagem', $row['mensagem'])
+            ->where('wip', $row['wip'] ?? null)
+            ->where('abertura', $row['abertura'] ?? now());
 
-        $query = Recado::query();
-        foreach ($uniqueFields as $field) {
-            $query->where($field, $$field ?? $row[$field] ?? null);
-        }
-
-        if ($query->exists()) {
+        if ($duplicateQuery->exists()) {
             Log::info("Recado já existe com todos os campos iguais, ignorando importação", $row);
             return null;
         }
