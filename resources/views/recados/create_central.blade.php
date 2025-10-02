@@ -98,7 +98,7 @@
 
                 {{-- Destinatários Dinâmicos --}}
                 <div class="mb-4">
-                    <label class="form-label fw-semibold">Destinatários *</label>
+                    <label class="form-label fw-semibold">Destinatários </label>
                     <div class="input-group">
                         <select id="novoDestinatario" class="form-select rounded-start">
                             <option value="">Selecione um destinatário</option>
