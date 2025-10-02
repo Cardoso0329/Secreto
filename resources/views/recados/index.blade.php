@@ -43,7 +43,7 @@
             <h5 class="mb-0">🔍 Filtros Avançados</h5>
         </div>
         <div class="p-3 border rounded">
-            <form action="{{ route('configuracoes.index') }}" method="GET" class="row g-3">
+            <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
                 <div class="col-md-2">
                     <input type="text" name="id" class="form-control" placeholder="ID..." value="{{ request('id') }}">
                 </div>

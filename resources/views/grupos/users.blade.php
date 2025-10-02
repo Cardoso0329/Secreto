@@ -1,9 +1,18 @@
-@extends('layouts.app')
-
-@section('content')
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👥 Utilizadores no Grupo</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
 <div class="container mt-4">
 
-    {{-- Título + botão voltar --}}
+    <!-- Título + botão voltar -->
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h2 class="fw-bold mb-0">
             👥 Utilizadores no Grupo: <span class="text-primary">{{ $grupo->name }}</span>
@@ -13,7 +22,7 @@
         </a>
     </div>
 
-    {{-- Alertas --}}
+    <!-- Alertas -->
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             ✅ {{ session('success') }}
@@ -21,7 +30,7 @@
         </div>
     @endif
 
-    {{-- Formulário de adicionar utilizadores --}}
+    <!-- Formulário de adicionar utilizadores -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-primary text-white fw-semibold">
             ➕ Adicionar Utilizadores ao Grupo
@@ -50,7 +59,7 @@
         </div>
     </div>
 
-    {{-- Lista de utilizadores --}}
+    <!-- Lista de utilizadores -->
     <div class="card shadow-sm border-0">
         <div class="card-header bg-light fw-semibold">
             📋 Utilizadores neste Grupo
@@ -93,4 +102,8 @@
         </div>
     </div>
 </div>
-@endsection
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
