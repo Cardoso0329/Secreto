@@ -84,12 +84,11 @@ Route::post('/recados/importar', [PainelController::class, 'importar'])->name('r
 
 
 Route::get('/configuracoes', [PainelController::class, 'configuracoes'])
-    ->name('configuracoes.index')
-    ->middleware('auth');
+    ->name('configuracoes.index');
 
-    Route::get('/configuracoes/recados', [PainelController::class, 'indexConfiguracoes'])
-     ->name('configuracoes.recados')
-     ->middleware('auth');
+Route::get('/configuracoes/recados', [PainelController::class, 'indexConfiguracoes'])
+    ->name('configuracoes.recados');
+
 
 
 
