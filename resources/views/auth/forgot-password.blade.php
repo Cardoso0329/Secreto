@@ -27,7 +27,7 @@
 
         <div class="flex items-center justify-end">
             <x-primary-button class="bg-black hover:bg-gray-800 focus:ring-gray-700 px-6 py-3 text-white font-semibold rounded-md shadow-md transition duration-300">
-                {{ __('Email Password Reset Link') }}
+                {{ __('Link para redefinir a password') }}
             </x-primary-button>
         </div>
     </form>
