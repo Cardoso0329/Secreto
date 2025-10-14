@@ -126,17 +126,17 @@
                 </div>
 
                 {{-- Destinatários Livres --}}
-<div class="mb-4">
-    <label class="form-label fw-semibold">Destinatários Livres</label>
-    <div class="input-group">
-        <input type="text" id="novoDestinatarioLivre" class="form-control rounded-start" placeholder="Adicionar destinatário livre">
-        <button type="button" id="adicionarDestinatarioLivre" class="btn btn-success rounded-end" disabled>
-            <i class="bi bi-plus-lg"></i>
-        </button>
-    </div>
-    <div id="listaDestinatariosLivres" class="mt-3 d-flex flex-wrap gap-2"></div>
-    <div id="destinatariosLivresInputs"></div>
-</div>
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Destinatários Livres</label>
+                    <div class="input-group">
+                        <input type="text" id="novoDestinatarioLivre" class="form-control rounded-start" placeholder="Adicionar destinatário livre">
+                        <button type="button" id="adicionarDestinatarioLivre" class="btn btn-success rounded-end" disabled>
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                    <div id="listaDestinatariosLivres" class="mt-3 d-flex flex-wrap gap-2"></div>
+                    <div id="destinatariosLivresInputs"></div>
+                </div>
 
 
                 {{-- Mensagem --}}
@@ -189,114 +189,120 @@
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const destinatarios = new Map();
-        const select = document.getElementById('novoDestinatario');
-        const addBtn = document.getElementById('adicionarDestinatario');
-        const badgeContainer = document.getElementById('listaDestinatarios');
-        const inputContainer = document.getElementById('destinatariosInputs');
+document.addEventListener('DOMContentLoaded', () => {
+    // =======================
+    // Destinatários Dinâmicos
+    // =======================
+    const destinatarios = new Map();
+    const select = document.getElementById('novoDestinatario');
+    const addBtn = document.getElementById('adicionarDestinatario');
+    const badgeContainer = document.getElementById('listaDestinatarios');
+    const inputContainer = document.getElementById('destinatariosInputs');
 
-        const atualizarBotao = () => {
-            addBtn.disabled = !select.value;
-        };
+    const atualizarBotao = () => {
+        addBtn.disabled = !select.value;
+    };
 
-        select.addEventListener('change', atualizarBotao);
-        select.addEventListener('input', atualizarBotao);
+    select.addEventListener('change', atualizarBotao);
+    select.addEventListener('input', atualizarBotao);
 
-        addBtn.addEventListener('click', () => {
-            const selectedOption = select.options[select.selectedIndex];
-            const id = selectedOption.value;
-            const name = selectedOption.dataset.name;
+    addBtn.addEventListener('click', () => {
+        const selectedOption = select.options[select.selectedIndex];
+        const id = selectedOption.value;
+        const name = selectedOption.dataset.name;
 
-            if (!id || destinatarios.has(id)) return;
+        if (!id || destinatarios.has(id)) return;
 
-            destinatarios.set(id, name);
+        destinatarios.set(id, name);
 
-            const badge = document.createElement('span');
-            badge.className = 'badge bg-primary d-flex align-items-center gap-2 px-2 py-1 rounded-pill';
-            badge.innerHTML = `
-                <span>${name}</span>
-                <button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remover"></button>
-            `;
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-primary d-flex align-items-center gap-2 px-2 py-1 rounded-pill';
+        badge.innerHTML = `
+            <span>${name}</span>
+            <button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remover"></button>
+        `;
 
-            badge.querySelector('button').addEventListener('click', () => {
-                destinatarios.delete(id);
-                badge.remove();
-                document.getElementById(`destinatario-input-${id}`)?.remove();
-            });
-
-            badgeContainer.appendChild(badge);
-
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'destinatarios_users[]';
-            input.value = id;
-            input.id = `destinatario-input-${id}`;
-            inputContainer.appendChild(input);
-
-            select.value = '';
-            select.selectedIndex = 0;
-            atualizarBotao();
+        badge.querySelector('button').addEventListener('click', () => {
+            destinatarios.delete(id);
+            badge.remove();
+            document.getElementById(`destinatario-input-${id}`)?.remove();
         });
 
-        document.querySelector('form').addEventListener('submit', function (e) {
-            const temUsers = document.querySelectorAll('input[name="destinatarios_users[]"]').length > 0;
-            const temGrupos = document.querySelector('#destinatarios_grupos')?.selectedOptions.length > 0;
-            const livre = document.getElementById('destinatario_livre').value.trim();
+        badgeContainer.appendChild(badge);
 
-            if (!temUsers && !temGrupos && !livre) {
-                e.preventDefault();
-                alert('Por favor, selecione ao menos um destinatário (usuário, grupo ou livre).');
-            }
-        });
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'destinatarios_users[]';
+        input.value = id;
+        input.id = `destinatario-input-${id}`;
+        inputContainer.appendChild(input);
+
+        select.value = '';
+        select.selectedIndex = 0;
+        atualizarBotao();
     });
 
     // =======================
-// Destinatários Livres
-// =======================
-const destinatariosLivres = new Map();
-const inputLivre = document.getElementById('novoDestinatarioLivre');
-const addBtnLivre = document.getElementById('adicionarDestinatarioLivre');
-const badgeContainerLivre = document.getElementById('listaDestinatariosLivres');
-const inputContainerLivre = document.getElementById('destinatariosLivresInputs');
+    // Destinatários Livres
+    // =======================
+    const destinatariosLivres = new Map();
+    const inputLivre = document.getElementById('novoDestinatarioLivre');
+    const addBtnLivre = document.getElementById('adicionarDestinatarioLivre');
+    const badgeContainerLivre = document.getElementById('listaDestinatariosLivres');
+    const inputContainerLivre = document.getElementById('destinatariosLivresInputs');
 
-const atualizarBotaoLivre = () => {
-    addBtnLivre.disabled = !inputLivre.value.trim();
-};
+    const atualizarBotaoLivre = () => {
+        addBtnLivre.disabled = !inputLivre.value.trim();
+    };
 
-inputLivre.addEventListener('input', atualizarBotaoLivre);
+    inputLivre.addEventListener('input', atualizarBotaoLivre);
 
-addBtnLivre.addEventListener('click', () => {
-    const valor = inputLivre.value.trim();
-    if (!valor || destinatariosLivres.has(valor)) return;
+    addBtnLivre.addEventListener('click', () => {
+        const valor = inputLivre.value.trim();
+        if (!valor || destinatariosLivres.has(valor)) return;
 
-    destinatariosLivres.set(valor, valor);
+        destinatariosLivres.set(valor, valor);
 
-    const badge = document.createElement('span');
-    badge.className = 'badge bg-secondary d-flex align-items-center gap-2 px-2 py-1 rounded-pill';
-    badge.innerHTML = `
-        <span>${valor}</span>
-        <button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remover"></button>
-    `;
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-secondary d-flex align-items-center gap-2 px-2 py-1 rounded-pill';
+        badge.innerHTML = `
+            <span>${valor}</span>
+            <button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remover"></button>
+        `;
 
-    badge.querySelector('button').addEventListener('click', () => {
-        destinatariosLivres.delete(valor);
-        badge.remove();
-        document.getElementById(`destinatario-livre-input-${valor}`)?.remove();
+        badge.querySelector('button').addEventListener('click', () => {
+            destinatariosLivres.delete(valor);
+            badge.remove();
+            document.getElementById(`destinatario-livre-input-${valor}`)?.remove();
+        });
+
+        badgeContainerLivre.appendChild(badge);
+
+        const inputHidden = document.createElement('input');
+        inputHidden.type = 'hidden';
+        inputHidden.name = 'destinatarios_livres[]';
+        inputHidden.value = valor;
+        inputHidden.id = `destinatario-livre-input-${valor}`;
+        inputContainerLivre.appendChild(inputHidden);
+
+        inputLivre.value = '';
+        atualizarBotaoLivre();
     });
 
-    badgeContainerLivre.appendChild(badge);
+    // =======================
+    // Validação no Submit
+    // =======================
+    document.querySelector('form').addEventListener('submit', function (e) {
+        const temUsers = document.querySelectorAll('input[name="destinatarios_users[]"]').length > 0;
+        const temGrupos = document.querySelector('#destinatarios_grupos')?.selectedOptions.length > 0;
+        const temLivres = document.querySelectorAll('input[name="destinatarios_livres[]"]').length > 0;
 
-    const inputHidden = document.createElement('input');
-    inputHidden.type = 'hidden';
-    inputHidden.name = 'destinatarios_livres[]';
-    inputHidden.value = valor;
-    inputHidden.id = `destinatario-livre-input-${valor}`;
-    inputContainerLivre.appendChild(inputHidden);
-
-    inputLivre.value = '';
-    atualizarBotaoLivre();
+        if (!temUsers && !temGrupos && !temLivres) {
+            e.preventDefault();
+            alert('Por favor, selecione ao menos um destinatário (usuário, grupo ou livre).');
+        }
+    });
 });
-
 </script>
+
 @endpush

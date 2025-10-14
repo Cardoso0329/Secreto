@@ -107,48 +107,56 @@ class RecadoController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'contact_client' => 'required|string|max:255',
-            'operator_email' => 'nullable|email',
-            'sla_id' => 'required|exists:slas,id',
-            'tipo_id' => 'required|exists:tipos,id',
-            'origem_id' => 'required|exists:origens,id',
-            'setor_id' => 'required|exists:setores,id',
-            'departamento_id' => 'required|exists:departamentos,id',
-            'mensagem' => 'required|string',
-            'ficheiro' => 'nullable|file',
-            'aviso_id' => 'nullable|exists:avisos,id',
-            'estado_id' => 'required|exists:estados,id',
-            'observacoes' => 'nullable|string',
-            'abertura' => 'nullable|date',
-            'termino' => 'nullable|date',
-            'destinatarios_users' => 'array',
-            'destinatarios_users.*' => 'exists:users,id',
-            'destinatarios_grupos' => 'array',
-            'destinatarios_grupos.*' => 'exists:grupos,id',
-            'tipo_formulario_id' => 'nullable|exists:tipo_formularios,id',
-            'wip' => 'nullable|string|max:255',
-            'destinatarios_livres' => 'array',
-            'destinatarios_livres.*' => 'email',
-        ]);
+{
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'contact_client' => 'required|string|max:255',
+        'operator_email' => 'nullable|email',
+        'sla_id' => 'required|exists:slas,id',
+        'tipo_id' => 'required|exists:tipos,id',
+        'origem_id' => 'required|exists:origens,id',
+        'setor_id' => 'required|exists:setores,id',
+        'departamento_id' => 'required|exists:departamentos,id',
+        'mensagem' => 'required|string',
+        'ficheiro' => 'nullable|file',
+        'aviso_id' => 'nullable|exists:avisos,id',
+        'estado_id' => 'required|exists:estados,id',
+        'observacoes' => 'nullable|string',
+        'abertura' => 'nullable|date',
+        'termino' => 'nullable|date',
+        'destinatarios_users' => 'array',
+        'destinatarios_users.*' => 'exists:users,id',
+        'destinatarios_grupos' => 'array',
+        'destinatarios_grupos.*' => 'exists:grupos,id',
+        'tipo_formulario_id' => 'nullable|exists:tipo_formularios,id',
+        'wip' => 'nullable|string|max:255',
+        'destinatarios_livres' => 'array',
+        'destinatarios_livres.*' => 'email',
+    ]);
 
-        if ($request->hasFile('ficheiro')) {
-            $path = $request->file('ficheiro')->store('recados', 'public');
-            $validated['ficheiro'] = basename($path);
-        }
+    // ❌ Verificação obrigatória de pelo menos um destinatário
+    if (
+        empty($request->destinatarios_users) &&
+        empty($request->destinatarios_grupos) &&
+        empty($request->destinatarios_livres)
+    ) {
+        return redirect()->back()
+            ->withInput()
+            ->with('error', 'Deve selecionar pelo menos um destinatário.');
+    }
 
-        $validated['plate'] = $request->input('plate');
-        $validated['destinatario_livre'] = $request->input('destinatario_livre');
-        $validated['user_id'] = auth()->id();
-       
-        $request->merge([
-    'user_id' => auth()->id(),
-]);
+    if ($request->hasFile('ficheiro')) {
+        $path = $request->file('ficheiro')->store('recados', 'public');
+        $validated['ficheiro'] = basename($path);
+    }
 
+    $validated['plate'] = $request->input('plate');
+    $validated['destinatario_livre'] = $request->input('destinatario_livre');
+    $validated['user_id'] = auth()->id();
+   
+    $request->merge(['user_id' => auth()->id()]);
 
-        $recado = Recado::create($validated);
+    $recado = Recado::create($validated);
 
         $emails = [];
 

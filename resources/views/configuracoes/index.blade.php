@@ -155,7 +155,7 @@
                     <tr>
                         <th>ID</th>
                         <th>Nome</th>
-                        <th>Cliente</th>
+                        <th>Contacto Cliente</th>
                         <th>Matrícula</th>
                         <th>Email Operador</th>
                         <th>Estado</th>
