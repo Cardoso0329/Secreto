@@ -82,14 +82,18 @@ class RecadoController extends Controller
         $recados = Recado::with([
             'setor', 'origem', 'departamento', 'destinatarios', 'estado', 'sla', 'tipo', 'aviso', 'tipoFormulario', 'grupos', 'guestTokens'
         ])
-        ->when($user->cargo?->name === 'Funcionário', function($query) use ($user) {
-    $query->whereHas('destinatarios', fn($q2) => $q2->where('users.id', $user->id));
-})
-->when(!$user->cargo || !in_array($user->cargo->name, ['admin','Funcionário']), function($query) use ($user) {
-    $query->whereHas('destinatarios', fn($q2) => $q2->where('users.id', $user->id));
+       ->when($user->cargo?->name !== 'admin', function ($query) use ($user) {
+    $query->where(function ($q) use ($user) {
+        $q->where('user_id', $user->id)
+          ->orWhereHas('destinatarios', function ($q2) use ($user) {
+              $q2->where('users.id', $user->id); // <- aqui sim, porque é belongsToMany
+          });
+    });
 })
 
-        ->when(!$user->cargo || !in_array($user->cargo->name, ['admin','Funcionário']), fn($q) => $q->where('user_id', $user->id))
+
+
+
         ->when($request->filled('estado_id'), fn($q) => $q->where('estado_id', $request->estado_id))
         ->when($request->filled('tipo_formulario_id'), fn($q) => $q->where('tipo_formulario_id', $request->tipo_formulario_id))
         ->when($request->filled('id'), fn($q) => $q->where('id', $request->id))
@@ -138,6 +142,11 @@ class RecadoController extends Controller
         $validated['plate'] = $request->input('plate');
         $validated['destinatario_livre'] = $request->input('destinatario_livre');
         $validated['user_id'] = auth()->id();
+       
+        $request->merge([
+    'user_id' => auth()->id(),
+]);
+
 
         $recado = Recado::create($validated);
 
@@ -196,10 +205,14 @@ class RecadoController extends Controller
         ])->findOrFail($id);
 
         $user = auth()->user();
+if (
+    $user->cargo?->name !== 'admin' &&
+    $recado->user_id !== $user->id && // o criador pode ver
+    !$recado->destinatarios->contains($user->id) // ou se for destinatário
+) {
+    abort(403, 'Acesso negado. Este recado não é seu.');
+}
 
-        if ($user->cargo?->name !== 'admin' && !$recado->destinatarios->contains($user->id)) {
-            abort(403, 'Acesso negado. Este recado não é seu.');
-        }
 
         $estados = Estado::all();
         return view('recados.show', compact('recado','estados'));
