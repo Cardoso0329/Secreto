@@ -89,6 +89,11 @@ Route::get('/configuracoes', [PainelController::class, 'configuracoes'])
 Route::get('/configuracoes/recados', [PainelController::class, 'indexConfiguracoes'])
     ->name('configuracoes.recados');
 
+Route::put('/recados/{recado}/concluir', [RecadoController::class, 'concluir'])
+    ->name('recados.concluir')
+    ->middleware('auth');
+
+
 
 
 

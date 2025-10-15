@@ -15,7 +15,7 @@
       <ul class="navbar-nav ms-auto">
         @auth
           <li class="nav-item">
-            <a class="nav-link px-4 py-2 rounded-pill text-white fw-semibold" href="{{ route('profile.edit') }}">
+            <a class="nav-link px-4 py-2 rounded-pill text-white fw-semibold" ">
               {{ Auth::user()->name }}
             </a>
           </li>

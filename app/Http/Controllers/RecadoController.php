@@ -259,35 +259,52 @@ if (
     }
 
     public function updateEstado(Request $request, Recado $recado)
-    {
-        $request->validate(['estado_id'=>'required|exists:estados,id']);
-        $recado->estado_id = $request->estado_id;
-        $recado->save();
+{
+    $request->validate(['estado_id' => 'required|exists:estados,id']);
 
-        RecadoGuestToken::where('recado_id',$recado->id)->where('is_active',true)->update(['is_active'=>false]);
+    $estadoAntigo = $recado->estado;
+    $novoEstado = Estado::find($request->estado_id);
+    $user = auth()->user();
 
-        return redirect()->back()->with('success','Estado atualizado com sucesso.');
+    if (!$novoEstado) {
+        return redirect()->back()->with('error', 'Estado inválido.');
     }
 
-    public function concluir(Recado $recado)
-    {
-        $estadoTratado = Estado::where('name','Tratado')->first();
-        if (!$estadoTratado) return redirect()->back()->with('error','Estado "Tratado" não encontrado.');
+    $recado->estado_id = $novoEstado->id;
+    $comentarioSistema = null;
 
-        $recado->estado_id = $estadoTratado->id;
+    // 🟡 Reaberto (Tratado -> Pendente)
+    if (
+        $estadoAntigo &&
+        strtolower($estadoAntigo->name) === 'tratado' &&
+        strtolower($novoEstado->name) === 'pendente'
+    ) {
+        $comentarioSistema = now()->format('d/m/Y H:i') .
+            ' - Sistema: Recado reaberto por ' . ($user->name ?? 'Utilizador') . '.';
+    }
+
+    // 🟢 Concluído (novo estado = Tratado)
+    if (strtolower($novoEstado->name) === 'tratado') {
+        $comentarioSistema = now()->format('d/m/Y H:i') .
+            ' - Sistema: Recado concluído por ' . ($user->name ?? 'Utilizador') . '.';
         $recado->termino = now();
+    }
 
-        $comentarioSistema = now()->format('d/m/Y H:i') . ' - Sistema: Recado concluído.';
+    if ($comentarioSistema) {
         $recado->observacoes = $recado->observacoes
             ? $recado->observacoes . "\n" . $comentarioSistema
             : $comentarioSistema;
-
-        $recado->save();
-
-        RecadoGuestToken::where('recado_id',$recado->id)->where('is_active',true)->update(['is_active'=>false]);
-
-        return redirect()->back()->with('success','Recado concluído com sucesso.');
     }
+
+    $recado->save();
+
+    RecadoGuestToken::where('recado_id', $recado->id)
+        ->where('is_active', true)
+        ->update(['is_active' => false]);
+
+    return redirect()->back()->with('success', 'Estado atualizado com sucesso.');
+}
+
 
     public function guestView($token)
     {
@@ -330,6 +347,7 @@ if (
                 : $novaLinha;
         }
 
+        
         $recado->save();
 
         if ($recado->estado && strtolower($recado->estado->name)==='tratado') {
@@ -395,6 +413,37 @@ public function exportFiltered(Request $request)
 
     // Export usando Maatwebsite Excel
     return Excel::download(new RecadosExport($recados), 'recados_filtrados.xlsx');
+}
+
+public function concluir(Recado $recado)
+{
+    $estadoTratado = Estado::where('name', 'Tratado')->first();
+    if (!$estadoTratado) {
+        return redirect()->back()->with('error', 'Estado "Tratado" não encontrado.');
+    }
+
+    $user = auth()->user();
+
+    // Atualiza estado e data de término
+    $recado->estado_id = $estadoTratado->id;
+    $recado->termino = now();
+
+    // Adiciona comentário do sistema
+    $comentarioSistema = now()->format('d/m/Y H:i') .
+        ' - Sistema: Recado concluído por ' . ($user->name ?? 'Utilizador') . '.';
+
+    $recado->observacoes = $recado->observacoes
+        ? $recado->observacoes . "\n" . $comentarioSistema
+        : $comentarioSistema;
+
+    $recado->save();
+
+    // Desativar tokens de convidados ativos
+    RecadoGuestToken::where('recado_id', $recado->id)
+        ->where('is_active', true)
+        ->update(['is_active' => false]);
+
+    return redirect()->back()->with('success', 'Recado concluído com sucesso.');
 }
 
 
