@@ -390,7 +390,13 @@ public function exportFiltered(Request $request)
     $filters = $request->only(['id','contact_client','plate','estado_id','tipo_formulario_id']);
 
     // Criar query base
-    $query = Recado::query()->with(['estado', 'tipoFormulario']);
+    $recados = $query->with([
+    'estado',
+    'tipoFormulario',
+    'destinatarios',   // users
+    'grupos.users',    // grupos + users
+])->get();
+
 
     // Aplicar filtros
     if(!empty($filters['id'])) {

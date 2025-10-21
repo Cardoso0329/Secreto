@@ -21,10 +21,25 @@ class RecadosImport implements ToModel, WithHeadingRow, WithChunkReading
 {
     public function model(array $row)
     {
-        $row = array_map('trim', $row);
+        // ============================
+        // Normalização dos cabeçalhos
+        // ============================
+        $normalized = [];
+        foreach ($row as $key => $value) {
+            $key = strtolower(trim($key));
+            $key = str_replace(
+                [' ', '-', 'á', 'ã', 'â', 'à', 'é', 'ê', 'í', 'ó', 'ô', 'õ', 'ú', 'ç'],
+                ['_', '_', 'a', 'a', 'a', 'a', 'e', 'e', 'i', 'o', 'o', 'o', 'u', 'c'],
+                $key
+            );
+            $normalized[$key] = trim($value);
+        }
+        $row = $normalized;
 
-        // Campos obrigatórios (com nomes, não IDs)
-        $required = ['name', 'sla', 'tipo', 'setor', 'departamento', 'mensagem'];
+        // ============================
+        // Campos obrigatórios mínimos
+        // ============================
+        $required = ['cliente', 'mensagem'];
         foreach ($required as $field) {
             if (empty($row[$field])) {
                 Log::warning("Linha ignorada: campo obrigatório {$field} vazio", $row);
@@ -32,61 +47,62 @@ class RecadosImport implements ToModel, WithHeadingRow, WithChunkReading
             }
         }
 
-        // Normaliza tabelas relacionadas (cria se não existir)
+        // ============================
+        // Normalização de tabelas relacionadas
+        // ============================
         $setor = !empty($row['setor']) ? Setor::firstOrCreate(['name' => $row['setor']]) : null;
         $departamento = !empty($row['departamento']) ? Departamento::firstOrCreate(['name' => $row['departamento']]) : null;
         $aviso = !empty($row['aviso']) ? Aviso::firstOrCreate(['name' => $row['aviso']]) : null;
-        $estado = !empty($row['estado']) ? Estado::firstOrCreate(['name' => $row['estado']]) : null;
+        $estado = !empty($row['estado']) ? Estado::firstOrCreate(['name' => $row['estado']]) : Estado::firstOrCreate(['name' => 'Pendente']);
         $sla = !empty($row['sla']) ? SLA::firstOrCreate(['name' => $row['sla']]) : null;
         $tipo = !empty($row['tipo']) ? Tipo::firstOrCreate(['name' => $row['tipo']]) : null;
         $origem = !empty($row['origem']) ? Origem::firstOrCreate(['name' => $row['origem']]) : null;
 
-        // Verificação de duplicados com todos os campos iguais
-        $duplicateQuery = Recado::where('name', $row['name'])
-            ->where('contact_client', $row['contact_client'] ?? null)
-            ->where('plate', $row['plate'] ?? null)
-            ->where('operator_email', $row['operator_email'] ?? auth()->user()->email)
-            ->where('tipo_formulario_id', $row['tipo_formulario_id'] ?? 1)
-            ->where('estado_id', $estado?->id ?? 1)
-            ->where('sla_id', $sla?->id)
+        // ============================
+        // Evita duplicados idênticos
+        // ============================
+        $duplicate = Recado::where('contact_client', $row['cliente'])
+            ->where('plate', $row['matricula'] ?? null)
+            ->where('mensagem', $row['mensagem'])
+            ->where('estado_id', $estado?->id)
             ->where('tipo_id', $tipo?->id)
-            ->where('origem_id', $origem?->id)
             ->where('setor_id', $setor?->id)
             ->where('departamento_id', $departamento?->id)
-            ->where('aviso_id', $aviso?->id)
-            ->where('mensagem', $row['mensagem'])
-            ->where('wip', $row['wip'] ?? null)
-            ->where('abertura', $row['abertura'] ?? now());
+            ->where('sla_id', $sla?->id)
+            ->where('origem_id', $origem?->id)
+            ->exists();
 
-        if ($duplicateQuery->exists()) {
-            Log::info("Recado já existe com todos os campos iguais, ignorando importação", $row);
+        if ($duplicate) {
+            Log::info("Recado duplicado ignorado", $row);
             return null;
         }
 
-        // Cria recado
-        $recado = Recado::create([
-            'name' => $row['name'],
-            'contact_client' => $row['contact_client'] ?? null,
-            'plate' => $row['plate'] ?? null,
-            'operator_email' => $row['operator_email'] ?? auth()->user()->email,
-            'tipo_formulario_id' => $row['tipo_formulario_id'] ?? 1,
-            'estado_id' => $estado?->id ?? 1,
-            'sla_id' => $sla?->id,
-            'tipo_id' => $tipo?->id,
-            'origem_id' => $origem?->id,
-            'setor_id' => $setor?->id,
-            'departamento_id' => $departamento?->id,
-            'aviso_id' => $aviso?->id,
-            'mensagem' => $row['mensagem'],
-            'wip' => $row['wip'] ?? null,
-            'abertura' => $row['abertura'] ?? now(),
-        ]);
+        // ============================
+        // Cria o Recado
+        // ============================
+       $recado = Recado::create([
+    'name'               => $row['cliente'],
+    'contact_client'     => $row['cliente'] ?? null,
+    'plate'              => $row['matricula'] ?? null,
+    'operator_email'     => $row['email_operador'] ?? 'import@system.local',
+    'tipo_formulario_id' => 1, // ou ajusta conforme necessário
+    'estado_id'          => $estado?->id,
+    'sla_id'             => $sla?->id,
+    'tipo_id'            => $tipo?->id,
+    'origem_id'          => $origem?->id,
+    'setor_id'           => $setor?->id,
+    'departamento_id'    => $departamento?->id,
+    'aviso_id'           => $aviso?->id,
+    'mensagem'           => $row['mensagem'],
+    'wip'                => $row['wip'] ?? null,
+    'ficheiro'           => $row['ficheiro'] ?? null,
+    'abertura'           => !empty($row['data_abertura']) ? $row['data_abertura'] : now(),
+]);
 
-        // ======================
-        // Destinatários (opcional)
-        // ======================
 
-        // Usuários (IDs ou emails separados por vírgula)
+        // ============================
+        // Destinatários Users
+        // ============================
         if (!empty($row['destinatarios_users'])) {
             $users = array_filter(array_map('trim', explode(',', $row['destinatarios_users'])));
             $userIds = [];
@@ -105,13 +121,15 @@ class RecadosImport implements ToModel, WithHeadingRow, WithChunkReading
             }
         }
 
-        // Grupos (IDs ou nomes separados por vírgula)
+        // ============================
+        // Destinatários Grupos
+        // ============================
         if (!empty($row['destinatarios_grupos'])) {
             $grupos = array_filter(array_map('trim', explode(',', $row['destinatarios_grupos'])));
             $allUserIds = [];
             foreach ($grupos as $g) {
                 $grupo = is_numeric($g) ? Grupo::find($g) : Grupo::firstOrCreate(['name' => $g]);
-                if ($grupo) {
+                if ($grupo && $grupo->users) {
                     $allUserIds = array_merge($allUserIds, $grupo->users->pluck('id')->toArray());
                 }
             }
@@ -121,7 +139,9 @@ class RecadosImport implements ToModel, WithHeadingRow, WithChunkReading
             }
         }
 
-        // Destinatários livres (texto separado por vírgula)
+        // ============================
+        // Destinatário Livre
+        // ============================
         if (!empty($row['destinatario_livre'])) {
             $livres = array_filter(array_map('trim', explode(',', $row['destinatario_livre'])));
             $recado->destinatario_livre = json_encode($livres);
@@ -131,7 +151,9 @@ class RecadosImport implements ToModel, WithHeadingRow, WithChunkReading
         return $recado;
     }
 
-    // Chunk para importação grande
+    // ============================
+    // Chunk para grandes ficheiros
+    // ============================
     public function chunkSize(): int
     {
         return 1000;
