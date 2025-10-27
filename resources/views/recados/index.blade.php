@@ -37,7 +37,7 @@
         </div>
     </div>
 
-    {{-- Filtros em Accordion estático sem seta --}}
+    {{-- Filtros --}}
     <div class="mb-4">
         <div class="p-2 mb-2 bg-light border rounded">
             <h5 class="mb-0">🔍 Filtros Avançados</h5>
@@ -88,7 +88,7 @@
         </div>
     @endif
 
-    {{-- Tabela de Recados --}}
+    {{-- Tabela --}}
     <div class="card shadow-sm border-0">
         <div class="card-body table-responsive">
             <table class="table table-hover align-middle">
@@ -110,12 +110,11 @@
                         <th>Estado</th>
                         <th>Tipo</th>
                         <th class="text-nowrap">Criado em</th>
-                        <th class="text-center">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($recados as $recado)
-                        <tr>
+                        <tr class="clickable-row" data-href="{{ route('recados.show', $recado->id) }}">
                             <td class="fw-semibold">#{{ $recado->id }}</td>
                             <td>{{ $recado->name }}</td>
                             <td>{{ $recado->contact_client }}</td>
@@ -148,23 +147,10 @@
                                 </span>
                             </td>
                             <td class="text-nowrap">{{ $recado->created_at->format('d/m/Y H:i') }}</td>
-                            <td class="text-center">
-                                <a href="{{ route('recados.show', $recado->id) }}" class="btn btn-sm btn-info me-1">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <form action="{{ route('recados.destroy', $recado->id) }}" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Tens a certeza que queres apagar este recado?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center text-muted">Nenhum recado encontrado.</td>
+                            <td colspan="8" class="text-center text-muted">Nenhum recado encontrado.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -184,4 +170,22 @@
 .bg-purple {
     background-color: #6f42c1 !important;
 }
+
+.clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.clickable-row:hover {
+    background-color: #f8f9fa;
+}
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', () => {
+            window.location.href = row.dataset.href;
+        });
+    });
+});
+</script>

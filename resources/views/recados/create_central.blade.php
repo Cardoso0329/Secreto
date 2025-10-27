@@ -4,12 +4,12 @@
 <div class="container py-5" style="max-width: 900px;">
     <div class="card shadow-lg border-0 rounded-4">
         <div class="card-body p-5">
-<div class="d-flex justify-content-between align-items-center mb-5">
-    <h2 class="fw-bold m-0">📨 Criar Novo Recado</h2>
-    <a href="{{ route('recados.index') }}" class="btn btn-light btn-sm rounded-circle border" title="Voltar">
-        <i class="bi bi-x-lg"></i>
-    </a>
-</div>
+            <div class="d-flex justify-content-between align-items-center mb-5">
+                <h2 class="fw-bold m-0">📨 Criar Novo Recado</h2>
+                <a href="{{ route('recados.index') }}" class="btn btn-light btn-sm rounded-circle border" title="Voltar">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
 
             <form action="{{ route('recados.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
@@ -39,66 +39,74 @@
                     <label for="operator_email">Email do Operador *</label>
                 </div>
 
-              {{-- SLA --}}
-<div class="mb-4">
-    <label class="form-label fw-semibold">SLA *</label>
-    <select name="sla_id" id="sla_id" class="form-select rounded-3" required>
-        <option value="">-- Selecione --</option>
-        @foreach ($slas as $item)
-            <option value="{{ $item->id }}">{{ $item->name }}</option>
-        @endforeach
-    </select>
-</div>
+                {{-- SLA (predefinido como "A resolver - 12h") --}}
+                @php
+                    $slaDefault = $slas->firstWhere('name', 'A resolver - 12h');
+                @endphp
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">SLA *</label>
+                    <select name="sla_id" id="sla_id" class="form-select rounded-3" required>
+                        <option value="">-- Selecione --</option>
+                        @foreach ($slas as $item)
+                            <option value="{{ $item->id }}" {{ $slaDefault && $item->id == $slaDefault->id ? 'selected' : '' }}>
+                                {{ $item->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-{{-- Tipo (filtrado) --}}
-<div class="mb-4">
-    <label class="form-label fw-semibold">Tipo *</label>
-    <select name="tipo_id" id="tipo_id" class="form-select rounded-3" required>
-    <option value="">-- Selecione --</option>
-    @foreach ($tipos as $item)
-        <option value="{{ $item->id }}">{{ $item->name }}</option>
-    @endforeach
-</select>
+                {{-- Tipo --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Tipo *</label>
+                    <select name="tipo_id" id="tipo_id" class="form-select rounded-3" required>
+                        <option value="">-- Selecione --</option>
+                        @foreach ($tipos as $item)
+                            <option value="{{ $item->id }}">{{ $item->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-</div>
+                {{-- Origem (predefinido como "Telefone" e visível) --}}
+                @php
+                    $origemTelefone = $origens->firstWhere('name', 'Telefone');
+                @endphp
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Origem *</label>
+                    <select name="origem_id" id="origem_id" class="form-select rounded-3" required>
+                        <option value="">-- Selecione --</option>
+                        @foreach ($origens as $item)
+                            <option value="{{ $item->id }}" {{ $origemTelefone && $item->id == $origemTelefone->id ? 'selected' : '' }}>
+                                {{ $item->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-{{-- Origem --}}
-<div class="mb-4">
-    <label class="form-label fw-semibold">Origem *</label>
-    <select name="origem_id" id="origem_id" class="form-select rounded-3" required>
-        <option value="">-- Selecione --</option>
-        @foreach ($origens as $item)
-            <option value="{{ $item->id }}">{{ $item->name }}</option>
-        @endforeach
-    </select>
-</div>
+                {{-- Setor --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Setor *</label>
+                    <select name="setor_id" id="setor_id" class="form-select rounded-3" required>
+                        <option value="">-- Selecione --</option>
+                        @foreach ($setores as $item)
+                            <option value="{{ $item->id }}">{{ $item->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-{{-- Setor --}}
-<div class="mb-4">
-    <label class="form-label fw-semibold">Setor *</label>
-    <select name="setor_id" id="setor_id" class="form-select rounded-3" required>
-        <option value="">-- Selecione --</option>
-        @foreach ($setores as $item)
-            <option value="{{ $item->id }}">{{ $item->name }}</option>
-        @endforeach
-    </select>
-</div>
-
-{{-- Departamento --}}
-<div class="mb-4">
-    <label class="form-label fw-semibold">Departamento *</label>
-    <select name="departamento_id" id="departamento_id" class="form-select rounded-3" required>
-        <option value="">-- Selecione --</option>
-        @foreach ($departamentos as $item)
-            <option value="{{ $item->id }}">{{ $item->name }}</option>
-        @endforeach
-    </select>
-</div>
-
+                {{-- Departamento --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Departamento *</label>
+                    <select name="departamento_id" id="departamento_id" class="form-select rounded-3" required>
+                        <option value="">-- Selecione --</option>
+                        @foreach ($departamentos as $item)
+                            <option value="{{ $item->id }}">{{ $item->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
                 {{-- Destinatários Dinâmicos --}}
                 <div class="mb-4">
-                    <label class="form-label fw-semibold">Destinatários </label>
+                    <label class="form-label fw-semibold">Destinatários</label>
                     <div class="input-group">
                         <select id="novoDestinatario" class="form-select rounded-start">
                             <option value="">Selecione um destinatário</option>
@@ -138,7 +146,6 @@
                     <div id="destinatariosLivresInputs"></div>
                 </div>
 
-
                 {{-- Mensagem --}}
                 <div class="mb-4">
                     <label for="mensagem" class="form-label fw-semibold">Mensagem *</label>
@@ -163,11 +170,10 @@
                 </div>
 
                 {{-- Estado fixo em Pendente --}}
-@php
-    $estadoPendente = $estados->firstWhere('name', 'Pendente');
-@endphp
-<input type="hidden" name="estado_id" value="{{ $estadoPendente?->id }}">
-
+                @php
+                    $estadoPendente = $estados->firstWhere('name', 'Pendente');
+                @endphp
+                <input type="hidden" name="estado_id" value="{{ $estadoPendente?->id }}">
 
                 {{-- Abertura --}}
                 <div class="form-floating mb-4">
@@ -199,35 +205,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const badgeContainer = document.getElementById('listaDestinatarios');
     const inputContainer = document.getElementById('destinatariosInputs');
 
-    const atualizarBotao = () => {
-        addBtn.disabled = !select.value;
-    };
-
+    const atualizarBotao = () => addBtn.disabled = !select.value;
     select.addEventListener('change', atualizarBotao);
-    select.addEventListener('input', atualizarBotao);
 
     addBtn.addEventListener('click', () => {
-        const selectedOption = select.options[select.selectedIndex];
-        const id = selectedOption.value;
-        const name = selectedOption.dataset.name;
-
+        const option = select.options[select.selectedIndex];
+        const id = option.value;
+        const name = option.dataset.name;
         if (!id || destinatarios.has(id)) return;
-
         destinatarios.set(id, name);
 
         const badge = document.createElement('span');
         badge.className = 'badge bg-primary d-flex align-items-center gap-2 px-2 py-1 rounded-pill';
-        badge.innerHTML = `
-            <span>${name}</span>
-            <button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remover"></button>
-        `;
-
+        badge.innerHTML = `<span>${name}</span><button type="button" class="btn-close btn-close-white btn-sm"></button>`;
         badge.querySelector('button').addEventListener('click', () => {
             destinatarios.delete(id);
             badge.remove();
             document.getElementById(`destinatario-input-${id}`)?.remove();
         });
-
         badgeContainer.appendChild(badge);
 
         const input = document.createElement('input');
@@ -238,65 +233,54 @@ document.addEventListener('DOMContentLoaded', () => {
         inputContainer.appendChild(input);
 
         select.value = '';
-        select.selectedIndex = 0;
         atualizarBotao();
     });
 
     // =======================
     // Destinatários Livres
     // =======================
-    const destinatariosLivres = new Map();
+    const livres = new Map();
     const inputLivre = document.getElementById('novoDestinatarioLivre');
-    const addBtnLivre = document.getElementById('adicionarDestinatarioLivre');
-    const badgeContainerLivre = document.getElementById('listaDestinatariosLivres');
-    const inputContainerLivre = document.getElementById('destinatariosLivresInputs');
+    const addLivre = document.getElementById('adicionarDestinatarioLivre');
+    const containerLivre = document.getElementById('listaDestinatariosLivres');
+    const inputsLivre = document.getElementById('destinatariosLivresInputs');
 
-    const atualizarBotaoLivre = () => {
-        addBtnLivre.disabled = !inputLivre.value.trim();
-    };
+    const updateLivre = () => addLivre.disabled = !inputLivre.value.trim();
+    inputLivre.addEventListener('input', updateLivre);
 
-    inputLivre.addEventListener('input', atualizarBotaoLivre);
-
-    addBtnLivre.addEventListener('click', () => {
-        const valor = inputLivre.value.trim();
-        if (!valor || destinatariosLivres.has(valor)) return;
-
-        destinatariosLivres.set(valor, valor);
+    addLivre.addEventListener('click', () => {
+        const val = inputLivre.value.trim();
+        if (!val || livres.has(val)) return;
+        livres.set(val, val);
 
         const badge = document.createElement('span');
         badge.className = 'badge bg-secondary d-flex align-items-center gap-2 px-2 py-1 rounded-pill';
-        badge.innerHTML = `
-            <span>${valor}</span>
-            <button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remover"></button>
-        `;
-
+        badge.innerHTML = `<span>${val}</span><button type="button" class="btn-close btn-close-white btn-sm"></button>`;
         badge.querySelector('button').addEventListener('click', () => {
-            destinatariosLivres.delete(valor);
+            livres.delete(val);
             badge.remove();
-            document.getElementById(`destinatario-livre-input-${valor}`)?.remove();
+            document.getElementById(`destinatario-livre-input-${val}`)?.remove();
         });
+        containerLivre.appendChild(badge);
 
-        badgeContainerLivre.appendChild(badge);
-
-        const inputHidden = document.createElement('input');
-        inputHidden.type = 'hidden';
-        inputHidden.name = 'destinatarios_livres[]';
-        inputHidden.value = valor;
-        inputHidden.id = `destinatario-livre-input-${valor}`;
-        inputContainerLivre.appendChild(inputHidden);
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'destinatarios_livres[]';
+        input.value = val;
+        input.id = `destinatario-livre-input-${val}`;
+        inputsLivre.appendChild(input);
 
         inputLivre.value = '';
-        atualizarBotaoLivre();
+        updateLivre();
     });
 
     // =======================
     // Validação no Submit
     // =======================
-    document.querySelector('form').addEventListener('submit', function (e) {
+    document.querySelector('form').addEventListener('submit', (e) => {
         const temUsers = document.querySelectorAll('input[name="destinatarios_users[]"]').length > 0;
         const temGrupos = document.querySelector('#destinatarios_grupos')?.selectedOptions.length > 0;
         const temLivres = document.querySelectorAll('input[name="destinatarios_livres[]"]').length > 0;
-
         if (!temUsers && !temGrupos && !temLivres) {
             e.preventDefault();
             alert('Por favor, selecione ao menos um destinatário (usuário, grupo ou livre).');
@@ -304,5 +288,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
-
 @endpush

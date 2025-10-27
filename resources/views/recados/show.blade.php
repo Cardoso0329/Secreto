@@ -140,43 +140,49 @@
             </div>
         </div>
     </div>
+{{-- Comentários --}}
+<div class="mt-5 mx-auto" style="max-width: 700px;">
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <h5 class="fw-semibold mb-3">💬 Comentários</h5>
 
-    {{-- Comentários --}}
-    <div class="mt-5 mx-auto" style="max-width: 700px;">
-        <div class="card shadow-sm border-0">
-            <div class="card-body">
-                <h5 class="fw-semibold mb-3">💬 Comentários</h5>
-
-                {{-- Área estilo chat --}}
-                <div class="p-3 rounded bg-light mb-3" style="max-height: 350px; overflow-y: auto;">
-                    @php
-                        $comentarios = array_filter(explode("\n", $recado->observacoes));
-                    @endphp
-                    @forelse($comentarios as $i => $linha)
-                        <div class="d-flex mb-2 {{ $i % 2 === 0 ? 'justify-content-start' : 'justify-content-end' }}">
-                            <div class="px-3 py-2 rounded-3 small 
-                                {{ $i % 2 === 0 ? 'bg-white border text-dark' : 'bg-primary text-white' }}"
-                                style="max-width: 75%;">
-                                {{ trim($linha) }}
-                            </div>
+            {{-- Área estilo chat --}}
+            <div id="chatArea" class="p-3 rounded bg-light mb-3" style="max-height: 350px; overflow-y: auto;">
+                @php
+                    $comentarios = array_filter(explode("\n", $recado->observacoes));
+                    $comentarios = array_reverse($comentarios); // Inverte a ordem
+                @endphp
+                @forelse($comentarios as $i => $linha)
+                    <div class="d-flex mb-2 {{ $i % 2 === 0 ? 'justify-content-start' : 'justify-content-end' }}">
+                        <div class="px-3 py-2 rounded-3 small 
+                            {{ $i % 2 === 0 ? 'bg-white border text-dark' : 'bg-primary text-white' }}"
+                            style="max-width: 75%;">
+                            {{ trim($linha) }}
                         </div>
-                    @empty
-                        <p class="text-muted">Sem comentários ainda.</p>
-                    @endforelse
-                </div>
-
-                {{-- Novo comentário --}}
-                <form action="{{ route('recados.observacoes.update', $recado) }}" method="POST" class="d-flex gap-2">
-                    @csrf
-                    @method('PUT')
-                    <input type="text" name="comentario" class="form-control rounded-pill" placeholder="Escreve um comentário..." required>
-                    <button class="btn btn-primary rounded-pill d-flex align-items-center gap-2" type="submit">
-                        <i class="bi bi-send"></i> Enviar
-                    </button>
-                </form>
+                    </div>
+                @empty
+                    <p class="text-muted">Sem comentários ainda.</p>
+                @endforelse
             </div>
+
+            {{-- Novo comentário --}}
+            <form action="{{ route('recados.observacoes.update', $recado) }}" method="POST" class="d-flex gap-2">
+                @csrf
+                @method('PUT')
+                <input type="text" name="comentario" class="form-control rounded-pill" placeholder="Escreve um comentário..." required>
+                <button class="btn btn-primary rounded-pill d-flex align-items-center gap-2" type="submit">
+                    <i class="bi bi-send"></i> Enviar
+                </button>
+            </form>
         </div>
     </div>
+</div>
+
+{{-- Script para rolar automaticamente para baixo --}}
+<script>
+    const chatArea = document.getElementById('chatArea');
+    chatArea.scrollTop = chatArea.scrollHeight;
+</script>
 
 </div>
 @endsection
