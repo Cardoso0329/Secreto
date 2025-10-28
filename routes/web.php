@@ -93,6 +93,9 @@ Route::put('/recados/{recado}/concluir', [RecadoController::class, 'concluir'])
     ->name('recados.concluir')
     ->middleware('auth');
 
+    Route::put('/recados/{recado}/aviso', [RecadoController::class, 'updateAviso'])->name('recados.aviso.update');
+Route::post('/recados/{recado}/aviso/email', [RecadoController::class, 'enviarAvisoEmail'])->name('recados.aviso.email');
+
 
 
 

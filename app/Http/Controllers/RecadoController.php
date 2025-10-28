@@ -22,6 +22,8 @@ use App\Exports\RecadosExport;
 use App\Imports\RecadosImport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Str;
+use App\Mail\RecadoAvisoMail; // (vamos criar já a seguir)
+
 
 class RecadoController extends Controller
 {
@@ -207,24 +209,41 @@ class RecadoController extends Controller
     }
 
     public function show($id)
-    {
-        $recado = Recado::with([
-            'sla', 'tipo', 'origem', 'setor', 'departamento', 'destinatarios', 'aviso', 'estado', 'tipoFormulario', 'guestTokens', 'grupos'
-        ])->findOrFail($id);
+{
+    // Carrega o recado com todas as relações necessárias
+    $recado = Recado::with([
+        'sla',
+        'tipo',
+        'origem',
+        'setor',
+        'departamento',
+        'destinatarios',
+        'aviso',
+        'estado',
+        'tipoFormulario',
+        'guestTokens',
+        'grupos'
+    ])->findOrFail($id);
 
-        $user = auth()->user();
-if (
-    $user->cargo?->name !== 'admin' &&
-    $recado->user_id !== $user->id && // o criador pode ver
-    !$recado->destinatarios->contains($user->id) // ou se for destinatário
-) {
-    abort(403, 'Acesso negado. Este recado não é seu.');
+    $user = auth()->user();
+
+    // 🔒 Verifica se o utilizador pode ver este recado
+    if (
+        $user->cargo?->name !== 'admin' &&
+        $recado->user_id !== $user->id &&
+        !$recado->destinatarios->contains($user->id)
+    ) {
+        abort(403, 'Acesso negado. Este recado não é seu.');
+    }
+
+    // 🔹 Carrega listas para selects (Estados e Avisos)
+    $estados = Estado::orderBy('name')->get();
+    $avisos  = Aviso::orderBy('name')->get();
+
+    // 🔹 Retorna a view com todas as variáveis
+    return view('recados.show', compact('recado', 'estados', 'avisos'));
 }
 
-
-        $estados = Estado::all();
-        return view('recados.show', compact('recado','estados'));
-    }
 
     public function destroy($id)
     {
@@ -452,7 +471,33 @@ public function concluir(Recado $recado)
     return redirect()->back()->with('success', 'Recado concluído com sucesso.');
 }
 
+public function updateAviso(Request $request, Recado $recado)
+{
+    $request->validate([
+        'aviso_id' => 'required|exists:avisos,id',
+    ]);
 
+    $recado->aviso_id = $request->aviso_id;
+    $recado->save();
+
+    return back()->with('success', 'Aviso atualizado com sucesso!');
+}
+
+public function enviarAvisoEmail(Recado $recado)
+{
+    // Recolhe todos os emails dos destinatários (users + tokens)
+    $emails = $recado->destinatarios->pluck('email')->toArray();
+
+    if ($recado->guestTokens?->count()) {
+        $emails = array_merge($emails, $recado->guestTokens->pluck('email')->toArray());
+    }
+
+    foreach ($emails as $email) {
+        Mail::to($email)->queue(new RecadoAvisoMail($recado));
+    }
+
+    return back()->with('success', 'Aviso enviado por email aos destinatários!');
+}
 
 
 

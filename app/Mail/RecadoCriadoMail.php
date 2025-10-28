@@ -28,7 +28,8 @@ class RecadoCriadoMail extends Mailable
      */
     public function build()
     {
-        return $this->subject('Novo Recado Criado')
+        return $this->subject('Novo Recado Criado — Matricula:' . ($this->recado->plate))
+
                     ->view('emails.recados.create')
                     ->with([
                         'recado' => $this->recado,
@@ -36,3 +37,5 @@ class RecadoCriadoMail extends Mailable
                     ]);
     }
 }
+
+

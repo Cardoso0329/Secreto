@@ -38,34 +38,55 @@
         </div>
 
         {{-- Coluna 2 - Relações + Estado --}}
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <h5 class="fw-semibold mb-3">🔗 Informações Relacionadas</h5>
-                    <p><strong>SLA:</strong> {{ $recado->sla->name ?? '—' }}</p>
-                    <p><strong>Tipo:</strong> {{ $recado->tipo->name ?? '—' }}</p>
-                    <p><strong>Origem:</strong> {{ $recado->origem->name ?? '—' }}</p>
-                    <p><strong>Setor:</strong> {{ $recado->setor->name ?? '—' }}</p>
-                    <p><strong>Departamento:</strong> {{ $recado->departamento->name ?? '—' }}</p>
-                    <p><strong>Aviso:</strong> {{ $recado->aviso->name ?? '—' }}</p>
+<div class="col-md-4">
+    <div class="card shadow-sm border-0 h-100">
+        <div class="card-body d-flex flex-column gap-3">
+            <h5 class="fw-semibold mb-3">🔗 Informações Relacionadas</h5>
+            <p><strong>SLA:</strong> {{ $recado->sla->name ?? '—' }}</p>
+            <p><strong>Tipo:</strong> {{ $recado->tipo->name ?? '—' }}</p>
+            <p><strong>Origem:</strong> {{ $recado->origem->name ?? '—' }}</p>
+            <p><strong>Setor:</strong> {{ $recado->setor->name ?? '—' }}</p>
+            <p><strong>Departamento:</strong> {{ $recado->departamento->name ?? '—' }}</p>
 
-                    {{-- Estado editável --}}
-                    <hr>
-                    <form action="{{ route('recados.estado.update', $recado) }}" method="POST">
-                        @csrf
-                        @method('PUT')
-                        <label for="estado_id" class="form-label"><strong>Estado:</strong></label>
-                        <select name="estado_id" id="estado_id" class="form-select" onchange="this.form.submit()">
-                            @foreach($estados as $estado)
-                                <option value="{{ $estado->id }}" {{ $recado->estado_id == $estado->id ? 'selected' : '' }}>
-                                    {{ $estado->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </form>
-                </div>
-            </div>
+            {{-- Estado editável --}}
+            <form action="{{ route('recados.estado.update', $recado) }}" method="POST" class="mb-3">
+                @csrf
+                @method('PUT')
+                <label for="estado_id" class="form-label"><strong>Estado:</strong></label>
+                <select name="estado_id" id="estado_id" class="form-select" onchange="this.form.submit()">
+                    @foreach($estados as $estado)
+                        <option value="{{ $estado->id }}" {{ $recado->estado_id == $estado->id ? 'selected' : '' }}>
+                            {{ $estado->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </form>
+
+            {{-- Aviso editável em linha --}}
+            <form action="{{ route('recados.aviso.update', $recado) }}" method="POST" class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                @csrf
+                @method('PUT')
+                <strong>Aviso:</strong>
+                @foreach($avisos as $aviso)
+                    <button type="submit" name="aviso_id" value="{{ $aviso->id }}"
+                        class="btn btn-sm {{ $recado->aviso_id == $aviso->id ? 'btn-primary' : 'btn-outline-secondary' }}">
+                        {{ $aviso->name }}
+                    </button>
+                @endforeach
+            </form>
+
+            {{-- Botão para enviar aviso por email --}}
+            <form action="{{ route('recados.aviso.email', $recado) }}" method="POST">
+                @csrf
+                <button type="submit" class="btn btn-outline-primary d-flex align-items-center gap-2">
+                    <i class="bi bi-envelope"></i> Enviar aviso aos destinatários
+                </button>
+            </form>
+
         </div>
+    </div>
+</div>
+
 
         {{-- Coluna 3 - Destinatários e Mensagem --}}
         <div class="col-md-4">
@@ -146,18 +167,40 @@
         <div class="card-body">
             <h5 class="fw-semibold mb-3">💬 Comentários</h5>
 
-            {{-- Área estilo chat --}}
-            <div id="chatArea" class="p-3 rounded bg-light mb-3" style="max-height: 350px; overflow-y: auto;">
+            {{-- Área estilo chat moderna --}}
+            <div id="chatArea" class="p-3 rounded bg-light mb-3" style="max-height: 400px; overflow-y: auto;">
                 @php
                     $comentarios = array_filter(explode("\n", $recado->observacoes));
-                    $comentarios = array_reverse($comentarios); // Inverte a ordem
+                    $comentarios = array_reverse($comentarios);
+                    $ultimoAutor = null;
                 @endphp
-                @forelse($comentarios as $i => $linha)
-                    <div class="d-flex mb-2 {{ $i % 2 === 0 ? 'justify-content-start' : 'justify-content-end' }}">
-                        <div class="px-3 py-2 rounded-3 small 
-                            {{ $i % 2 === 0 ? 'bg-white border text-dark' : 'bg-primary text-white' }}"
-                            style="max-width: 75%;">
-                            {{ trim($linha) }}
+
+                @forelse($comentarios as $linha)
+                    @php
+                        // Detecta se há um "autor: mensagem"
+                        if (preg_match('/^(.+?):\s*(.+)$/', $linha, $matches)) {
+                            $autor = $matches[1];
+                            $mensagem = $matches[2];
+                        } else {
+                            $autor = 'Utilizador';
+                            $mensagem = $linha;
+                        }
+                        $mesmoAutor = $autor === $ultimoAutor;
+                        $ultimoAutor = $autor;
+                    @endphp
+
+                    <div class="d-flex flex-column mb-2 {{ $autor === auth()->user()->name ? 'align-items-end' : 'align-items-start' }}">
+                        @unless($mesmoAutor)
+                            <small class="text-muted mb-1" style="font-size: 0.8rem;">
+                                {{ $autor }}
+                            </small>
+                        @endunless
+                        <div class="px-3 py-2 rounded-4 shadow-sm"
+                            style="max-width: 75%;
+                                   background-color: {{ $autor === auth()->user()->name ? '#007bff' : '#ffffff' }};
+                                   color: {{ $autor === auth()->user()->name ? '#fff' : '#333' }};
+                                   border: 1px solid #e0e0e0;">
+                            {{ $mensagem }}
                         </div>
                     </div>
                 @empty
@@ -178,11 +221,12 @@
     </div>
 </div>
 
-{{-- Script para rolar automaticamente para baixo --}}
+{{-- Script para rolar automaticamente --}}
 <script>
     const chatArea = document.getElementById('chatArea');
     chatArea.scrollTop = chatArea.scrollHeight;
 </script>
+
 
 </div>
 @endsection

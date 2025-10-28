@@ -6,9 +6,12 @@
         <div class="card-body p-5">
             <div class="d-flex justify-content-between align-items-center mb-5">
                 <h2 class="fw-bold m-0">📞 Criar Novo Recado - Call Center</h2>
-                <a href="{{ url()->previous() }}" class="btn btn-light btn-sm rounded-circle border" title="Voltar">
+                
+                {{-- Botão fechar --}}
+                <button type="button" class="btn btn-light btn-sm rounded-circle border" title="Cancelar"
+                        onclick="window.history.back();">
                     <i class="bi bi-x-lg"></i>
-                </a>
+                </button>
             </div>
 
             <form action="{{ route('recados.store') }}" method="POST" enctype="multipart/form-data">
@@ -45,7 +48,7 @@
                     <label for="wip">WIP</label>
                 </div>
 
-                {{-- SLA (predefinido como "A resolver - 12h") --}}
+                {{-- SLA --}}
                 @php
                     $slaDefault = $slas->firstWhere('name', 'A resolver - 12h');
                 @endphp
@@ -72,7 +75,7 @@
                     </select>
                 </div>
 
-                {{-- Origem (predefinido como "Telefone" e visível) --}}
+                {{-- Origem --}}
                 @php
                     $origemTelefone = $origens->firstWhere('name', 'Telefone');
                 @endphp
@@ -99,7 +102,7 @@
                     </select>
                 </div>
 
-                {{-- Setor filtrado --}}
+                {{-- Chefias (Setor) --}}
                 @php
                     $setoresPermitidos = [
                         'Novos VLP', 'Novos VCL', 'Novos Smart', 'Usados', 'Novos VCP',
@@ -120,9 +123,9 @@
                     </select>
                 </div>
 
-                {{-- Destinatários Dinâmicos --}}
+                {{-- Destinatários --}}
                 <div class="mb-4">
-                    <label class="form-label fw-semibold">Destinatários </label>
+                    <label class="form-label fw-semibold">Destinatários</label>
                     <div class="input-group">
                         <select id="novoDestinatario" class="form-select rounded-start">
                             <option value="">Selecione um destinatário</option>
@@ -140,7 +143,7 @@
 
                 {{-- Grupos --}}
                 <div class="mb-4">
-                    <label for="destinatarios_grupos" class="form-label fw-semibold">Grupos Destinatários</label>
+                    <label class="form-label fw-semibold">Grupos Destinatários</label>
                     <select name="destinatarios_grupos[]" id="destinatarios_grupos" class="form-select rounded-3" multiple size="5">
                         @foreach (\App\Models\Grupo::all() as $grupo)
                             <option value="{{ $grupo->id }}">{{ $grupo->name }}</option>
@@ -153,7 +156,7 @@
                 <div class="mb-4">
                     <label class="form-label fw-semibold">Destinatários Livres</label>
                     <div class="input-group">
-                        <input type="text" id="novoDestinatarioLivre" class="form-control rounded-start" placeholder="Adicionar destinatário livre">
+                        <input type="email" id="novoDestinatarioLivre" class="form-control rounded-start" placeholder="Adicionar destinatário livre (email)">
                         <button type="button" id="adicionarDestinatarioLivre" class="btn btn-success rounded-end" disabled>
                             <i class="bi bi-plus-lg"></i>
                         </button>
@@ -185,7 +188,7 @@
                     </select>
                 </div>
 
-                {{-- Estado fixo em Pendente --}}
+                {{-- Estado --}}
                 @php
                     $estadoPendente = $estados->firstWhere('name', 'Pendente');
                 @endphp
@@ -207,4 +210,72 @@
         </div>
     </div>
 </div>
+
+{{-- ✅ Scripts JS --}}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const novoDestinatario = document.getElementById('novoDestinatario');
+    const btnAddDest = document.getElementById('adicionarDestinatario');
+    const listaDest = document.getElementById('listaDestinatarios');
+    const hiddenInputs = document.getElementById('destinatariosInputs');
+
+    const novoLivre = document.getElementById('novoDestinatarioLivre');
+    const btnAddLivre = document.getElementById('adicionarDestinatarioLivre');
+    const listaLivre = document.getElementById('listaDestinatariosLivres');
+    const hiddenLivreInputs = document.getElementById('destinatariosLivresInputs');
+
+    // Ativa/desativa botões
+    novoDestinatario.addEventListener('change', () => {
+        btnAddDest.disabled = !novoDestinatario.value;
+    });
+    novoLivre.addEventListener('input', () => {
+        btnAddLivre.disabled = !novoLivre.value.trim();
+    });
+
+    // Adicionar destinatário
+    btnAddDest.addEventListener('click', () => {
+        const id = novoDestinatario.value;
+        const nome = novoDestinatario.options[novoDestinatario.selectedIndex].dataset.name;
+        if (!id) return;
+
+        const tag = document.createElement('span');
+        tag.className = 'badge bg-primary d-flex align-items-center gap-1 p-2';
+        tag.innerHTML = `${nome} <i class="bi bi-x" style="cursor:pointer"></i>`;
+        tag.querySelector('i').onclick = () => tag.remove();
+
+        listaDest.appendChild(tag);
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'destinatarios_users[]';
+        input.value = id;
+        hiddenInputs.appendChild(input);
+
+        novoDestinatario.value = '';
+        btnAddDest.disabled = true;
+    });
+
+    // Adicionar destinatário livre
+    btnAddLivre.addEventListener('click', () => {
+        const email = novoLivre.value.trim();
+        if (!email) return;
+
+        const tag = document.createElement('span');
+        tag.className = 'badge bg-secondary d-flex align-items-center gap-1 p-2';
+        tag.innerHTML = `${email} <i class="bi bi-x" style="cursor:pointer"></i>`;
+        tag.querySelector('i').onclick = () => tag.remove();
+
+        listaLivre.appendChild(tag);
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'destinatario_livre[]';
+        input.value = email;
+        hiddenLivreInputs.appendChild(input);
+
+        novoLivre.value = '';
+        btnAddLivre.disabled = true;
+    });
+});
+</script>
 @endsection
