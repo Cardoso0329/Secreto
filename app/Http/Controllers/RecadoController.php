@@ -205,7 +205,8 @@ class RecadoController extends Controller
         $recado->estado_id = $estadoPendente->id;
         $recado->save();
 
-        return redirect()->route('recados.index')->with('squando é uccess', 'Recado criado e emails enviados.');
+        return redirect()->route('recados.index')->with('success', 'Recado criado e emails enviados.');
+
     }
 
     public function show($id)
@@ -325,162 +326,75 @@ class RecadoController extends Controller
 }
 
 
-    public function guestView($token)
-    {
-        $guestToken = RecadoGuestToken::where('token',$token)->firstOrFail();
-        if (!$guestToken->isValid()) abort(403,'Link expirado ou inválido.');
+   public function guestView($token)
+{
+    $recado = Recado::with(['estado', 'sla', 'tipo', 'origem', 'setor', 'departamento', 'aviso', 'destinatarios', 'grupos', 'guestTokens'])
+        ->whereHas('guestTokens', fn($q) => $q->where('token', $token))
+        ->firstOrFail();
 
-        $recado = $guestToken->recado;
-        $estados = Estado::all();
+    $estados = Estado::all();
+    return view('emails.recados.guest', compact('recado', 'estados', 'token'));
+}
 
-        return view('emails.recados.guest', compact('recado','token','estados'));
-    }
+   public function guestUpdate(Request $request, $token)
+{
+    $recado = Recado::whereHas('guestTokens', fn($q) => $q->where('token', $token))->firstOrFail();
 
-    public function guestUpdate(Request $request, $token)
-    {
-        $guestToken = RecadoGuestToken::where('token',$token)->where('is_active',true)->firstOrFail();
-        if (!$guestToken->isValid()) abort(403,'Link expirado ou inválido.');
-
-        $recado = $guestToken->recado;
-
-        $validated = $request->validate([
-            'mensagem'=>'nullable|string|max:5000',
-            'estado_id'=>'nullable|exists:estados,id',
-            'comentario'=>'nullable|string|max:2000',
-        ]);
-
-        if (!empty($validated['mensagem'])) $recado->mensagem = $validated['mensagem'];
-
-        if (!empty($validated['estado_id'])) {
-            $novo = Estado::find($validated['estado_id']);
-            if ($novo && strtolower($novo->name)!=='concluído' && strtolower($novo->name)!=='tratado') {
-                $recado->estado_id = $novo->id;
-            }
-        }
-
-        if (!empty($validated['comentario'])) {
-            $nomeOuEmail = $recado->destinatario_livre ?? 'Convidado';
-            $novaLinha = now()->format('d/m/Y H:i') . ' - ' . $nomeOuEmail . ': ' . $validated['comentario'];
-            $recado->observacoes = $recado->observacoes
-                ? $recado->observacoes . "\n" . $novaLinha
-                : $novaLinha;
-        }
-
-        
+    if ($request->filled('estado_id')) {
+        $recado->estado_id = $request->estado_id;
         $recado->save();
-
-        if ($recado->estado && strtolower($recado->estado->name)==='tratado') {
-            $guestToken->update(['is_active'=>false]);
-        }
-
-        return redirect()->route('recados.guest',['token'=>$token])->with('success','Recado atualizado com sucesso!');
     }
+
+    return back()->with('success', 'Estado atualizado com sucesso!');
+}
 
     public function guestComment(Request $request, $token)
-    {
-        $request->validate(['comentario'=>'required|string|max:2000']);
+{
+    $recado = Recado::whereHas('guestTokens', fn($q) => $q->where('token', $token))->firstOrFail();
 
-        $guestToken = RecadoGuestToken::where('token',$token)->where('is_active',true)->firstOrFail();
-        if (!$guestToken->isValid()) abort(403,'Link expirado ou inválido.');
-
-        $recado = $guestToken->recado;
-        if ($recado->estado && strtolower($recado->estado->name)==='concluído') {
-            return redirect()->route('recados.guest',['token'=>$token])->with('error','Este recado já está concluído. Não são permitidos comentários.');
-        }
-
-        $nome = $request->input('nome') ?: 'Convidado';
-        $novaLinha = now()->format('d/m/Y H:i') . ' - ' . $nome . ': ' . $request->comentario;
-        $recado->observacoes = $recado->observacoes
-            ? $recado->observacoes . "\n" . $novaLinha
-            : $novaLinha;
-
-        $estadoPendente = Estado::where('name','Pendente')->first();
-        if ($estadoPendente) $recado->estado_id = $estadoPendente->id;
-
+    $comentario = trim($request->comentario);
+    if ($comentario) {
+        $autor = 'Convidado';
+        $linha = now()->format('d') . " - {$autor}: {$comentario}\n";
+        $recado->observacoes .= $linha;
         $recado->save();
-
-        return redirect()->route('recados.guest',['token'=>$token])->with('success','Comentário enviado. Obrigado!');
     }
+
+    return back()->with('success', 'Comentário adicionado!');
+}
 
 
 public function exportFiltered(Request $request)
 {
-    // Guardar filtros do request
-    $filters = $request->only(['id','contact_client','plate','estado_id','tipo_formulario_id']);
+    $filters = $request->only(['id', 'contact_client', 'plate', 'estado_id', 'tipo_formulario_id']);
 
-    // Criar query base
-    $recados = $query->with([
-    'estado',
-    'tipoFormulario',
-    'destinatarios',   // users
-    'grupos.users',    // grupos + users
-])->get();
+    $query = Recado::query()->with([
+        'estado',
+        'tipoFormulario',
+        'destinatarios',
+        'grupos.users',
+        'guestTokens'
+    ]);
 
-
-    // Aplicar filtros
-    if(!empty($filters['id'])) {
+    if (!empty($filters['id'])) {
         $query->where('id', $filters['id']);
     }
-    if(!empty($filters['contact_client'])) {
+    if (!empty($filters['contact_client'])) {
         $query->where('contact_client', 'like', '%' . $filters['contact_client'] . '%');
     }
-    if(!empty($filters['plate'])) {
+    if (!empty($filters['plate'])) {
         $query->where('plate', 'like', '%' . $filters['plate'] . '%');
     }
-    if(!empty($filters['estado_id'])) {
+    if (!empty($filters['estado_id'])) {
         $query->where('estado_id', $filters['estado_id']);
     }
-    if(!empty($filters['tipo_formulario_id'])) {
+    if (!empty($filters['tipo_formulario_id'])) {
         $query->where('tipo_formulario_id', $filters['tipo_formulario_id']);
     }
 
     $recados = $query->get();
 
-    // Export usando Maatwebsite Excel
     return Excel::download(new RecadosExport($recados), 'recados_filtrados.xlsx');
-}
-
-public function concluir(Recado $recado)
-{
-    $estadoTratado = Estado::where('name', 'Tratado')->first();
-    if (!$estadoTratado) {
-        return redirect()->back()->with('error', 'Estado "Tratado" não encontrado.');
-    }
-
-    $user = auth()->user();
-
-    // Atualiza estado e data de término
-    $recado->estado_id = $estadoTratado->id;
-    $recado->termino = now();
-
-    // Adiciona comentário do sistema
-    $comentarioSistema = now()->format('d/m/Y H:i') .
-        ' - Sistema: Recado concluído por ' . ($user->name ?? 'Utilizador') . '.';
-
-    $recado->observacoes = $recado->observacoes
-        ? $recado->observacoes . "\n" . $comentarioSistema
-        : $comentarioSistema;
-
-    $recado->save();
-
-    // Desativar tokens de convidados ativos
-    RecadoGuestToken::where('recado_id', $recado->id)
-        ->where('is_active', true)
-        ->update(['is_active' => false]);
-
-    return redirect()->back()->with('success', 'Recado concluído com sucesso.');
-}
-
-public function updateAviso(Request $request, Recado $recado)
-{
-    $request->validate([
-        'aviso_id' => 'required|exists:avisos,id',
-    ]);
-
-    $recado->aviso_id = $request->aviso_id;
-    $recado->save();
-
-    return back()->with('success', 'Aviso atualizado com sucesso!');
 }
 
 public function enviarAvisoEmail(Recado $recado)
@@ -497,6 +411,18 @@ public function enviarAvisoEmail(Recado $recado)
     }
 
     return back()->with('success', 'Aviso enviado por email aos destinatários!');
+}
+
+public function updateAviso(Request $request, Recado $recado)
+{
+    $request->validate([
+        'aviso_id' => 'required|exists:avisos,id',
+    ]);
+
+    $recado->aviso_id = $request->aviso_id;
+    $recado->save();
+
+    return redirect()->back()->with('success', 'Aviso atualizado com sucesso!');
 }
 
 

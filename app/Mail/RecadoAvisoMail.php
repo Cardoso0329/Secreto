@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Mail;
 
 use App\Models\Recado;
@@ -19,7 +20,7 @@ class RecadoAvisoMail extends Mailable
 
     public function build()
     {
-        return $this->subject('📢 Novo Aviso sobre o Recado #' . $this->recado->id)
-                    ->view('emails.recado_aviso');
+        return $this->subject('📢 Aviso do Recado #' . $this->recado->id . ' - ' . $this->recado->plate)
+                    ->view('emails.recados.aviso');
     }
 }

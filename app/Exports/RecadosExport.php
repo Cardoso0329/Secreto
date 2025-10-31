@@ -17,35 +17,47 @@ class RecadosExport implements FromCollection, WithHeadings
     public function collection()
     {
         return $this->recados->map(function ($recado) {
+
             // Destinatários Users
             $destinatariosUsers = $recado->destinatarios?->pluck('name')->implode(', ') ?? '';
 
             // Destinatários Grupos (todos os users dentro de grupos)
             $destinatariosGrupos = $recado->grupos?->flatMap(fn($g) => $g->users)->pluck('name')->unique()->implode(', ') ?? '';
 
-            // Destinatário Livre
-            $destinatarioLivre = $recado->destinatario_livre ?? '';
+            // Destinatários Livres (emails livres + guest tokens ativos)
+            $destinatariosLivresArray = [];
+
+            if (!empty($recado->destinatario_livre)) {
+                $destinatariosLivresArray[] = $recado->destinatario_livre;
+            }
+
+            if ($recado->guestTokens?->count()) {
+                $guestEmails = $recado->guestTokens->pluck('email')->toArray();
+                $destinatariosLivresArray = array_merge($destinatariosLivresArray, $guestEmails);
+            }
+
+            $destinatariosLivres = implode(', ', $destinatariosLivresArray);
 
             return [
-                'ID'                 => $recado->id,
-                'Cliente'            => $recado->contact_client,
-                'Matrícula'          => $recado->plate,
-                'Email Operador'     => $recado->operator_email,
-                'Estado'             => $recado->estado->name ?? '',
-                'Tipo Formulário'    => $recado->tipoFormulario->name ?? '',
-                'SLA'                => $recado->sla->name ?? '',
-                'Setor'              => $recado->setor->name ?? '',
-                'Departamento'       => $recado->departamento->name ?? '',
-                'Origem'             => $recado->origem->name ?? '',
-                'Aviso'              => $recado->aviso->name ?? '',
-                'Tipo'               => $recado->tipo->name ?? '',
-                'Mensagem'           => $recado->mensagem,
-                'Ficheiro'           => $recado->ficheiro,
-                'Data Abertura'      => $recado->abertura,
-                'Data Término'       => $recado->termino,
-                'Destinatários Users'=> $destinatariosUsers,
+                'ID'                  => $recado->id,
+                'Cliente'             => $recado->contact_client,
+                'Matrícula'           => $recado->plate,
+                'Email Operador'      => $recado->operator_email,
+                'Estado'              => $recado->estado->name ?? '',
+                'Tipo Formulário'     => $recado->tipoFormulario->name ?? '',
+                'SLA'                 => $recado->sla->name ?? '',
+                'Setor'               => $recado->setor->name ?? '',
+                'Departamento'        => $recado->departamento->name ?? '',
+                'Origem'              => $recado->origem->name ?? '',
+                'Aviso'               => $recado->aviso->name ?? '',
+                'Tipo'                => $recado->tipo->name ?? '',
+                'Mensagem'            => $recado->mensagem,
+                'Ficheiro'            => $recado->ficheiro,
+                'Data Abertura'       => $recado->abertura,
+                'Data Término'        => $recado->termino,
+                'Destinatários Users' => $destinatariosUsers,
                 'Destinatários Grupos'=> $destinatariosGrupos,
-                'Destinatário Livre' => $destinatarioLivre,
+                'Destinatários Livres'=> $destinatariosLivres,
             ];
         });
     }
@@ -71,7 +83,7 @@ class RecadosExport implements FromCollection, WithHeadings
             'Data Término',
             'Destinatários Users',
             'Destinatários Grupos',
-            'Destinatário Livre',
+            'Destinatários Livres',
         ];
     }
 }

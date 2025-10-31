@@ -96,6 +96,14 @@ Route::put('/recados/{recado}/concluir', [RecadoController::class, 'concluir'])
     Route::put('/recados/{recado}/aviso', [RecadoController::class, 'updateAviso'])->name('recados.aviso.update');
 Route::post('/recados/{recado}/aviso/email', [RecadoController::class, 'enviarAvisoEmail'])->name('recados.aviso.email');
 
+// 🔓 Rotas Guest (sem login)
+Route::prefix('recados')->group(function () {
+    Route::get('/guest/{token}', [RecadoController::class, 'guestView'])->name('recados.guest');
+    Route::post('/guest/{token}/update', [RecadoController::class, 'guestUpdate'])->name('recados.guest.update');
+    Route::post('/guest/{token}/comentario', [RecadoController::class, 'guestComment'])->name('recados.guest.comment');
+});
+
+
 
 
 

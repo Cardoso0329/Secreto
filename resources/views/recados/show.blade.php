@@ -79,7 +79,7 @@
             <form action="{{ route('recados.aviso.email', $recado) }}" method="POST">
                 @csrf
                 <button type="submit" class="btn btn-outline-primary d-flex align-items-center gap-2">
-                    <i class="bi bi-envelope"></i> Enviar aviso aos destinatários
+                    <i class="bi bi-envelope"></i> Enviar aviso
                 </button>
             </form>
 
@@ -171,30 +171,38 @@
             <div id="chatArea" class="p-3 rounded bg-light mb-3" style="max-height: 400px; overflow-y: auto;">
                 @php
                     $comentarios = array_filter(explode("\n", $recado->observacoes));
-                    $comentarios = array_reverse($comentarios);
                     $ultimoAutor = null;
+                    $ultimaData = null;
                 @endphp
 
                 @forelse($comentarios as $linha)
                     @php
-                        // Detecta se há um "autor: mensagem"
-                        if (preg_match('/^(.+?):\s*(.+)$/', $linha, $matches)) {
-                            $autor = $matches[1];
-                            $mensagem = $matches[2];
+                        // Tenta extrair data, autor e mensagem
+                        if (preg_match('/^(\d{2}) - (.+?): (.+)$/', $linha, $matches)) {
+                            $dia = $matches[1];
+                            $autor = trim($matches[2]);
+                            $mensagem = trim($matches[3]);
+
+                            // Cria data a partir do padrão (exemplo adaptável)
+                            $dataAtual = \Carbon\Carbon::now()->format('d/m/Y');
                         } else {
                             $autor = 'Utilizador';
                             $mensagem = $linha;
+                            $dataAtual = \Carbon\Carbon::now()->format('d/m/Y');
                         }
-                        $mesmoAutor = $autor === $ultimoAutor;
-                        $ultimoAutor = $autor;
                     @endphp
 
+                    {{-- Mostra a data apenas uma vez por grupo --}}
+                    @if ($ultimaData !== $dataAtual)
+                        <div class="text-center text-muted my-3" style="font-size: 0.85rem;">
+                            {{ $dataAtual }}
+                        </div>
+                        @php $ultimaData = $dataAtual; @endphp
+                    @endif
+
+                    {{-- Mensagem --}}
                     <div class="d-flex flex-column mb-2 {{ $autor === auth()->user()->name ? 'align-items-end' : 'align-items-start' }}">
-                        @unless($mesmoAutor)
-                            <small class="text-muted mb-1" style="font-size: 0.8rem;">
-                                {{ $autor }}
-                            </small>
-                        @endunless
+                        <small class="text-muted mb-1" style="font-size: 0.8rem;">{{ $autor }}</small>
                         <div class="px-3 py-2 rounded-4 shadow-sm"
                             style="max-width: 75%;
                                    background-color: {{ $autor === auth()->user()->name ? '#007bff' : '#ffffff' }};
@@ -221,7 +229,6 @@
     </div>
 </div>
 
-{{-- Script para rolar automaticamente --}}
 <script>
     const chatArea = document.getElementById('chatArea');
     chatArea.scrollTop = chatArea.scrollHeight;

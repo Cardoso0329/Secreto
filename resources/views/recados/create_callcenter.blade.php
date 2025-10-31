@@ -241,16 +241,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const tag = document.createElement('span');
         tag.className = 'badge bg-primary d-flex align-items-center gap-1 p-2';
         tag.innerHTML = `${nome} <i class="bi bi-x" style="cursor:pointer"></i>`;
-        tag.querySelector('i').onclick = () => tag.remove();
 
-        listaDest.appendChild(tag);
-
+        // Criar input hidden
         const input = document.createElement('input');
         input.type = 'hidden';
         input.name = 'destinatarios_users[]';
         input.value = id;
+        input.id = `destinatario-${id}`;
         hiddenInputs.appendChild(input);
 
+        // Remover badge e input
+        tag.querySelector('i').onclick = () => {
+            tag.remove();
+            document.getElementById(`destinatario-${id}`)?.remove();
+        };
+
+        listaDest.appendChild(tag);
         novoDestinatario.value = '';
         btnAddDest.disabled = true;
     });
@@ -260,21 +266,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const email = novoLivre.value.trim();
         if (!email) return;
 
+        const id = `livre-${Date.now()}`;
         const tag = document.createElement('span');
         tag.className = 'badge bg-secondary d-flex align-items-center gap-1 p-2';
         tag.innerHTML = `${email} <i class="bi bi-x" style="cursor:pointer"></i>`;
-        tag.querySelector('i').onclick = () => tag.remove();
-
-        listaLivre.appendChild(tag);
 
         const input = document.createElement('input');
         input.type = 'hidden';
-        input.name = 'destinatario_livre[]';
+        input.name = 'destinatarios_livres[]';
         input.value = email;
+        input.id = id;
         hiddenLivreInputs.appendChild(input);
 
+        tag.querySelector('i').onclick = () => {
+            tag.remove();
+            document.getElementById(id)?.remove();
+        };
+
+        listaLivre.appendChild(tag);
         novoLivre.value = '';
         btnAddLivre.disabled = true;
+    });
+
+    // Impede envio sem destinatários
+    document.querySelector('form').addEventListener('submit', (e) => {
+        const temUsers = document.querySelectorAll('input[name="destinatarios_users[]"]').length > 0;
+        const temGrupos = document.querySelector('#destinatarios_grupos')?.selectedOptions.length > 0;
+        const temLivres = document.querySelectorAll('input[name="destinatarios_livres[]"]').length > 0;
+
+        if (!temUsers && !temGrupos && !temLivres) {
+            e.preventDefault();
+            alert('Por favor, selecione ao menos um destinatário (usuário, grupo ou livre).');
+        }
     });
 });
 </script>
