@@ -425,6 +425,34 @@ public function updateAviso(Request $request, Recado $recado)
     return redirect()->back()->with('success', 'Aviso atualizado com sucesso!');
 }
 
+public function concluir($id)
+{
+    $recado = Recado::findOrFail($id);
+    $user = auth()->user();
+
+    // Altera o estado para "Tratado"
+    $estadoTratado = Estado::where('name', 'Tratado')->first();
+
+    if (!$estadoTratado) {
+        return redirect()->back()->with('error', 'O estado "Tratado" não foi encontrado.');
+    }
+
+    $recado->estado_id = $estadoTratado->id;
+    $recado->termino = now();
+
+    // Regista nos comentários a conclusão
+    $comentarioSistema = now()->format('d/m/Y H:i') . 
+        ' - Sistema: Recado concluído por ' . ($user->name ?? 'Utilizador') . '.';
+
+    $recado->observacoes = $recado->observacoes
+        ? $recado->observacoes . "\n" . $comentarioSistema
+        : $comentarioSistema;
+
+    $recado->save();
+
+    return redirect()->back()->with('success', 'Recado concluído com sucesso.');
+}
+
 
 
 
