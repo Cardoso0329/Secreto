@@ -78,6 +78,21 @@
                     <button type="submit" class="btn btn-primary">Filtrar</button>
                 </div>
             </form>
+
+            {{-- Botão Exportar Recados Filtrados --}}
+            <div class="mt-3 d-flex justify-content-end">
+                <form action="{{ route('configuracoes.recados.export.filtered') }}" method="GET">
+                    <input type="hidden" name="id" value="{{ request('id') }}">
+                    <input type="hidden" name="contact_client" value="{{ request('contact_client') }}">
+                    <input type="hidden" name="plate" value="{{ request('plate') }}">
+                    <input type="hidden" name="estado_id" value="{{ request('estado_id') }}">
+                    <input type="hidden" name="tipo_formulario_id" value="{{ request('tipo_formulario_id') }}">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-file-earmark-arrow-down"></i> Exportar Recados Filtrados
+                    </button>
+                </form>
+            </div>
+
         </div>
     </div>
 

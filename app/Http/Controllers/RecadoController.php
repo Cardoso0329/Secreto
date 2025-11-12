@@ -390,13 +390,12 @@ public function exportFiltered(Request $request)
     $filters = $request->only(['id','contact_client','plate','estado_id','tipo_formulario_id']);
 
     // Criar query base
-    $recados = $query->with([
-    'estado',
-    'tipoFormulario',
-    'destinatarios',   // users
-    'grupos.users',    // grupos + users
-])->get();
-
+    $query = Recado::with([
+        'estado',
+        'tipoFormulario',
+        'destinatarios',   // users
+        'grupos.users',    // grupos + users
+    ]);
 
     // Aplicar filtros
     if(!empty($filters['id'])) {
@@ -415,11 +414,13 @@ public function exportFiltered(Request $request)
         $query->where('tipo_formulario_id', $filters['tipo_formulario_id']);
     }
 
+    // Obter resultados filtrados
     $recados = $query->get();
 
     // Export usando Maatwebsite Excel
     return Excel::download(new RecadosExport($recados), 'recados_filtrados.xlsx');
 }
+
 
 public function concluir(Recado $recado)
 {
