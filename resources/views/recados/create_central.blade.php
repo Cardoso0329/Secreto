@@ -39,16 +39,19 @@
                     <label for="operator_email">Email do Operador *</label>
                 </div>
 
-              {{-- SLA --}}
+             {{-- SLA --}}
 <div class="mb-4">
     <label class="form-label fw-semibold">SLA *</label>
-    <select name="sla_id" id="sla_id" class="form-select rounded-3" required>
-        <option value="">-- Selecione --</option>
+    <select name="sla_id" id="sla_id" class="form-select rounded-3" required disabled>
         @foreach ($slas as $item)
-            <option value="{{ $item->id }}">{{ $item->name }}</option>
+            <option value="{{ $item->id }}" {{ $item->name === 'A resolver - 12h' ? 'selected' : '' }}>
+                {{ $item->name }}
+            </option>
         @endforeach
     </select>
+    <input type="hidden" name="sla_id" value="{{ $slas->firstWhere('name','A resolver - 12h')->id }}">
 </div>
+
 
 {{-- Tipo (filtrado) --}}
 <div class="mb-4">
@@ -65,25 +68,48 @@
 {{-- Origem --}}
 <div class="mb-4">
     <label class="form-label fw-semibold">Origem *</label>
-    <select name="origem_id" id="origem_id" class="form-select rounded-3" required>
-        <option value="">-- Selecione --</option>
+    <select name="origem_id" id="origem_id" class="form-select rounded-3" required disabled>
         @foreach ($origens as $item)
-            <option value="{{ $item->id }}">{{ $item->name }}</option>
+            <option value="{{ $item->id }}" {{ $item->name === 'Telefone' ? 'selected' : '' }}>
+                {{ $item->name }}
+            </option>
         @endforeach
     </select>
+    <input type="hidden" name="origem_id" value="{{ $origens->firstWhere('name','Telefone')->id }}">
 </div>
 
-{{-- Setor --}}
-<div class="mb-4">
-    <label class="form-label fw-semibold">Setor *</label>
-    <select name="setor_id" id="setor_id" class="form-select rounded-3" required>
-        <option value="">-- Selecione --</option>
-        @foreach ($setores as $item)
-            <option value="{{ $item->id }}">{{ $item->name }}</option>
-        @endforeach
-    </select>
-</div>
 
+
+{{-- Setor filtrado --}}
+                @php
+    $setoresPermitidos = [
+        // Setores antigos
+        'Novos VLP', 'Novos VCL', 'Novos Smart', 'Usados', 'Novos VCP',
+        'Colisão', 'APV - VLP', 'APV - VCL', 'APV - VCP',
+        'Peças', 'VCL', 'Marketing', 'Informática',
+        
+        'Oficina VLP', 'Oficina Smart', 'Oficina VCL', 'Oficina VCP', 'Oficina Colisão',
+        'Marcações VLP', 'Marcações Smart', 'Marcações VCL', 'Marcações VCP', 'Marcações Colisão',
+        'Orçamentos VLP', 'Orçamentos Smart', 'Orçamentos VCL', 'Orçamentos VCP', 'Orçamentos Colisão',
+        'Financiamento', 'Recursos Humanos', 'Informática', 'Administração', 'Jurídico',
+        'RAC', 'Marketing', 'Contabilidade'
+    ];
+@endphp
+
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Setores *</label>
+                    <select name="setor_id" id="setor_id" class="form-select rounded-3" required>
+                        <option value="">-- Selecione --</option>
+                        @foreach ($setores as $setor)
+                            @if(in_array($setor->name, $setoresPermitidos))
+                                <option value="{{ $setor->id }}">{{ $setor->name }}</option>
+                            @endif
+                        @endforeach
+                    </select>
+                </div>
+
+                
 {{-- Departamento --}}
 <div class="mb-4">
     <label class="form-label fw-semibold">Departamento *</label>

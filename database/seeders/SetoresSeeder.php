@@ -15,10 +15,10 @@ class SetoresSeeder extends Seeder
 
         DB::table('setores')->insert([
             // Subsetores de Vendedores
+            ['name' => 'Usados', 'parent_id' => null],
             ['name' => 'Novos VLP', 'parent_id' => null],
             ['name' => 'Novos VCL', 'parent_id' => null],
             ['name' => 'Novos Smart', 'parent_id' => null],
-            ['name' => 'Usados', 'parent_id' => null],
             ['name' => 'Novos VCP', 'parent_id' => null],
 
             // Subsetores de Oficina
@@ -49,7 +49,6 @@ class SetoresSeeder extends Seeder
             ['name' => 'Recursos Humanos', 'parent_id' => null],
             ['name' => 'Informática', 'parent_id' => null],
             ['name' => 'Administração', 'parent_id' => null],
-            ['name' => 'Peças', 'parent_id' => null],
             ['name' => 'Jurídico', 'parent_id' => null],
             ['name' => 'RAC', 'parent_id' => null],
             ['name' => 'Marketing', 'parent_id' => null],
