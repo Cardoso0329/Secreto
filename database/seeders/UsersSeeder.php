@@ -12,6 +12,14 @@ class UsersSeeder extends Seeder
 {
     public function run(): void
     {
+        // Desativa checagem de foreign keys
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
+        // Apaga todos os users
+        DB::table('users')->truncate(); // reinicia auto-increment
+
+        // Reativa FK
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         // Busca cargos
         $adminCargo = Cargo::where('name', 'admin')->first();
