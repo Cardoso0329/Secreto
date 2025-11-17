@@ -139,16 +139,17 @@
                     <div id="destinatariosInputs"></div>
                 </div>
 
-                {{-- Grupos --}}
-                <div class="mb-4">
-                    <label for="destinatarios_grupos" class="form-label fw-semibold">Grupos Destinatários</label>
-                    <select name="destinatarios_grupos[]" id="destinatarios_grupos" class="form-select rounded-3" multiple size="5">
-                        @foreach (\App\Models\Grupo::all() as $grupo)
-                            <option value="{{ $grupo->id }}">{{ $grupo->name }}</option>
-                        @endforeach
-                    </select>
-                    <div class="form-text">Todos os membros dos grupos selecionados serão notificados.</div>
-                </div>
+                {{-- 
+<div class="mb-4">
+    <label for="destinatarios_grupos" class="form-label fw-semibold">Grupos Destinatários</label>
+    <select name="destinatarios_grupos[]" id="destinatarios_grupos" class="form-select rounded-3" multiple size="5">
+        @foreach (\App\Models\Grupo::all() as $grupo)
+            <option value="{{ $grupo->id }}">{{ $grupo->name }}</option>
+        @endforeach
+    </select>
+    <div class="form-text">Todos os membros dos grupos selecionados serão notificados.</div>
+</div>
+--}}
 
                 {{-- Destinatários Livres --}}
                 <div class="mb-4">
