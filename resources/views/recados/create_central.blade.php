@@ -39,18 +39,18 @@
                     <label for="operator_email">Email do Operador *</label>
                 </div>
 
-             {{-- SLA --}}
+            {{-- SLA --}}
 <div class="mb-4">
     <label class="form-label fw-semibold">SLA *</label>
-    <select name="sla_id" id="sla_id" class="form-select rounded-3" required disabled>
+    <select name="sla_id" id="sla_id" class="form-select rounded-3" required>
         @foreach ($slas as $item)
             <option value="{{ $item->id }}" {{ $item->name === 'A resolver - 12h' ? 'selected' : '' }}>
                 {{ $item->name }}
             </option>
         @endforeach
     </select>
-    <input type="hidden" name="sla_id" value="{{ $slas->firstWhere('name','A resolver - 12h')->id }}">
 </div>
+
 
 
 {{-- Tipo (filtrado) --}}
