@@ -61,7 +61,7 @@
                 {{-- Setor filtrado --}}
                 @php
                     $setoresPermitidos = [
-                        'Novos VLP', 'Novos VCL', 'Novos Smart', 'Usados', 'Novos VCP',
+                        'Usados','Novos VLP', 'Novos VCL', 'Novos Smart', 'Novos VCP',
                         'Colisão', 'APV - VLP', 'APV - VCL', 'APV - VCP', 'VCL', 'Marketing', 'Informática'
                     ];
                 @endphp
