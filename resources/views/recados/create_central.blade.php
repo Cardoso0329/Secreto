@@ -84,15 +84,14 @@
                 @php
     $setoresPermitidos = [
         // Setores antigos
-        'Novos VLP', 'Novos VCL', 'Novos Smart', 'Usados', 'Novos VCP',
-        'Colisão', 'APV - VLP', 'APV - VCL', 'APV - VCP',
-        'Peças', 'VCL', 'Marketing', 'Informática',
+        'Usados','Novos VLP', 'Novos VCL', 'Novos Smart', 'Novos VCP',
+        'Peças',
         
         'Oficina VLP', 'Oficina Smart', 'Oficina VCL', 'Oficina VCP', 'Oficina Colisão',
         'Marcações VLP', 'Marcações Smart', 'Marcações VCL', 'Marcações VCP', 'Marcações Colisão',
         'Orçamentos VLP', 'Orçamentos Smart', 'Orçamentos VCL', 'Orçamentos VCP', 'Orçamentos Colisão',
         'Financiamento', 'Recursos Humanos', 'Informática', 'Administração', 'Jurídico',
-        'RAC', 'Marketing', 'Contabilidade'
+        'RAC', 'Marketing', 'Contabilidade','Financeiro',
     ];
 @endphp
 

@@ -53,6 +53,7 @@ class SetoresSeeder extends Seeder
             ['name' => 'RAC', 'parent_id' => null],
             ['name' => 'Marketing', 'parent_id' => null],
             ['name' => 'Contabilidade', 'parent_id' => null],
+            ['name' => 'Financeiro', 'parent_id' => null],
         ]);
     }
 }
