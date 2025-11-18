@@ -45,18 +45,61 @@
                     <label for="wip">WIP</label>
                 </div>
 
-                {{-- Relações exceto Setor --}}
-                @foreach (['sla' => $slas, 'tipo' => $tipos, 'origem' => $origens, 'departamento' => $departamentos] as $field => $items)
-                    <div class="mb-4">
-                        <label class="form-label fw-semibold">{{ ucfirst($field) }} *</label>
-                        <select name="{{ $field }}_id" id="{{ $field }}_id" class="form-select rounded-3" required>
-                            <option value="">-- Selecione --</option>
-                            @foreach ($items as $item)
-                                <option value="{{ $item->id }}">{{ $item->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                @endforeach
+               {{-- SLA (pré-selecionado) --}}
+<div class="mb-4">
+    <label class="form-label fw-semibold">SLA *</label>
+    <select name="sla_id" id="sla_id" class="form-select rounded-3" required>
+        @foreach ($slas as $item)
+            <option value="{{ $item->id }}"
+                {{ $item->name === 'A resolver - 12h' ? 'selected' : '' }}>
+                {{ $item->name }}
+            </option>
+        @endforeach
+    </select>
+</div>
+
+{{-- Tipo (filtrado) --}}
+<div class="mb-4">
+    <label class="form-label fw-semibold">Tipo *</label>
+    <select name="tipo_id" id="tipo_id" class="form-select rounded-3" required>
+    <option value="">-- Selecione --</option>
+    @foreach ($tipos as $item)
+        <option value="{{ $item->id }}">{{ $item->name }}</option>
+    @endforeach
+</select>
+
+</div>
+
+{{-- Origem (pré-selecionada + bloqueada) --}}
+<div class="mb-4">
+    <label class="form-label fw-semibold">Origem *</label>
+    <select name="origem_fake" id="origem_fake" class="form-select rounded-3" disabled>
+        @foreach ($origens as $item)
+            <option value="{{ $item->id }}"
+                {{ $item->name === 'Telefone' ? 'selected' : '' }}>
+                {{ $item->name }}
+            </option>
+        @endforeach
+    </select>
+
+    {{-- Hidden para enviar o valor real --}}
+    <input type="hidden"
+           name="origem_id"
+           value="{{ $origens->firstWhere('name', 'Telefone')->id }}">
+</div>
+
+{{-- Departamento --}}
+<div class="mb-4">
+    <label class="form-label fw-semibold">Departamento *</label>
+    <select name="departamento_id" id="departamento_id" class="form-select rounded-3" required>
+        <option value="">-- Selecione --</option>
+        @foreach ($departamentos as $item)
+            <option value="{{ $item->id }}">{{ $item->name }}</option>
+        @endforeach
+    </select>
+</div>
+
+
 
                 {{-- Setor filtrado --}}
                 @php
@@ -96,16 +139,17 @@
                     <div id="destinatariosInputs"></div>
                 </div>
 
-                {{-- Grupos --}}
-                <div class="mb-4">
-                    <label for="destinatarios_grupos" class="form-label fw-semibold">Grupos Destinatários</label>
-                    <select name="destinatarios_grupos[]" id="destinatarios_grupos" class="form-select rounded-3" multiple size="5">
-                        @foreach (\App\Models\Grupo::all() as $grupo)
-                            <option value="{{ $grupo->id }}">{{ $grupo->name }}</option>
-                        @endforeach
-                    </select>
-                    <div class="form-text">Todos os membros dos grupos selecionados serão notificados.</div>
-                </div>
+                 {{-- 
+<div class="mb-4">
+    <label for="destinatarios_grupos" class="form-label fw-semibold">Grupos Destinatários</label>
+    <select name="destinatarios_grupos[]" id="destinatarios_grupos" class="form-select rounded-3" multiple size="5">
+        @foreach (\App\Models\Grupo::all() as $grupo)
+            <option value="{{ $grupo->id }}">{{ $grupo->name }}</option>
+        @endforeach
+    </select>
+    <div class="form-text">Todos os membros dos grupos selecionados serão notificados.</div>
+</div>
+--}}
 
                 {{-- Destinatários Livres --}}
                 <div class="mb-4">
