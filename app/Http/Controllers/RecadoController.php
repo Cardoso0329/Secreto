@@ -180,10 +180,10 @@ class RecadoController extends Controller
             }
         }
         // 🔥 Adicionar sempre o grupo Desenvolvimento
-$grupoDev = Grupo::where('name', 'Telefonistas')->with('users')->first();
-if ($grupoDev) {
-    $emails = array_merge($emails, $grupoDev->users->pluck('email')->toArray());
-}
+//$grupoDev = Grupo::where('name', 'Telefonistas')->with('users')->first();
+//if ($grupoDev) {
+   // $emails = array_merge($emails, $grupoDev->users->pluck('email')->toArray());
+//}
 
 
         $emails = array_unique($emails);
