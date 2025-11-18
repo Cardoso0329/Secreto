@@ -67,44 +67,49 @@ class RecadoController extends Controller
     }
 
     public function index(Request $request)
-    {
-        $user = auth()->user();
-        $estados = Estado::all();
-        $tiposFormulario = TipoFormulario::all();
+{
+    $user = auth()->user();
+    $estados = Estado::all();
+    $tiposFormulario = TipoFormulario::all();
 
-        $sortBy = $request->get('sort_by', 'id');
-        $sortDir = $request->get('sort_dir', 'desc');
+    $sortBy = $request->get('sort_by', 'id');
+    $sortDir = $request->get('sort_dir', 'desc');
 
-        $allowedSorts = ['id', 'created_at', 'name'];
-        if (!in_array($sortBy, $allowedSorts)) $sortBy = 'id';
-        if (!in_array($sortDir, ['asc','desc'])) $sortDir = 'desc';
+    $allowedSorts = ['id', 'created_at', 'name'];
+    if (!in_array($sortBy, $allowedSorts)) $sortBy = 'id';
+    if (!in_array($sortDir, ['asc','desc'])) $sortDir = 'desc';
 
-        $recados = Recado::with([
-            'setor', 'origem', 'departamento', 'destinatarios', 'estado', 'sla', 'tipo', 'aviso', 'tipoFormulario', 'grupos', 'guestTokens'
-        ])
-       ->when($user->cargo?->name !== 'admin', function ($query) use ($user) {
-    $query->where(function ($q) use ($user) {
-        $q->where('user_id', $user->id)
-          ->orWhereHas('destinatarios', function ($q2) use ($user) {
-              $q2->where('users.id', $user->id); // <- aqui sim, porque é belongsToMany
-          });
-    });
-})
+    $recados = Recado::with([
+        'setor', 'origem', 'departamento', 'destinatarios', 'estado',
+        'sla', 'tipo', 'aviso', 'tipoFormulario', 'grupos', 'guestTokens'
+    ])
 
+    // 🔥 Aqui está o filtro corrigido
+    ->when(
+        $user->cargo?->name !== 'admin' &&
+        !$user->grupos()->where('name', 'Telefonistas')->exists(),
+        function ($query) use ($user) {
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('destinatarios', function ($q2) use ($user) {
+                      $q2->where('users.id', $user->id);
+                  });
+            });
+        }
+    )
 
+    ->when($request->filled('estado_id'), fn($q) => $q->where('estado_id', $request->estado_id))
+    ->when($request->filled('tipo_formulario_id'), fn($q) => $q->where('tipo_formulario_id', $request->tipo_formulario_id))
+    ->when($request->filled('id'), fn($q) => $q->where('id', $request->id))
+    ->when($request->filled('contact_client'), fn($q) => $q->where('contact_client', 'like', '%'.$request->contact_client.'%'))
+    ->when($request->filled('plate'), fn($q) => $q->where('plate', 'like', '%'.$request->plate.'%'))
+    ->orderBy($sortBy, $sortDir)
+    ->paginate(10)
+    ->withQueryString();
 
+    return view('recados.index', compact('recados','estados','tiposFormulario'));
+}
 
-        ->when($request->filled('estado_id'), fn($q) => $q->where('estado_id', $request->estado_id))
-        ->when($request->filled('tipo_formulario_id'), fn($q) => $q->where('tipo_formulario_id', $request->tipo_formulario_id))
-        ->when($request->filled('id'), fn($q) => $q->where('id', $request->id))
-        ->when($request->filled('contact_client'), fn($q) => $q->where('contact_client', 'like', '%'.$request->contact_client.'%'))
-        ->when($request->filled('plate'), fn($q) => $q->where('plate', 'like', '%'.$request->plate.'%'))
-        ->orderBy($sortBy, $sortDir)
-        ->paginate(10)
-        ->withQueryString();
-
-        return view('recados.index', compact('recados','estados','tiposFormulario'));
-    }
 
     public function store(Request $request)
 {
