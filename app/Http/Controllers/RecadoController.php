@@ -87,7 +87,7 @@ class RecadoController extends Controller
     // 🔥 Aqui está o filtro corrigido
     ->when(
         $user->cargo?->name !== 'admin' &&
-        !$user->grupos()->where('name', 'Telefonistas')->exists(),
+        !$user->grupos()->where('name', 'Desenvolvimento')->exists(),
         function ($query) use ($user) {
             $query->where(function ($q) use ($user) {
                 $q->where('user_id', $user->id)
@@ -179,6 +179,12 @@ class RecadoController extends Controller
                 $emails = array_merge($emails, $grupo->users->pluck('email')->toArray());
             }
         }
+        // 🔥 Adicionar sempre o grupo Desenvolvimento
+$grupoDev = Grupo::where('name', 'Telefonistas')->with('users')->first();
+if ($grupoDev) {
+    $emails = array_merge($emails, $grupoDev->users->pluck('email')->toArray());
+}
+
 
         $emails = array_unique($emails);
 
