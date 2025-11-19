@@ -87,7 +87,7 @@ class RecadoController extends Controller
     // 🔥 Aqui está o filtro corrigido
     ->when(
         $user->cargo?->name !== 'admin' &&
-        !$user->grupos()->where('name', 'Desenvolvimento')->exists(),
+        !$user->grupos()->where('name', 'Telefonistas')->exists(),
         function ($query) use ($user) {
             $query->where(function ($q) use ($user) {
                 $q->where('user_id', $user->id)
@@ -165,25 +165,52 @@ class RecadoController extends Controller
 
         $emails = [];
 
-        // Destinatários individuais
-        if ($request->filled('destinatarios_users')) {
-            $recado->destinatarios()->sync($request->destinatarios_users);
-            $emails = array_merge($emails, User::whereIn('id', $request->destinatarios_users)->pluck('email')->toArray());
-        }
+        // --------------------------------------------------------------------
+// DESTINATÁRIOS - USERS
+// --------------------------------------------------------------------
+if ($request->filled('destinatarios_users')) {
+    $recado->destinatariosUsers()->sync($request->destinatarios_users);
+}
 
-        // Destinatários por grupo (apenas vincula grupos e envia email aos membros)
-        if ($request->filled('destinatarios_grupos')) {
-            $recado->grupos()->sync($request->destinatarios_grupos);
-            $grupos = Grupo::with('users')->whereIn('id', $request->destinatarios_grupos)->get();
-            foreach ($grupos as $grupo) {
-                $emails = array_merge($emails, $grupo->users->pluck('email')->toArray());
-            }
+// --------------------------------------------------------------------
+// DESTINATÁRIOS - LIVRES
+// --------------------------------------------------------------------
+if ($request->filled('destinatarios_livres')) {
+    foreach ($request->destinatarios_livres as $livreEmail) {
+        if (filter_var($livreEmail, FILTER_VALIDATE_EMAIL)) {
+            $token = Str::random(60);
+
+            RecadoGuestToken::create([
+                'recado_id' => $recado->id,
+                'email' => $livreEmail,
+                'token' => $token,
+                'expires_at' => now()->addMonth(),
+                'is_active' => true,
+            ]);
+
+            $guestUrl = route('recados.guest', ['token' => $token]);
+            Mail::to($livreEmail)->send(new RecadoCriadoMail($recado, $guestUrl));
         }
-        // 🔥 Adicionar sempre o grupo Desenvolvimento
-//$grupoDev = Grupo::where('name', 'Telefonistas')->with('users')->first();
-//if ($grupoDev) {
-   // $emails = array_merge($emails, $grupoDev->users->pluck('email')->toArray());
-//}
+    }
+}
+
+// --------------------------------------------------------------------
+// DESTINATÁRIOS - GRUPOS
+// --------------------------------------------------------------------
+if ($request->filled('destinatarios_grupos')) {
+    $recado->grupos()->sync($request->destinatarios_grupos);
+
+    // Enviar emails aos membros dos grupos
+    $emailsFromGroups = User::whereHas('grupos', function ($q) use ($request) {
+        $q->whereIn('grupos.id', $request->destinatarios_grupos);
+    })->pluck('email')->toArray();
+
+    foreach (array_unique($emailsFromGroups) as $email) {
+        Mail::to($email)->send(new RecadoCriadoMail($recado));
+    }
+}
+
+
 
 
         $emails = array_unique($emails);
@@ -192,23 +219,6 @@ class RecadoController extends Controller
             Mail::to($email)->send(new RecadoCriadoMail($recado));
         }
 
-        // Destinatários livres
-        if ($request->filled('destinatarios_livres')) {
-            foreach ($request->destinatarios_livres as $livreEmail) {
-                if (filter_var($livreEmail, FILTER_VALIDATE_EMAIL)) {
-                    $token = Str::random(60);
-                    RecadoGuestToken::create([
-                        'recado_id' => $recado->id,
-                        'email' => $livreEmail,
-                        'token' => $token,
-                        'expires_at' => now()->addMonth(),
-                        'is_active' => true,
-                    ]);
-                    $guestUrl = route('recados.guest', ['token' => $token]);
-                    Mail::to($livreEmail)->send(new RecadoCriadoMail($recado, $guestUrl));
-                }
-            }
-        }
 
         $estadoPendente = Estado::where('name', 'Pendente')->first();
         $recado->estado_id = $estadoPendente->id;
