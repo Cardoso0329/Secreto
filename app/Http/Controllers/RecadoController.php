@@ -184,14 +184,22 @@ class RecadoController extends Controller
             'sla', 'tipo', 'origem', 'setor', 'departamento', 'destinatarios', 'aviso', 'estado', 'tipoFormulario', 'guestTokens', 'grupos'
         ])->findOrFail($id);
 
-        $user = auth()->user();
-if (
-    $user->cargo?->name !== 'admin' &&
-    $recado->user_id !== $user->id && // o criador pode ver
-    !$recado->destinatarios->contains($user->id) // ou se for destinatário
-) {
-    abort(403, 'Acesso negado. Este recado não é seu.');
+       $user = auth()->user();
+
+// Se não for admin e não for criador do recado
+if ($user->cargo?->name !== 'admin' && $recado->user_id !== $user->id) {
+
+    // Verifica se é destinatário direto
+    $isDestinatario = $recado->destinatarios->contains($user->id);
+
+    // Verifica se pertence a algum grupo que recebeu o recado
+    $isGrupo = $recado->grupos->pluck('users')->flatten()->pluck('id')->contains($user->id);
+
+    if (!$isDestinatario && !$isGrupo) {
+        abort(403, 'Acesso negado. Este recado não é seu.');
+    }
 }
+
 
 
         $estados = Estado::all();
