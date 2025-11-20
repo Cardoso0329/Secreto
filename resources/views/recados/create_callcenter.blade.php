@@ -161,10 +161,10 @@
                     <div id="destinatariosLivresInputs"></div>
                 </div>
 
-                {{-- Assunto (opcional) --}}
+                {{-- Assunto (AGORA OBRIGATÓRIO) --}}
                 <div class="mb-4">
-                    <label for="assunto" class="form-label fw-semibold">Assunto</label>
-                    <input type="text" name="assunto" id="assunto" class="form-control rounded-3" placeholder="Digite o assunto">
+                    <label for="assunto" class="form-label fw-semibold">Assunto *</label>
+                    <input type="text" name="assunto" id="assunto" class="form-control rounded-3" placeholder="Digite o assunto" required>
                 </div>
 
                 {{-- Mensagem --}}
