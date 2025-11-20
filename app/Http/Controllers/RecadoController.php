@@ -77,19 +77,34 @@ class RecadoController extends Controller
         if (!in_array($sortDir, ['asc','desc'])) $sortDir = 'desc';
 
         $recados = Recado::with([
-            'setor', 'origem', 'departamento', 'destinatarios', 'estado',
-            'sla', 'tipo', 'aviso', 'tipoFormulario', 'grupos', 'guestTokens'
-        ])
-        ->when(
-            $user->cargo?->name !== 'admin',
-            function ($query) use ($user) {
-                $query->where(function ($q) use ($user) {
-                    $q->where('user_id', $user->id)
-                      ->orWhereHas('destinatarios', fn($q2) => $q2->where('users.id', $user->id))
-                      ->orWhereHas('grupos.users', fn($q3) => $q3->where('users.id', $user->id));
-                });
-            }
-        )
+    'setor', 'origem', 'departamento', 'destinatarios', 'estado',
+    'sla', 'tipo', 'aviso', 'tipoFormulario', 'grupos', 'guestTokens'
+]);
+
+// 🔒 Restringir Marlena e Joana ao tipo "Central"
+$emailsRestritos = [
+    'marlene.costa@soccsantos.pt',
+    'joana.barbosa@soccsantos.pt',
+];
+
+if (in_array($user->email, $emailsRestritos)) {
+    $recados->whereHas('tipoFormulario', function ($q) {
+        $q->where('name', 'Central');
+    });
+}
+
+$recados = $recados
+    ->when(
+        $user->cargo?->name !== 'admin',
+        function ($query) use ($user) {
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('destinatarios', fn($q2) => $q2->where('users.id', $user->id))
+                  ->orWhereHas('grupos.users', fn($q3) => $q3->where('users.id', $user->id));
+            });
+        }
+    )
+
         ->when($request->filled('estado_id'), fn($q) => $q->where('estado_id', $request->estado_id))
         ->when($request->filled('tipo_formulario_id'), fn($q) => $q->where('tipo_formulario_id', $request->tipo_formulario_id))
         ->when($request->filled('id'), fn($q) => $q->where('id', $request->id))
