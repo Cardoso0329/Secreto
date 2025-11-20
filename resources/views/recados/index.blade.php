@@ -45,19 +45,19 @@
         <div class="p-3 border rounded">
             <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
                 <div class="col-md-2">
-                    <input type="text" name="id" class="form-control" placeholder="ID..." value="{{ request('id') }}">
+                    <input type="text" name="id" class="form-control" placeholder="ID..." value="{{ $filtros['id'] ?? '' }}">
                 </div>
                 <div class="col-md-2">
-                    <input type="text" name="contact_client" class="form-control" placeholder="Contacto..." value="{{ request('contact_client') }}">
+                    <input type="text" name="contact_client" class="form-control" placeholder="Contacto..." value="{{ $filtros['contact_client'] ?? '' }}">
                 </div>
                 <div class="col-md-2">
-                    <input type="text" name="plate" class="form-control" placeholder="Matrícula..." value="{{ request('plate') }}">
+                    <input type="text" name="plate" class="form-control" placeholder="Matrícula..." value="{{ $filtros['plate'] ?? '' }}">
                 </div>
                 <div class="col-md-3">
                     <select name="estado_id" class="form-select">
                         <option value="">Todos os Estados</option>
                         @foreach($estados as $estado)
-                            <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
+                            <option value="{{ $estado->id }}" {{ isset($filtros['estado_id']) && $filtros['estado_id'] == $estado->id ? 'selected' : '' }}>
                                 {{ $estado->name }}
                             </option>
                         @endforeach
@@ -67,7 +67,7 @@
                     <select name="tipo_formulario_id" class="form-select">
                         <option value="">Todos os Tipos</option>
                         @foreach($tiposFormulario as $tipo_formulario)
-                            <option value="{{ $tipo_formulario->id }}" {{ request('tipo_formulario_id') == $tipo_formulario->id ? 'selected' : '' }}>
+                            <option value="{{ $tipo_formulario->id }}" {{ isset($filtros['tipo_formulario_id']) && $filtros['tipo_formulario_id'] == $tipo_formulario->id ? 'selected' : '' }}>
                                 {{ $tipo_formulario->name }}
                             </option>
                         @endforeach
@@ -82,11 +82,11 @@
             {{-- Botão Exportar Recados Filtrados --}}
             <div class="mt-3 d-flex justify-content-end">
                 <form action="{{ route('configuracoes.recados.export.filtered') }}" method="GET">
-                    <input type="hidden" name="id" value="{{ request('id') }}">
-                    <input type="hidden" name="contact_client" value="{{ request('contact_client') }}">
-                    <input type="hidden" name="plate" value="{{ request('plate') }}">
-                    <input type="hidden" name="estado_id" value="{{ request('estado_id') }}">
-                    <input type="hidden" name="tipo_formulario_id" value="{{ request('tipo_formulario_id') }}">
+                    <input type="hidden" name="id" value="{{ $filtros['id'] ?? '' }}">
+                    <input type="hidden" name="contact_client" value="{{ $filtros['contact_client'] ?? '' }}">
+                    <input type="hidden" name="plate" value="{{ $filtros['plate'] ?? '' }}">
+                    <input type="hidden" name="estado_id" value="{{ $filtros['estado_id'] ?? '' }}">
+                    <input type="hidden" name="tipo_formulario_id" value="{{ $filtros['tipo_formulario_id'] ?? '' }}">
                     <button type="submit" class="btn btn-success">
                         <i class="bi bi-file-earmark-arrow-down"></i> Exportar Recados Filtrados
                     </button>
@@ -109,12 +109,12 @@
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        @php $sortDir = request('sort_dir', 'desc') === 'asc' ? 'desc' : 'asc'; @endphp
+                        @php $sortDir = $filtros['sort_dir'] ?? 'desc'; $sortDir = $sortDir === 'asc' ? 'desc' : 'asc'; @endphp
                         <th>
-                            <a href="{{ route('recados.index', array_merge(request()->query(), ['sort_by' => 'id', 'sort_dir' => $sortDir])) }}" class="text-decoration-none">
+                            <a href="{{ route('recados.index', array_merge($filtros ?? [], ['sort_by' => 'id', 'sort_dir' => $sortDir])) }}" class="text-decoration-none">
                                 ID
-                                @if(request('sort_by') === 'id')
-                                    <i class="bi {{ request('sort_dir') === 'asc' ? 'bi-sort-up' : 'bi-sort-down' }}"></i>
+                                @if(($filtros['sort_by'] ?? '') === 'id')
+                                    <i class="bi {{ ($filtros['sort_dir'] ?? '') === 'asc' ? 'bi-sort-up' : 'bi-sort-down' }}"></i>
                                 @endif
                             </a>
                         </th>
@@ -173,7 +173,7 @@
 
             {{-- Paginação --}}
             <div class="d-flex justify-content-center mt-4">
-                {{ $recados->appends(request()->query())->links() }}
+                {{ $recados->appends($filtros ?? [])->links() }}
             </div>
         </div>
     </div>

@@ -64,37 +64,32 @@ class RecadoController extends Controller
     }
 
     public function index(Request $request)
-    {
-        $user = auth()->user();
-        $estados = Estado::all();
-        $tiposFormulario = TipoFormulario::all();
+{
+    $user = auth()->user();
+    $estados = Estado::all();
+    $tiposFormulario = TipoFormulario::all();
 
-        $sortBy = $request->get('sort_by', 'id');
-        $sortDir = $request->get('sort_dir', 'desc');
+    // Se o request tiver filtros, guardamos na sessão
+    if ($request->query()) {
+        session(['recados_filtros' => $request->query()]);
+    }
 
-        $allowedSorts = ['id', 'created_at', 'name'];
-        if (!in_array($sortBy, $allowedSorts)) $sortBy = 'id';
-        if (!in_array($sortDir, ['asc','desc'])) $sortDir = 'desc';
+    // Recupera filtros da sessão (persistem após refresh)
+    $filtros = session('recados_filtros', []);
 
-        $recados = Recado::with([
-    'setor', 'origem', 'departamento', 'destinatarios', 'estado',
-    'sla', 'tipo', 'aviso', 'tipoFormulario', 'grupos', 'guestTokens'
-]);
+    $sortBy = $filtros['sort_by'] ?? 'id';
+    $sortDir = $filtros['sort_dir'] ?? 'desc';
 
-// 🔒 Restringir Marlena e Joana ao tipo "Central"
-$emailsRestritos = [
-    'marlene.costa@soccsantos.pt',
-    'joana.barbosa@soccsantos.pt',
-];
+    $allowedSorts = ['id', 'created_at', 'name'];
+    if (!in_array($sortBy, $allowedSorts)) $sortBy = 'id';
+    if (!in_array($sortDir, ['asc','desc'])) $sortDir = 'desc';
 
-if (in_array($user->email, $emailsRestritos)) {
-    $recados->whereHas('tipoFormulario', function ($q) {
-        $q->where('name', 'Central');
-    });
-}
+    $recados = Recado::with([
+        'setor', 'origem', 'departamento', 'destinatarios', 'estado',
+        'sla', 'tipo', 'aviso', 'tipoFormulario', 'grupos', 'guestTokens'
+    ]);
 
-$recados = $recados
-    ->when(
+    $recados = $recados->when(
         $user->cargo?->name !== 'admin',
         function ($query) use ($user) {
             $query->where(function ($q) use ($user) {
@@ -103,19 +98,21 @@ $recados = $recados
                   ->orWhereHas('grupos.users', fn($q3) => $q3->where('users.id', $user->id));
             });
         }
-    )
+    );
 
-        ->when($request->filled('estado_id'), fn($q) => $q->where('estado_id', $request->estado_id))
-        ->when($request->filled('tipo_formulario_id'), fn($q) => $q->where('tipo_formulario_id', $request->tipo_formulario_id))
-        ->when($request->filled('id'), fn($q) => $q->where('id', $request->id))
-        ->when($request->filled('contact_client'), fn($q) => $q->where('contact_client', 'like', '%'.$request->contact_client.'%'))
-        ->when($request->filled('plate'), fn($q) => $q->where('plate', 'like', '%'.$request->plate.'%'))
-        ->orderBy($sortBy, $sortDir)
-        ->paginate(10)
-        ->withQueryString();
+    // Aplica filtros se existirem na sessão
+    if (!empty($filtros['id'])) $recados->where('id', $filtros['id']);
+    if (!empty($filtros['contact_client'])) $recados->where('contact_client', 'like', '%' . $filtros['contact_client'] . '%');
+    if (!empty($filtros['plate'])) $recados->where('plate', 'like', '%' . $filtros['plate'] . '%');
+    if (!empty($filtros['estado_id'])) $recados->where('estado_id', $filtros['estado_id']);
+    if (!empty($filtros['tipo_formulario_id'])) $recados->where('tipo_formulario_id', $filtros['tipo_formulario_id']);
 
-        return view('recados.index', compact('recados','estados','tiposFormulario'));
-    }
+    $recados = $recados->orderBy($sortBy, $sortDir)
+                        ->paginate(10)
+                        ->withQueryString();
+
+    return view('recados.index', compact('recados','estados','tiposFormulario','filtros'));
+}
 
     public function store(Request $request)
     {
