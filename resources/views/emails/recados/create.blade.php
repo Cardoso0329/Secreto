@@ -24,7 +24,7 @@
             <p><span class="label">Email:</span> <span class="value">{{ $recado->email }}</span></p>
         @endif
 
-        <p><span class="label">Mensagem:</span><br><span class="value">{{ $recado->mensagem }}</span></p>
+        <p><span class="label">Assunto:</span><br><span class="value">{{ $recado->assunto }}</span></p>
 
         @if(isset($recado->setor))
             <p><span class="label">Setor:</span> <span class="value">{{ $recado->setor->name }}</span></p>

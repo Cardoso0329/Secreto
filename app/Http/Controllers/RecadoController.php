@@ -139,6 +139,7 @@ class RecadoController extends Controller
         'destinatarios_grupos.*' => 'exists:grupos,id',
         'tipo_formulario_id' => 'nullable|exists:tipo_formularios,id',
         'wip' => 'nullable|string|max:255',
+        'assunto' => 'nullable|string|max:255',
         'destinatarios_livres' => 'array',
         'destinatarios_livres.*' => 'email',
     ]);

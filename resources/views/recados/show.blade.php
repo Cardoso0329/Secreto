@@ -100,6 +100,7 @@
 @endif
 
 
+                                        <p><strong>Assunto:</strong> {{ $recado->assunto ?? '—' }}</p>
 
                     <p><strong>Mensagem:</strong> {{ $recado->mensagem }}</p>
 

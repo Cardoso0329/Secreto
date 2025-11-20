@@ -20,7 +20,7 @@ return new class extends Migration
         $table->string('plate')->nullable();
         $table->string('operator_email')->nullable();
         $table->string('wip')->nullable(); // Nullable porque o formulário Central não tem
-        // Ligações a outras tabelas
+        // Ligações a outras tabelas        // Ligações a outras tabelas
         $table->foreignId('sla_id')->constrained('slas')->onDelete('cascade');
         $table->foreignId('tipo_id')->constrained('tipos')->onDelete('cascade');
         $table->foreignId('origem_id')->constrained('origens')->onDelete('cascade');

@@ -4,12 +4,12 @@
 <div class="container py-5" style="max-width: 900px;">
     <div class="card shadow-lg border-0 rounded-4">
         <div class="card-body p-5">
-<div class="d-flex justify-content-between align-items-center mb-5">
-    <h2 class="fw-bold m-0">📞 Criar Novo Recado - Call Center</h2>
-    <a href="{{ url()->previous() }}" class="btn btn-light btn-sm rounded-circle border" title="Voltar">
-        <i class="bi bi-x-lg"></i>
-    </a>
-</div>
+            <div class="d-flex justify-content-between align-items-center mb-5">
+                <h2 class="fw-bold m-0">📞 Criar Novo Recado - Call Center</h2>
+                <a href="{{ url()->previous() }}" class="btn btn-light btn-sm rounded-circle border" title="Voltar">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
 
             <form action="{{ route('recados.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
@@ -33,73 +33,68 @@
                     <label for="plate">Matrícula</label>
                 </div>
 
-                 {{-- Email do Operador --}}
+                {{-- Email do Operador --}}
                 <div class="form-floating mb-4">
                     <input type="email" name="operator_email" id="operator_email" class="form-control rounded-3 bg-light" value="{{ Auth::user()->email }}" readonly>
                     <label for="operator_email">Email do Operador *</label>
                 </div>
 
-                {{-- Campo WIP --}}
+                {{-- Campo WIP (opcional) --}}
                 <div class="form-floating mb-4">
-                    <input type="text" name="wip" id="wip" class="form-control rounded-3" placeholder="WIP" required>
+                    <input type="text" name="wip" id="wip" class="form-control rounded-3" placeholder="WIP">
                     <label for="wip">WIP</label>
                 </div>
 
-               {{-- SLA (pré-selecionado) --}}
-<div class="mb-4">
-    <label class="form-label fw-semibold">SLA *</label>
-    <select name="sla_id" id="sla_id" class="form-select rounded-3" required>
-        @foreach ($slas as $item)
-            <option value="{{ $item->id }}"
-                {{ $item->name === 'A resolver - 12h' ? 'selected' : '' }}>
-                {{ $item->name }}
-            </option>
-        @endforeach
-    </select>
-</div>
+                {{-- SLA (pré-selecionado) --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">SLA *</label>
+                    <select name="sla_id" id="sla_id" class="form-select rounded-3" required>
+                        @foreach ($slas as $item)
+                            <option value="{{ $item->id }}"
+                                {{ $item->name === 'A resolver - 12h' ? 'selected' : '' }}>
+                                {{ $item->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-{{-- Tipo (filtrado) --}}
-<div class="mb-4">
-    <label class="form-label fw-semibold">Tipo *</label>
-    <select name="tipo_id" id="tipo_id" class="form-select rounded-3" required>
-    <option value="">-- Selecione --</option>
-    @foreach ($tipos as $item)
-        <option value="{{ $item->id }}">{{ $item->name }}</option>
-    @endforeach
-</select>
+                {{-- Tipo (filtrado) --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Tipo *</label>
+                    <select name="tipo_id" id="tipo_id" class="form-select rounded-3" required>
+                        <option value="">-- Selecione --</option>
+                        @foreach ($tipos as $item)
+                            <option value="{{ $item->id }}">{{ $item->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-</div>
+                {{-- Origem (pré-selecionada + bloqueada) --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Origem *</label>
+                    <select name="origem_fake" id="origem_fake" class="form-select rounded-3" disabled>
+                        @foreach ($origens as $item)
+                            <option value="{{ $item->id }}"
+                                {{ $item->name === 'Telefone' ? 'selected' : '' }}>
+                                {{ $item->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <input type="hidden"
+                           name="origem_id"
+                           value="{{ $origens->firstWhere('name', 'Telefone')->id }}">
+                </div>
 
-{{-- Origem (pré-selecionada + bloqueada) --}}
-<div class="mb-4">
-    <label class="form-label fw-semibold">Origem *</label>
-    <select name="origem_fake" id="origem_fake" class="form-select rounded-3" disabled>
-        @foreach ($origens as $item)
-            <option value="{{ $item->id }}"
-                {{ $item->name === 'Telefone' ? 'selected' : '' }}>
-                {{ $item->name }}
-            </option>
-        @endforeach
-    </select>
-
-    {{-- Hidden para enviar o valor real --}}
-    <input type="hidden"
-           name="origem_id"
-           value="{{ $origens->firstWhere('name', 'Telefone')->id }}">
-</div>
-
-{{-- Departamento --}}
-<div class="mb-4">
-    <label class="form-label fw-semibold">Departamento *</label>
-    <select name="departamento_id" id="departamento_id" class="form-select rounded-3" required>
-        <option value="">-- Selecione --</option>
-        @foreach ($departamentos as $item)
-            <option value="{{ $item->id }}">{{ $item->name }}</option>
-        @endforeach
-    </select>
-</div>
-
-
+                {{-- Departamento --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Departamento *</label>
+                    <select name="departamento_id" id="departamento_id" class="form-select rounded-3" required>
+                        <option value="">-- Selecione --</option>
+                        @foreach ($departamentos as $item)
+                            <option value="{{ $item->id }}">{{ $item->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
                 {{-- Setor filtrado --}}
                 @php
@@ -108,7 +103,6 @@
                         'Colisão', 'APV - VLP', 'APV - VCL', 'APV - VCP', 'VCL', 'Marketing', 'Informática'
                     ];
                 @endphp
-
                 <div class="mb-4">
                     <label class="form-label fw-semibold">Chefias *</label>
                     <select name="setor_id" id="setor_id" class="form-select rounded-3" required>
@@ -123,7 +117,7 @@
 
                 {{-- Destinatários Dinâmicos --}}
                 <div class="mb-4">
-                    <label class="form-label fw-semibold">Destinatários </label>
+                    <label class="form-label fw-semibold">Destinatários</label>
                     <div class="input-group">
                         <select id="novoDestinatario" class="form-select rounded-start">
                             <option value="">Selecione um destinatário</option>
@@ -139,25 +133,20 @@
                     <div id="destinatariosInputs"></div>
                 </div>
 
-                 {{-- Grupo Destinatário (fixo: Telefonistas) --}}
-<div class="mb-4">
-    <label class="form-label fw-semibold">Grupo Destinatário</label>
-
-    {{-- Select apenas visual, bloqueado --}}
-    <select class="form-select rounded-3" disabled>
-        @foreach (\App\Models\Grupo::all() as $grupo)
-            <option value="{{ $grupo->id }}"
-                {{ $grupo->name === 'Telefonistas' ? 'selected' : '' }}>
-                {{ $grupo->name }}
-            </option>
-        @endforeach
-    </select>
-
-    {{-- Hidden para enviar o valor real --}}
-    <input type="hidden" name="destinatarios_grupos[]"
-        value="{{ \App\Models\Grupo::where('name', 'Telefonistas')->first()->id }}">
-</div>
-
+                {{-- Grupo Destinatário (fixo: Telefonistas) --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Grupo Destinatário</label>
+                    <select class="form-select rounded-3" disabled>
+                        @foreach (\App\Models\Grupo::all() as $grupo)
+                            <option value="{{ $grupo->id }}"
+                                {{ $grupo->name === 'Telefonistas' ? 'selected' : '' }}>
+                                {{ $grupo->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <input type="hidden" name="destinatarios_grupos[]"
+                        value="{{ \App\Models\Grupo::where('name', 'Telefonistas')->first()->id }}">
+                </div>
 
                 {{-- Destinatários Livres --}}
                 <div class="mb-4">
@@ -170,6 +159,12 @@
                     </div>
                     <div id="listaDestinatariosLivres" class="mt-3 d-flex flex-wrap gap-2"></div>
                     <div id="destinatariosLivresInputs"></div>
+                </div>
+
+                {{-- Assunto (opcional) --}}
+                <div class="mb-4">
+                    <label for="assunto" class="form-label fw-semibold">Assunto</label>
+                    <input type="text" name="assunto" id="assunto" class="form-control rounded-3" placeholder="Digite o assunto">
                 </div>
 
                 {{-- Mensagem --}}
@@ -195,11 +190,11 @@
                     </select>
                 </div>
 
-               {{-- Estado fixo em Pendente --}}
-@php
-    $estadoPendente = $estados->firstWhere('name', 'Pendente');
-@endphp
-<input type="hidden" name="estado_id" value="{{ $estadoPendente?->id }}">
+                {{-- Estado fixo em Pendente --}}
+                @php
+                    $estadoPendente = $estados->firstWhere('name', 'Pendente');
+                @endphp
+                <input type="hidden" name="estado_id" value="{{ $estadoPendente?->id }}">
 
                 {{-- Abertura --}}
                 <div class="form-floating mb-4">
@@ -219,122 +214,93 @@
 </div>
 @endsection
 
-
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // =======================
-        // Destinatários Dinâmicos
-        // =======================
-        const destinatarios = new Map();
-        const select = document.getElementById('novoDestinatario');
-        const addBtn = document.getElementById('adicionarDestinatario');
-        const badgeContainer = document.getElementById('listaDestinatarios');
-        const inputContainer = document.getElementById('destinatariosInputs');
+document.addEventListener('DOMContentLoaded', () => {
+    const destinatarios = new Map();
+    const select = document.getElementById('novoDestinatario');
+    const addBtn = document.getElementById('adicionarDestinatario');
+    const badgeContainer = document.getElementById('listaDestinatarios');
+    const inputContainer = document.getElementById('destinatariosInputs');
 
-        const atualizarBotao = () => {
-            addBtn.disabled = !select.value;
-        };
+    const atualizarBotao = () => { addBtn.disabled = !select.value; };
+    select.addEventListener('change', atualizarBotao);
+    select.addEventListener('input', atualizarBotao);
 
-        select.addEventListener('change', atualizarBotao);
-        select.addEventListener('input', atualizarBotao);
+    addBtn.addEventListener('click', () => {
+        const selectedOption = select.options[select.selectedIndex];
+        const id = selectedOption.value;
+        const name = selectedOption.dataset.name;
+        if (!id || destinatarios.has(id)) return;
+        destinatarios.set(id, name);
 
-        addBtn.addEventListener('click', () => {
-            const selectedOption = select.options[select.selectedIndex];
-            const id = selectedOption.value;
-            const name = selectedOption.dataset.name;
-
-            if (!id || destinatarios.has(id)) return;
-
-            destinatarios.set(id, name);
-
-            const badge = document.createElement('span');
-            badge.className = 'badge bg-primary d-flex align-items-center gap-2 px-2 py-1 rounded-pill';
-            badge.innerHTML = `
-                <span>${name}</span>
-                <button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remover"></button>
-            `;
-
-            badge.querySelector('button').addEventListener('click', () => {
-                destinatarios.delete(id);
-                badge.remove();
-                document.getElementById(`destinatario-input-${id}`)?.remove();
-            });
-
-            badgeContainer.appendChild(badge);
-
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'destinatarios_users[]';
-            input.value = id;
-            input.id = `destinatario-input-${id}`;
-            inputContainer.appendChild(input);
-
-            select.value = '';
-            select.selectedIndex = 0;
-            atualizarBotao();
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-primary d-flex align-items-center gap-2 px-2 py-1 rounded-pill';
+        badge.innerHTML = `<span>${name}</span><button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remover"></button>`;
+        badge.querySelector('button').addEventListener('click', () => {
+            destinatarios.delete(id);
+            badge.remove();
+            document.getElementById(`destinatario-input-${id}`)?.remove();
         });
+        badgeContainer.appendChild(badge);
 
-        // =======================
-        // Destinatários Livres
-        // =======================
-        const destinatariosLivres = new Map();
-        const inputLivre = document.getElementById('novoDestinatarioLivre');
-        const addBtnLivre = document.getElementById('adicionarDestinatarioLivre');
-        const badgeContainerLivre = document.getElementById('listaDestinatariosLivres');
-        const inputContainerLivre = document.getElementById('destinatariosLivresInputs');
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'destinatarios_users[]';
+        input.value = id;
+        input.id = `destinatario-input-${id}`;
+        inputContainer.appendChild(input);
 
-        const atualizarBotaoLivre = () => {
-            addBtnLivre.disabled = !inputLivre.value.trim();
-        };
-
-        inputLivre.addEventListener('input', atualizarBotaoLivre);
-
-        addBtnLivre.addEventListener('click', () => {
-            const valor = inputLivre.value.trim();
-            if (!valor || destinatariosLivres.has(valor)) return;
-
-            destinatariosLivres.set(valor, valor);
-
-            const badge = document.createElement('span');
-            badge.className = 'badge bg-secondary d-flex align-items-center gap-2 px-2 py-1 rounded-pill';
-            badge.innerHTML = `
-                <span>${valor}</span>
-                <button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remover"></button>
-            `;
-
-            badge.querySelector('button').addEventListener('click', () => {
-                destinatariosLivres.delete(valor);
-                badge.remove();
-                document.getElementById(`destinatario-livre-input-${valor}`)?.remove();
-            });
-
-            badgeContainerLivre.appendChild(badge);
-
-            const inputHidden = document.createElement('input');
-            inputHidden.type = 'hidden';
-            inputHidden.name = 'destinatarios_livres[]';
-            inputHidden.value = valor;
-            inputHidden.id = `destinatario-livre-input-${valor}`;
-            inputContainerLivre.appendChild(inputHidden);
-
-            inputLivre.value = '';
-            atualizarBotaoLivre();
-        });
-
-        // =======================
-        // Validação no Submit
-        // =======================
-        document.querySelector('form').addEventListener('submit', function (e) {
-            const temUsers = document.querySelectorAll('input[name="destinatarios_users[]"]').length > 0;
-            const temGrupos = document.querySelector('#destinatarios_grupos')?.selectedOptions.length > 0;
-            const temLivres = document.querySelectorAll('input[name="destinatarios_livres[]"]').length > 0;
-
-            if (!temUsers && !temGrupos && !temLivres) {
-                e.preventDefault();
-                alert('Por favor, selecione ao menos um destinatário (usuário, grupo ou livre).');
-            }
-        });
+        select.value = '';
+        select.selectedIndex = 0;
+        atualizarBotao();
     });
+
+    const destinatariosLivres = new Map();
+    const inputLivre = document.getElementById('novoDestinatarioLivre');
+    const addBtnLivre = document.getElementById('adicionarDestinatarioLivre');
+    const badgeContainerLivre = document.getElementById('listaDestinatariosLivres');
+    const inputContainerLivre = document.getElementById('destinatariosLivresInputs');
+
+    const atualizarBotaoLivre = () => { addBtnLivre.disabled = !inputLivre.value.trim(); };
+    inputLivre.addEventListener('input', atualizarBotaoLivre);
+
+    addBtnLivre.addEventListener('click', () => {
+        const valor = inputLivre.value.trim();
+        if (!valor || destinatariosLivres.has(valor)) return;
+        destinatariosLivres.set(valor, valor);
+
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-secondary d-flex align-items-center gap-2 px-2 py-1 rounded-pill';
+        badge.innerHTML = `<span>${valor}</span><button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remover"></button>`;
+        badge.querySelector('button').addEventListener('click', () => {
+            destinatariosLivres.delete(valor);
+            badge.remove();
+            document.getElementById(`destinatario-livre-input-${valor}`)?.remove();
+        });
+        badgeContainerLivre.appendChild(badge);
+
+        const inputHidden = document.createElement('input');
+        inputHidden.type = 'hidden';
+        inputHidden.name = 'destinatarios_livres[]';
+        inputHidden.value = valor;
+        inputHidden.id = `destinatario-livre-input-${valor}`;
+        inputContainerLivre.appendChild(inputHidden);
+
+        inputLivre.value = '';
+        atualizarBotaoLivre();
+    });
+
+    document.querySelector('form').addEventListener('submit', function (e) {
+        const temUsers = document.querySelectorAll('input[name="destinatarios_users[]"]').length > 0;
+        const temGrupos = document.querySelector('#destinatarios_grupos')?.selectedOptions.length > 0;
+        const temLivres = document.querySelectorAll('input[name="destinatarios_livres[]"]').length > 0;
+
+        if (!temUsers && !temGrupos && !temLivres) {
+            e.preventDefault();
+            alert('Por favor, selecione ao menos um destinatário (usuário, grupo ou livre).');
+        }
+    });
+});
 </script>
 @endpush
