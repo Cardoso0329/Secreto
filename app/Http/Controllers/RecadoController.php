@@ -26,7 +26,6 @@ class RecadoController extends Controller
 {
     protected $emailsCentral = [
         'marlene.costa@soccsantos.pt',
-        'joana.barbosa@soccsantos.pt'
     ];
 
     public function create(Request $request)
@@ -105,11 +104,13 @@ class RecadoController extends Controller
         });
 
         // Filtrar recados Central para emails autorizados
-        if (!in_array($user->email, $this->emailsCentral)) {
-            $recados->whereHas('tipoFormulario', function($q){
-                $q->where('name', '!=', 'Central');
-            });
-        }
+       // SE O UTILIZADOR FOR CENTRAL → vê apenas Central
+if (in_array($user->email, $this->emailsCentral)) {
+    $recados->whereHas('tipoFormulario', function($q) {
+        $q->where('name', 'Central');
+    });
+}
+
 
         // Aplica filtros
         if (!empty($filtros['id'])) $recados->where('id', $filtros['id']);
