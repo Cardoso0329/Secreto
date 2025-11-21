@@ -93,6 +93,12 @@ Route::put('/recados/{recado}/concluir', [RecadoController::class, 'concluir'])
     ->name('recados.concluir')
     ->middleware('auth');
 
+    Route::post('/recados/escolher-local', function (Illuminate\Http\Request $request) {
+    $request->session()->put('local_trabalho', $request->local);
+    return redirect()->route('recados.index');
+})->name('recados.escolherLocal');
+
+
 
 
 

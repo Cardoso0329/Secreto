@@ -1,6 +1,37 @@
 @extends('layouts.app')
 
 @section('content')
+
+@if(isset($showPopup) && $showPopup)
+<div class="modal fade show" id="popupLocal" tabindex="-1" style="display:block; background: rgba(0,0,0,0.6);">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Escolher Local de Trabalho</h5>
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-4">Onde vai trabalhar agora?</p>
+                <form method="POST" action="{{ route('recados.escolherLocal') }}">
+                    @csrf
+                    <button name="local" value="Central" class="btn btn-primary w-100 mb-3 p-2 fw-semibold">
+                        🏢 Central
+                    </button>
+                    <button name="local" value="Call Center" class="btn btn-success w-100 p-2 fw-semibold">
+                        ☎️ Call Center
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        overflow: hidden;
+    }
+</style>
+@endif
+
 <div class="container mt-4">
 
     {{-- Cabeçalho --}}
@@ -8,33 +39,13 @@
         <h2 class="fw-bold mb-0">
             📋 Recados
         </h2>
-    </div>
 
-    {{-- Card para escolher tipo de formulário --}}
-    <div class="mb-4">
-        <h4 class="fw-semibold mb-3">Escolher Tipo de Formulário</h4>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <div class="card h-100 shadow-sm border-0 hover-shadow transition">
-                    <div class="card-body text-center">
-                        <i class="bi bi-building-gear fs-1 text-primary mb-2"></i>
-                        <h5 class="card-title fw-bold">Central</h5>
-                        <p class="card-text text-muted">Formulário para uso interno da Central.</p>
-                        <a href="{{ route('recados.create', ['tipo_formulario' => 'Central']) }}" class="btn btn-primary w-100">Selecionar</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 mb-3">
-                <div class="card h-100 shadow-sm border-0 hover-shadow transition">
-                    <div class="card-body text-center">
-                        <i class="bi bi-telephone-inbound fs-1 text-success mb-2"></i>
-                        <h5 class="card-title fw-bold">Call Center</h5>
-                        <p class="card-text text-muted">Formulário específico para Call Center.</p>
-                        <a href="{{ route('recados.create', ['tipo_formulario' => 'Call Center']) }}" class="btn btn-success w-100">Selecionar</a>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{-- Botão Novo Recado (usa a sessão) --}}
+        @if(session()->has('local_trabalho'))
+            <a href="{{ route('recados.create') }}" class="btn btn-primary">
+                📄 Novo Recado ({{ session('local_trabalho') }})
+            </a>
+        @endif
     </div>
 
     {{-- Filtros --}}
@@ -45,19 +56,19 @@
         <div class="p-3 border rounded">
             <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
                 <div class="col-md-2">
-                    <input type="text" name="id" class="form-control" placeholder="ID..." value="{{ $filtros['id'] ?? '' }}">
+                    <input type="text" name="id" class="form-control" placeholder="ID..." value="{{ request('id') }}">
                 </div>
                 <div class="col-md-2">
-                    <input type="text" name="contact_client" class="form-control" placeholder="Contacto..." value="{{ $filtros['contact_client'] ?? '' }}">
+                    <input type="text" name="contact_client" class="form-control" placeholder="Contacto..." value="{{ request('contact_client') }}">
                 </div>
                 <div class="col-md-2">
-                    <input type="text" name="plate" class="form-control" placeholder="Matrícula..." value="{{ $filtros['plate'] ?? '' }}">
+                    <input type="text" name="plate" class="form-control" placeholder="Matrícula..." value="{{ request('plate') }}">
                 </div>
                 <div class="col-md-3">
                     <select name="estado_id" class="form-select">
                         <option value="">Todos os Estados</option>
                         @foreach($estados as $estado)
-                            <option value="{{ $estado->id }}" {{ isset($filtros['estado_id']) && $filtros['estado_id'] == $estado->id ? 'selected' : '' }}>
+                            <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
                                 {{ $estado->name }}
                             </option>
                         @endforeach
@@ -67,7 +78,7 @@
                     <select name="tipo_formulario_id" class="form-select">
                         <option value="">Todos os Tipos</option>
                         @foreach($tiposFormulario as $tipo_formulario)
-                            <option value="{{ $tipo_formulario->id }}" {{ isset($filtros['tipo_formulario_id']) && $filtros['tipo_formulario_id'] == $tipo_formulario->id ? 'selected' : '' }}>
+                            <option value="{{ $tipo_formulario->id }}" {{ request('tipo_formulario_id') == $tipo_formulario->id ? 'selected' : '' }}>
                                 {{ $tipo_formulario->name }}
                             </option>
                         @endforeach
@@ -82,11 +93,11 @@
             {{-- Botão Exportar Recados Filtrados --}}
             <div class="mt-3 d-flex justify-content-end">
                 <form action="{{ route('configuracoes.recados.export.filtered') }}" method="GET">
-                    <input type="hidden" name="id" value="{{ $filtros['id'] ?? '' }}">
-                    <input type="hidden" name="contact_client" value="{{ $filtros['contact_client'] ?? '' }}">
-                    <input type="hidden" name="plate" value="{{ $filtros['plate'] ?? '' }}">
-                    <input type="hidden" name="estado_id" value="{{ $filtros['estado_id'] ?? '' }}">
-                    <input type="hidden" name="tipo_formulario_id" value="{{ $filtros['tipo_formulario_id'] ?? '' }}">
+                    <input type="hidden" name="id" value="{{ request('id') }}">
+                    <input type="hidden" name="contact_client" value="{{ request('contact_client') }}">
+                    <input type="hidden" name="plate" value="{{ request('plate') }}">
+                    <input type="hidden" name="estado_id" value="{{ request('estado_id') }}">
+                    <input type="hidden" name="tipo_formulario_id" value="{{ request('tipo_formulario_id') }}">
                     <button type="submit" class="btn btn-success">
                         <i class="bi bi-file-earmark-arrow-down"></i> Exportar Recados Filtrados
                     </button>
@@ -109,12 +120,12 @@
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        @php $sortDir = $filtros['sort_dir'] ?? 'desc'; $sortDir = $sortDir === 'asc' ? 'desc' : 'asc'; @endphp
+                        @php $sortDir = request('sort_dir', 'desc') === 'asc' ? 'desc' : 'asc'; @endphp
                         <th>
-                            <a href="{{ route('recados.index', array_merge($filtros ?? [], ['sort_by' => 'id', 'sort_dir' => $sortDir])) }}" class="text-decoration-none">
+                            <a href="{{ route('recados.index', array_merge(request()->query(), ['sort_by' => 'id', 'sort_dir' => $sortDir])) }}" class="text-decoration-none">
                                 ID
-                                @if(($filtros['sort_by'] ?? '') === 'id')
-                                    <i class="bi {{ ($filtros['sort_dir'] ?? '') === 'asc' ? 'bi-sort-up' : 'bi-sort-down' }}"></i>
+                                @if(request('sort_by') === 'id')
+                                    <i class="bi {{ request('sort_dir') === 'asc' ? 'bi-sort-up' : 'bi-sort-down' }}"></i>
                                 @endif
                             </a>
                         </th>
@@ -173,7 +184,7 @@
 
             {{-- Paginação --}}
             <div class="d-flex justify-content-center mt-4">
-                {{ $recados->appends($filtros ?? [])->links() }}
+                {{ $recados->appends(request()->query())->links() }}
             </div>
         </div>
     </div>

@@ -24,193 +24,212 @@ use Illuminate\Support\Str;
 
 class RecadoController extends Controller
 {
-    protected $emailsCentral = [
-        'marlene.costa@soccsantos.pt',
-    ];
 
     public function create(Request $request)
-    {
-        $tipoFormularioName = $request->query('tipo_formulario');
-        $tipoFormulario = TipoFormulario::where('name', $tipoFormularioName)->first();
+{
+    // Pega tipo do query ou da sessão
+    $tipoFormularioName = $request->query('tipo_formulario') ?? $request->session()->get('local_trabalho');
 
-        if (!$tipoFormulario) {
-            return redirect()->route('recados.index')->with('error', 'Tipo de formulário inválido ou não selecionado.');
-        }
-
-        // Bloqueio para Central
-        if ($tipoFormularioName === 'Central' && !in_array(auth()->user()->email, $this->emailsCentral)) {
-            abort(403, 'Você não tem permissão para criar recados da Central.');
-        }
-
-        $setores = Setor::all();
-        $origens = Origem::all();
-        $departamentos = Departamento::all();
-        $slas = SLA::all();
-        $tipos = Tipo::whereIn('name', [
-            'Pedido de Contacto',
-            'Pedido de Informação',
-            'Pedido de Marcação',
-            'Pedido de Orçamento',
-            'Tomada de Conhecimento',
-            'Reclamação/Insatisfação',
-        ])->get();
-        $estados = Estado::all();
-        $avisos = Aviso::all();
-        $destinatarios = Destinatario::with('user')->get();
-        $tipoFormularioId = $tipoFormulario->id;
-
-        $view = $tipoFormularioName === 'Central' 
-            ? 'recados.create_central'
-            : ($tipoFormularioName === 'Call Center' ? 'recados.create_callcenter' : null);
-
-        if (!$view) return redirect()->route('recados.index')->with('error', 'Tipo de formulário inválido.');
-
-        return view($view, compact(
-            'setores', 'origens', 'departamentos', 'slas', 'tipos',
-            'estados', 'avisos', 'destinatarios', 'tipoFormularioId'
-        ));
+    if (!$tipoFormularioName) {
+        return redirect()->route('recados.index')->with('error', 'Tipo de formulário inválido ou não selecionado.');
     }
 
-    public function index(Request $request)
-    {
-        $user = auth()->user();
-        $estados = Estado::all();
-        $tiposFormulario = TipoFormulario::all();
+    $tipoFormulario = TipoFormulario::where('name', $tipoFormularioName)->first();
 
-        if ($request->query()) {
-            session(['recados_filtros' => $request->query()]);
-        }
+    if (!$tipoFormulario) {
+        return redirect()->route('recados.index')->with('error', 'Tipo de formulário inválido.');
+    }
 
-        $filtros = session('recados_filtros', []);
-        $sortBy = $filtros['sort_by'] ?? 'id';
-        $sortDir = $filtros['sort_dir'] ?? 'desc';
+    $setores = Setor::all();
+    $origens = Origem::all();
+    $departamentos = Departamento::all();
+    $slas = SLA::all();
+    $tipos = Tipo::whereIn('name', [
+        'Pedido de Contacto',
+        'Pedido de Informação',
+        'Pedido de Marcação',
+        'Pedido de Orçamento',
+        'Tomada de Conhecimento',
+        'Reclamação/Insatisfação',
+    ])->get();
+    $estados = Estado::all();
+    $avisos = Aviso::all();
+    $destinatarios = Destinatario::with('user')->get();
+    $tipoFormularioId = $tipoFormulario->id;
 
-        $allowedSorts = ['id', 'created_at', 'name'];
-        if (!in_array($sortBy, $allowedSorts)) $sortBy = 'id';
-        if (!in_array($sortDir, ['asc','desc'])) $sortDir = 'desc';
+    $view = $tipoFormularioName === 'Central' 
+        ? 'recados.create_central'
+        : ($tipoFormularioName === 'Call Center' ? 'recados.create_callcenter' : null);
 
-        $recados = Recado::with([
-            'setor', 'origem', 'departamento', 'destinatarios', 'estado',
-            'sla', 'tipo', 'aviso', 'tipoFormulario', 'grupos.users', 'guestTokens'
-        ]);
+    if (!$view) return redirect()->route('recados.index')->with('error', 'Tipo de formulário inválido.');
 
-        // Restrição para não-admin
-        $recados = $recados->when($user->cargo?->name !== 'admin', function ($query) use ($user) {
-            $query->where(function ($q) use ($user) {
-                $q->where('user_id', $user->id)
-                  ->orWhereHas('destinatarios', fn($q2) => $q2->where('users.id', $user->id))
-                  ->orWhereHas('grupos.users', fn($q3) => $q3->where('users.id', $user->id));
-            });
+    return view($view, compact(
+        'setores', 'origens', 'departamentos', 'slas', 'tipos',
+        'estados', 'avisos', 'destinatarios', 'tipoFormularioId'
+    ));
+}
+
+
+   public function index(Request $request)
+{
+    $user = auth()->user();
+
+    // Carrega dados que a view sempre precisa
+    $estados = Estado::all();
+    $tiposFormulario = TipoFormulario::all();
+
+    // Query base dos recados
+    $recados = Recado::with([
+        'setor', 'origem', 'departamento', 'destinatarios', 'estado',
+        'sla', 'tipo', 'aviso', 'tipoFormulario', 'grupos.users', 'guestTokens'
+    ]);
+
+    // Restrição para não-admin
+    if ($user->cargo?->name !== 'admin') {
+        $recados->where(function ($q) use ($user) {
+            $q->where('user_id', $user->id)
+              ->orWhereHas('destinatarios', fn($q2) => $q2->where('users.id', $user->id))
+              ->orWhereHas('grupos.users', fn($q3) => $q3->where('users.id', $user->id));
         });
+    }
 
-        // Filtrar recados Central para emails autorizados
-       // SE O UTILIZADOR FOR CENTRAL → vê apenas Central
-if (in_array($user->email, $this->emailsCentral)) {
-    $recados->whereHas('tipoFormulario', function($q) {
-        $q->where('name', 'Central');
-    });
+    // Se ainda não escolheu local, mostrar popup
+    $showPopup = !$request->session()->has('local_trabalho');
+
+    // Filtros: prioriza query string, senão sessão
+    $filtros = $request->query() ?: session('recados_filtros', []);
+
+    // Guarda filtros da query em sessão
+    if ($request->query()) {
+        session(['recados_filtros' => $filtros]);
+    }
+
+    // Se já escolheu local e não veio filtro na query, aplica filtros automáticos
+    if (!$showPopup && empty($request->query())) {
+        $local = $request->session()->get('local_trabalho');
+
+        $estadoPendente = Estado::where('name', 'Pendente')->first();
+        $tipoFormularioLocal = TipoFormulario::where('name', $local)->first();
+
+        if ($estadoPendente) $filtros['estado_id'] = $estadoPendente->id;
+        if ($tipoFormularioLocal) $filtros['tipo_formulario_id'] = $tipoFormularioLocal->id;
+    }
+
+    // Aplica filtros individualmente
+    if (!empty($filtros['id'])) $recados->where('id', $filtros['id']);
+    if (!empty($filtros['contact_client'])) $recados->where('contact_client', 'like', '%' . $filtros['contact_client'] . '%');
+    if (!empty($filtros['plate'])) $recados->where('plate', 'like', '%' . $filtros['plate'] . '%');
+    if (!empty($filtros['estado_id'])) $recados->where('estado_id', $filtros['estado_id']);
+    if (!empty($filtros['tipo_formulario_id'])) $recados->where('tipo_formulario_id', $filtros['tipo_formulario_id']);
+
+    // Ordenação
+    $sortBy = $filtros['sort_by'] ?? 'id';
+    $sortDir = $filtros['sort_dir'] ?? 'desc';
+    $allowedSorts = ['id', 'created_at', 'name'];
+    if (!in_array($sortBy, $allowedSorts)) $sortBy = 'id';
+    if (!in_array($sortDir, ['asc', 'desc'])) $sortDir = 'desc';
+
+    $recados = $recados->orderBy($sortBy, $sortDir)
+                       ->paginate(10)
+                       ->withQueryString();
+
+    // Retorna a view com tudo que ela precisa
+    return view('recados.index', compact('recados','estados','tiposFormulario','filtros','showPopup'));
 }
 
 
-        // Aplica filtros
-        if (!empty($filtros['id'])) $recados->where('id', $filtros['id']);
-        if (!empty($filtros['contact_client'])) $recados->where('contact_client', 'like', '%' . $filtros['contact_client'] . '%');
-        if (!empty($filtros['plate'])) $recados->where('plate', 'like', '%' . $filtros['plate'] . '%');
-        if (!empty($filtros['estado_id'])) $recados->where('estado_id', $filtros['estado_id']);
-        if (!empty($filtros['tipo_formulario_id'])) $recados->where('tipo_formulario_id', $filtros['tipo_formulario_id']);
+   public function store(Request $request)
+{
+    // Validação
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'contact_client' => 'required|string|max:255',
+        'plate' => 'nullable|string|max:255',
+        'operator_email' => 'nullable|email',
+        'sla_id' => 'required|exists:slas,id',
+        'tipo_id' => 'required|exists:tipos,id',
+        'origem_id' => 'required|exists:origens,id',
+        'setor_id' => 'required|exists:setores,id',
+        'departamento_id' => 'required|exists:departamentos,id',
+        'mensagem' => 'required|string',
+        'ficheiro' => 'nullable|file',
+        'aviso_id' => 'nullable|exists:avisos,id',
+        'estado_id' => 'required|exists:estados,id',
+        'observacoes' => 'nullable|string',
+        'abertura' => 'nullable|date',
+        'termino' => 'nullable|date',
+        'destinatarios_users' => 'array',
+        'destinatarios_users.*' => 'exists:users,id',
+        'destinatarios_grupos' => 'array',
+        'destinatarios_grupos.*' => 'exists:grupos,id',
+        'destinatarios_livres' => 'array',
+        'destinatarios_livres.*' => 'email',
+        'tipo_formulario_id' => 'required|exists:tipo_formularios,id', // <- obrigatório agora
+        'wip' => 'nullable|string|max:255',
+        'assunto' => 'required|string|max:255',
+    ]);
 
-        $recados = $recados->orderBy($sortBy, $sortDir)->paginate(10)->withQueryString();
+    // Associa usuário logado
+    $validated['user_id'] = auth()->id();
 
-        return view('recados.index', compact('recados','estados','tiposFormulario','filtros'));
+    // Armazena ficheiro se existir
+    if ($request->hasFile('ficheiro')) {
+        $validated['ficheiro'] = basename($request->file('ficheiro')->store('recados', 'public'));
     }
 
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'contact_client' => 'required|string|max:255',
-            'plate' => 'nullable|string|max:255',
-            'operator_email' => 'nullable|email',
-            'sla_id' => 'required|exists:slas,id',
-            'tipo_id' => 'required|exists:tipos,id',
-            'origem_id' => 'required|exists:origens,id',
-            'setor_id' => 'required|exists:setores,id',
-            'departamento_id' => 'required|exists:departamentos,id',
-            'mensagem' => 'required|string',
-            'ficheiro' => 'nullable|file',
-            'aviso_id' => 'nullable|exists:avisos,id',
-            'estado_id' => 'required|exists:estados,id',
-            'observacoes' => 'nullable|string',
-            'abertura' => 'nullable|date',
-            'termino' => 'nullable|date',
-            'destinatarios_users' => 'array',
-            'destinatarios_users.*' => 'exists:users,id',
-            'destinatarios_grupos' => 'array',
-            'destinatarios_grupos.*' => 'exists:grupos,id',
-            'tipo_formulario_id' => 'nullable|exists:tipo_formularios,id',
-            'wip' => 'nullable|string|max:255',
-            'assunto' => 'required|string|max:255',
-            'destinatarios_livres' => 'array',
-            'destinatarios_livres.*' => 'email',
-        ]);
+    // Cria recado
+    $recado = Recado::create($validated);
 
-        $validated['user_id'] = auth()->id();
+    // DESTINATÁRIOS USERS
+    if ($request->filled('destinatarios_users')) {
+        $recado->destinatariosUsers()->sync($request->destinatarios_users);
 
-        if ($request->hasFile('ficheiro')) {
-            $validated['ficheiro'] = basename($request->file('ficheiro')->store('recados', 'public'));
+        $emails = User::whereIn('id', $request->destinatarios_users)->pluck('email')->toArray();
+        foreach ($emails as $email) {
+            Mail::to($email)->send(new RecadoCriadoMail($recado));
         }
-
-        $recado = Recado::create($validated);
-
-       // DESTINATÁRIOS USERS
-if ($request->filled('destinatarios_users')) {
-    $recado->destinatariosUsers()->sync($request->destinatarios_users);
-
-    $emails = User::whereIn('id', $request->destinatarios_users)
-        ->pluck('email')
-        ->toArray();
-
-    foreach ($emails as $email) {
-        Mail::to($email)->send(new RecadoCriadoMail($recado));
     }
-}
 
-
-        // Destinatários livres
-        if ($request->filled('destinatarios_livres')) {
-            foreach ($request->destinatarios_livres as $email) {
-                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $token = Str::random(60);
-                    RecadoGuestToken::create([
-                        'recado_id' => $recado->id,
-                        'email' => $email,
-                        'token' => $token,
-                        'expires_at' => now()->addMonth(),
-                        'is_active' => true,
-                    ]);
-                    Mail::to($email)->send(new RecadoCriadoMail($recado, route('recados.guest', $token)));
-                }
+    // DESTINATÁRIOS LIVRES
+    if ($request->filled('destinatarios_livres')) {
+        foreach ($request->destinatarios_livres as $email) {
+            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $token = Str::random(60);
+                RecadoGuestToken::create([
+                    'recado_id' => $recado->id,
+                    'email' => $email,
+                    'token' => $token,
+                    'expires_at' => now()->addMonth(),
+                    'is_active' => true,
+                ]);
+                Mail::to($email)->send(new RecadoCriadoMail($recado, route('recados.guest', $token)));
             }
         }
+    }
 
-        // Destinatários grupos
-        if ($request->filled('destinatarios_grupos')) {
-            $recado->grupos()->sync($request->destinatarios_grupos);
+    // DESTINATÁRIOS GRUPOS
+    if ($request->filled('destinatarios_grupos')) {
+        $recado->grupos()->sync($request->destinatarios_grupos);
 
-            $emails = User::whereHas('grupos', function ($q) use ($request) {
-                $q->whereIn('grupos.id', $request->destinatarios_grupos);
-            })->pluck('email')->toArray();
+        $emails = User::whereHas('grupos', function ($q) use ($request) {
+            $q->whereIn('grupos.id', $request->destinatarios_grupos);
+        })->pluck('email')->toArray();
 
-            foreach (array_unique($emails) as $email) {
-                Mail::to($email)->send(new RecadoCriadoMail($recado));
-            }
+        foreach (array_unique($emails) as $email) {
+            Mail::to($email)->send(new RecadoCriadoMail($recado));
         }
+    }
 
-        $recado->estado_id = Estado::where('name','Pendente')->first()->id ?? $recado->estado_id;
+    // Estado Pendente padrão se não definido
+    $estadoPendente = Estado::where('name', 'Pendente')->first();
+    if ($estadoPendente) {
+        $recado->estado_id = $estadoPendente->id;
         $recado->save();
-
-        return redirect()->route('recados.index')->with('success', 'Recado criado e emails enviados.');
     }
+
+    return redirect()->route('recados.index')->with('success', 'Recado criado e emails enviados.');
+}
+
 
     public function show($id)
     {
@@ -470,6 +489,12 @@ public function concluir(Recado $recado)
     return redirect()->back()->with('success', 'Recado concluído com sucesso.');
 }
 
+public function escolherLocal(Request $request)
+{
+    $request->validate(['local' => 'required|in:Central,Call Center']);
+    $request->session()->put('local_trabalho', $request->local);
+    return redirect()->route('recados.index');
+}
 
 
 
