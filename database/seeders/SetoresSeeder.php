@@ -12,13 +12,20 @@ class SetoresSeeder extends Seeder
      */
     public function run(): void
     {
+          // Desativa checagem de foreign keys
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 
+        // Apaga todos os users
+        DB::table('setores')->truncate(); // reinicia auto-increment
+
+        // Reativa FK
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
         DB::table('setores')->insert([
             // Subsetores de Vendedores
+            ['name' => 'Usados', 'parent_id' => null],
             ['name' => 'Novos VLP', 'parent_id' => null],
             ['name' => 'Novos VCL', 'parent_id' => null],
             ['name' => 'Novos Smart', 'parent_id' => null],
-            ['name' => 'Usados', 'parent_id' => null],
             ['name' => 'Novos VCP', 'parent_id' => null],
 
             // Subsetores de Oficina
@@ -49,11 +56,11 @@ class SetoresSeeder extends Seeder
             ['name' => 'Recursos Humanos', 'parent_id' => null],
             ['name' => 'Informática', 'parent_id' => null],
             ['name' => 'Administração', 'parent_id' => null],
-            ['name' => 'Peças', 'parent_id' => null],
             ['name' => 'Jurídico', 'parent_id' => null],
             ['name' => 'RAC', 'parent_id' => null],
             ['name' => 'Marketing', 'parent_id' => null],
             ['name' => 'Contabilidade', 'parent_id' => null],
+            ['name' => 'Financeiro', 'parent_id' => null],
         ]);
     }
 }

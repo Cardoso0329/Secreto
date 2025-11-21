@@ -93,6 +93,7 @@ Route::put('/recados/{recado}/concluir', [RecadoController::class, 'concluir'])
     ->name('recados.concluir')
     ->middleware('auth');
 
+<<<<<<< HEAD
     Route::put('/recados/{recado}/aviso', [RecadoController::class, 'updateAviso'])->name('recados.aviso.update');
 Route::post('/recados/{recado}/aviso/email', [RecadoController::class, 'enviarAvisoEmail'])->name('recados.aviso.email');
 
@@ -103,6 +104,14 @@ Route::prefix('recados')->group(function () {
     Route::post('/guest/{token}/comentario', [RecadoController::class, 'guestComment'])->name('recados.guest.comment');
 });
 
+=======
+    Route::post('/recados/escolher-local', function (Illuminate\Http\Request $request) {
+    $request->session()->put('local_trabalho', $request->local);
+    return redirect()->route('recados.index');
+})->name('recados.escolherLocal');
+
+Route::post('/recados/{recado}/enviar-aviso', [RecadoController::class, 'enviarAviso'])->name('recados.enviarAviso');
+>>>>>>> main
 
 
 

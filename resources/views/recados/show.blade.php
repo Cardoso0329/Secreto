@@ -38,6 +38,7 @@
         </div>
 
         {{-- Coluna 2 - Relações + Estado --}}
+<<<<<<< HEAD
 <div class="col-md-4">
     <div class="card shadow-sm border-0 h-100">
         <div class="card-body d-flex flex-column gap-3">
@@ -82,6 +83,35 @@
                     <i class="bi bi-envelope"></i> Enviar aviso
                 </button>
             </form>
+=======
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <h5 class="fw-semibold mb-3">🔗 Informações Relacionadas</h5>
+                    <p><strong>SLA:</strong> {{ $recado->sla->name ?? '—' }}</p>
+                    <p><strong>Tipo:</strong> {{ $recado->tipo->name ?? '—' }}</p>
+                    <p><strong>Origem:</strong> {{ $recado->origem->name ?? '—' }}</p>
+                    <p><strong>Setor:</strong> {{ $recado->setor->name ?? '—' }}</p>
+                    <p><strong>Departamento:</strong> {{ $recado->departamento->name ?? '—' }}</p>
+                    {{-- Avisos em fila para envio por email --}}
+@if($avisos->count())
+    <div class="mt-4">
+        <h5 class="fw-semibold mb-2">📣 Enviar Aviso</h5>
+        <div class="d-flex flex-wrap gap-2">
+            @foreach($avisos as $aviso)
+                <form action="{{ route('recados.enviarAviso', $recado) }}" method="POST" class="m-0">
+                    @csrf
+                    <input type="hidden" name="aviso_id" value="{{ $aviso->id }}">
+                    <button type="submit" class="btn btn-outline-primary btn-sm">
+                        {{ $aviso->name }}
+                    </button>
+                </form>
+            @endforeach
+        </div>
+    </div>
+@endif
+
+>>>>>>> main
 
         </div>
     </div>
@@ -121,6 +151,7 @@
 @endif
 
 
+                                        <p><strong>Assunto:</strong> {{ $recado->assunto ?? '—' }}</p>
 
                     <p><strong>Mensagem:</strong> {{ $recado->mensagem }}</p>
 

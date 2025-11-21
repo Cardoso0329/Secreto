@@ -1,6 +1,37 @@
 @extends('layouts.app')
 
 @section('content')
+
+@if(isset($showPopup) && $showPopup)
+<div class="modal fade show" id="popupLocal" tabindex="-1" style="display:block; background: rgba(0,0,0,0.6);">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Escolher Local de Trabalho</h5>
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-4">Onde vai trabalhar agora?</p>
+                <form method="POST" action="{{ route('recados.escolherLocal') }}">
+                    @csrf
+                    <button name="local" value="Central" class="btn btn-primary w-100 mb-3 p-2 fw-semibold">
+                        🏢 Central
+                    </button>
+                    <button name="local" value="Call Center" class="btn btn-success w-100 p-2 fw-semibold">
+                        ☎️ Call Center
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        overflow: hidden;
+    }
+</style>
+@endif
+
 <div class="container mt-4">
 
     {{-- Cabeçalho --}}
@@ -8,8 +39,16 @@
         <h2 class="fw-bold mb-0">
             📋 Recados
         </h2>
+
+        {{-- Botão Novo Recado (usa a sessão) --}}
+        @if(session()->has('local_trabalho'))
+            <a href="{{ route('recados.create') }}" class="btn btn-primary">
+                📄 Novo Recado ({{ session('local_trabalho') }})
+            </a>
+        @endif
     </div>
 
+<<<<<<< HEAD
     {{-- Card para escolher tipo de formulário --}}
     <div class="mb-4">
         <h4 class="fw-semibold mb-3">Escolher Tipo de Formulário</h4>
@@ -37,6 +76,8 @@
         </div>
     </div>
 
+=======
+>>>>>>> main
     {{-- Filtros --}}
     <div class="mb-4">
         <div class="p-2 mb-2 bg-light border rounded">
@@ -78,6 +119,21 @@
                     <button type="submit" class="btn btn-primary">Filtrar</button>
                 </div>
             </form>
+
+            {{-- Botão Exportar Recados Filtrados --}}
+            <div class="mt-3 d-flex justify-content-end">
+                <form action="{{ route('configuracoes.recados.export.filtered') }}" method="GET">
+                    <input type="hidden" name="id" value="{{ request('id') }}">
+                    <input type="hidden" name="contact_client" value="{{ request('contact_client') }}">
+                    <input type="hidden" name="plate" value="{{ request('plate') }}">
+                    <input type="hidden" name="estado_id" value="{{ request('estado_id') }}">
+                    <input type="hidden" name="tipo_formulario_id" value="{{ request('tipo_formulario_id') }}">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-file-earmark-arrow-down"></i> Exportar Recados Filtrados
+                    </button>
+                </form>
+            </div>
+
         </div>
     </div>
 

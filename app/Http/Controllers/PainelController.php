@@ -69,6 +69,7 @@ public function exportFiltered(Request $request)
 
 
 
+
     public function importar(Request $request)
 {
     $request->validate([
@@ -99,4 +100,6 @@ public function indexConfiguracoes(Request $request)
     return view('configuracoes.index', compact('recados', 'estados', 'tiposFormulario'));
 }
 
+
+    
 }

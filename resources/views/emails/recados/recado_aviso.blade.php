@@ -14,32 +14,26 @@
 </head>
 <body>
     <div class="email-container">
-       <h1>📩 Novo Recado Criado</h1>
-        <h2 style="color: #0d6efd;">🚘 Matrícula: {{ $recado->plate }}</h2>
+        <h1>📌 Aviso de Recado #{{ $recado->id }}</h1>
 
+        <p>Recebeste um aviso sobre o recado:</p>
 
-        <p><span class="label">ID:</span> <span class="value">{{ $recado->id }}</span></p>
-        <p><span class="label">Nome:</span> <span class="value">{{ $recado->name }}</span></p>
-        <p><span class="label">Contato:</span> <span class="value">{{ $recado->contact_client }}</span></p>
-
-        @if(!empty($recado->email))
-            <p><span class="label">Email:</span> <span class="value">{{ $recado->email }}</span></p>
-        @endif
-
+        <p><span class="label">Aviso:</span> <span class="value">{{ $aviso->name }}</span></p>
         <p><span class="label">Assunto:</span><br><span class="value">{{ $recado->assunto }}</span></p>
+        <p><span class="label">Mensagem:</span><br><span class="value">{{ $recado->mensagem }}</span></p>
 
         @if(isset($recado->setor))
             <p><span class="label">Setor:</span> <span class="value">{{ $recado->setor->name }}</span></p>
         @endif
 
         @if(isset($recado->sla))
-            <p><span class="label">SLA:</span> <span class="value">{{ $recado->sla->name }} </span></p>
+            <p><span class="label">SLA:</span> <span class="value">{{ $recado->sla->name }}</span></p>
         @endif
 
         <p><span class="label">Criado por:</span> <span class="value">{{ $recado->user->name ?? 'Sistema' }}</span></p>
         <p><span class="label">Data:</span> <span class="value">{{ $recado->created_at->format('d/m/Y H:i') }}</span></p>
 
-        @if($guestUrl)
+        @if($guestUrl ?? false)
             <a href="{{ $guestUrl }}" class="button">🔍 Ver Recado (Acesso Convidado)</a>
         @else
             <a href="{{ url('/painel?url=' . route('recados.show', $recado->id)) }}" class="button">🔍 Ver Recado</a>

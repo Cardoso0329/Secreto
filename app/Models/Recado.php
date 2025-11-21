@@ -20,7 +20,7 @@ class Recado extends Model
     'name', 'contact_client', 'operator_email', 'sla_id', 'tipo_id', 
     'origem_id', 'setor_id', 'departamento_id', 'mensagem', 'ficheiro',
     'aviso_id', 'estado_id', 'observacoes', 'abertura', 'termino',
-    'tipo_formulario_id', 'wip', 'destinatario_livre', 'plate', 'user_id'
+    'tipo_formulario_id', 'wip', 'destinatario_livre', 'plate', 'user_id', 'assunto'
     
 ];
 
@@ -45,7 +45,7 @@ public function guestTokens()
 
 public function grupos()
 {
-    return $this->belongsToMany(Grupo::class, 'recado_grupo');
+    return $this->belongsToMany(Grupo::class, 'recado_grupo', 'recado_id', 'grupo_id');
 }
 
 public function scopeFilter($query, $filters)
@@ -71,6 +71,15 @@ public function scopeFilter($query, $filters)
     }
 
     return $query;
+}
+public function destinatariosUsers()
+{
+    return $this->belongsToMany(User::class, 'recado_user', 'recado_id', 'user_id');
+}
+
+public function destinatariosLivres()
+{
+    return $this->hasMany(Destinatario::class);
 }
 
 
