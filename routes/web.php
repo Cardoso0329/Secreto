@@ -98,6 +98,7 @@ Route::put('/recados/{recado}/concluir', [RecadoController::class, 'concluir'])
     return redirect()->route('recados.index');
 })->name('recados.escolherLocal');
 
+Route::post('/recados/{recado}/enviar-aviso', [RecadoController::class, 'enviarAviso'])->name('recados.enviarAviso');
 
 
 

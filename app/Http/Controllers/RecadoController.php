@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Mail\RecadoAvisoMail;
 
 use App\Models\SLA;
 use App\Models\Recado;
@@ -241,12 +242,6 @@ class RecadoController extends Controller
 
         $user = auth()->user();
 
-        // Bloqueio para Central
-        if ($recado->tipoFormulario && $recado->tipoFormulario->name === 'Central'
-            && !in_array($user->email, $this->emailsCentral)) {
-            abort(403, 'Você não tem permissão para ver recados da Central.');
-        }
-
         if ($user->cargo?->name !== 'admin' && $recado->user_id !== $user->id) {
             $isDestinatario = $recado->destinatarios->contains($user->id);
             $isGrupo = $recado->grupos->pluck('users')->flatten()->pluck('id')->contains($user->id);
@@ -255,9 +250,10 @@ class RecadoController extends Controller
                 abort(403, 'Acesso negado. Este recado não é seu.');
             }
         }
+            $avisos = Aviso::all(); // <-- adiciona isto
 
         $estados = Estado::all();
-        return view('recados.show', compact('recado','estados'));
+        return view('recados.show', compact('recado','estados','avisos'));
     }
 
 
@@ -496,8 +492,21 @@ public function escolherLocal(Request $request)
     return redirect()->route('recados.index');
 }
 
+public function enviarAviso(Recado $recado, Aviso $aviso)
+    {
+        // Pega destinatários do recado (users + emails livres)
+        $emails = $recado->destinatarios->pluck('email')->toArray();
 
+        if($recado->guestTokens->count()) {
+            $emails = array_merge($emails, $recado->guestTokens->pluck('email')->toArray());
+        }
 
+        foreach ($emails as $destinatarioEmail) {
+            Mail::to($destinatarioEmail)->send(new RecadoAvisoMail($recado, $aviso));
+        }
+
+        return back()->with('success', 'Aviso enviado com sucesso!');
+    }
 
 
 

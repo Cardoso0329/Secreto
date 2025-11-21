@@ -47,7 +47,24 @@
                     <p><strong>Origem:</strong> {{ $recado->origem->name ?? '—' }}</p>
                     <p><strong>Setor:</strong> {{ $recado->setor->name ?? '—' }}</p>
                     <p><strong>Departamento:</strong> {{ $recado->departamento->name ?? '—' }}</p>
-                    <p><strong>Aviso:</strong> {{ $recado->aviso->name ?? '—' }}</p>
+                    {{-- Avisos em fila para envio por email --}}
+@if($avisos->count())
+    <div class="mt-4">
+        <h5 class="fw-semibold mb-2">📣 Enviar Aviso</h5>
+        <div class="d-flex flex-wrap gap-2">
+            @foreach($avisos as $aviso)
+                <form action="{{ route('recados.enviarAviso', $recado) }}" method="POST" class="m-0">
+                    @csrf
+                    <input type="hidden" name="aviso_id" value="{{ $aviso->id }}">
+                    <button type="submit" class="btn btn-outline-primary btn-sm">
+                        {{ $aviso->name }}
+                    </button>
+                </form>
+            @endforeach
+        </div>
+    </div>
+@endif
+
 
                     {{-- Estado editável --}}
                     <hr>
