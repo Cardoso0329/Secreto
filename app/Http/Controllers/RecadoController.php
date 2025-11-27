@@ -167,8 +167,14 @@ class RecadoController extends Controller
         'destinatarios_livres.*' => 'email',
         'tipo_formulario_id' => 'required|exists:tipo_formularios,id', // <- obrigatório agora
         'wip' => 'nullable|string|max:255',
-        'assunto' => 'required|string|max:255',
     ]);
+
+    // Se o tipo de formulário for Call Center, assunto é obrigatório
+if ($request->tipo_formulario_id == TipoFormulario::where('name', 'Call Center')->first()->id) {
+    $rules['assunto'] = 'required|string|max:255';
+} else {
+    $rules['assunto'] = 'nullable|string|max:255';
+}
 
     // Associa usuário logado
     $validated['user_id'] = auth()->id();
