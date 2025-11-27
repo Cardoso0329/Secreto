@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Cargo;
+use App\Models\Departamento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
@@ -14,14 +15,15 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with('cargo')->get();
+        $users = User::with(['cargo', 'departamentos'])->get();
         return view('users.index', compact('users'));
     }
 
     public function create()
     {
         $cargos = Cargo::all();
-        return view('users.create', compact('cargos'));
+        $departamentos = Departamento::all();
+        return view('users.create', compact('cargos', 'departamentos'));
     }
 
     public function store(Request $request)
@@ -30,15 +32,21 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
             'cargo_id' => 'required|exists:cargos,id',
+            'departamentos' => 'nullable|array',
+            'departamentos.*' => 'exists:departamentos,id',
             'password' => 'required|string|min:6|confirmed',
         ]);
 
-        User::create([
+        $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'cargo_id' => $request->cargo_id,
             'password' => Hash::make($request->password),
         ]);
+
+        if ($request->departamentos) {
+            $user->departamentos()->sync($request->departamentos);
+        }
 
         return redirect()->route('users.index')->with('success', 'Utilizador criado.');
     }
@@ -46,7 +54,8 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $cargos = Cargo::all();
-        return view('users.edit', compact('user', 'cargos'));
+        $departamentos = Departamento::all();
+        return view('users.edit', compact('user', 'cargos', 'departamentos'));
     }
 
     public function update(Request $request, User $user)
@@ -55,6 +64,8 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
             'cargo_id' => 'required|exists:cargos,id',
+            'departamentos' => 'nullable|array',
+            'departamentos.*' => 'exists:departamentos,id',
             'password' => 'nullable|string|min:6|confirmed',
         ]);
 
@@ -66,6 +77,9 @@ class UserController extends Controller
 
         $user->update($data);
 
+        // Atualiza relação com departamentos
+        $user->departamentos()->sync($request->departamentos ?? []);
+
         return redirect()->route('users.index')->with('success', 'Utilizador atualizado.');
     }
 
@@ -75,17 +89,13 @@ class UserController extends Controller
         return redirect()->route('users.index')->with('success', 'Utilizador removido.');
     }
 
-    // ============================
     // Exportar utilizadores
-    // ============================
     public function export()
     {
         return Excel::download(new UsersExport, 'users.xlsx');
     }
 
-    // ============================
     // Importar utilizadores
-    // ============================
     public function import(Request $request)
     {
         $request->validate([
@@ -101,15 +111,14 @@ class UserController extends Controller
     }
 
     public function search(Request $request)
-{
-    $query = $request->input('q', '');
+    {
+        $query = $request->input('q', '');
 
-    $users = User::with(['cargo', 'grupos'])
-        ->where('name', 'like', "%{$query}%")
-        ->orWhere('email', 'like', "%{$query}%")
-        ->get();
+        $users = User::with(['cargo', 'departamentos'])
+            ->where('name', 'like', "%{$query}%")
+            ->orWhere('email', 'like', "%{$query}%")
+            ->get();
 
-    return response()->json($users);
-}
-
+        return response()->json($users);
+    }
 }

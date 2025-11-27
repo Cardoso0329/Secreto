@@ -84,6 +84,16 @@
                            value="{{ $origens->firstWhere('name', 'Telefone')->id }}">
                 </div>
 
+                {{-- Campanha (Aparece só no Call Center) --}}
+<select name="campanha_id" class="form-control">
+    <option value="">-- Selecionar Campanha --</option>
+    @foreach($campanhas as $campanha)
+        <option value="{{ $campanha->id }}">{{ $campanha->name }}</option>
+    @endforeach
+</select>
+
+
+
                 {{-- Departamento --}}
                 <div class="mb-4">
                     <label class="form-label fw-semibold">Departamento *</label>

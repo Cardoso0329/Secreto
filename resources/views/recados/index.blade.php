@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-
-@if(isset($showPopup) && $showPopup)
+{{-- Modal para escolher local (apenas se o controller mandar mostrar e se for Telefonista) --}}
+@if(isset($showPopup) && $showPopup && auth()->user()->grupos->contains('name','Telefonistas'))
 <div class="modal fade show" id="popupLocal" tabindex="-1" style="display:block; background: rgba(0,0,0,0.6);">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg border-0">
@@ -11,6 +11,7 @@
             </div>
             <div class="modal-body text-center">
                 <p class="mb-4">Onde vai trabalhar agora?</p>
+
                 <form method="POST" action="{{ route('recados.escolherLocal') }}">
                     @csrf
                     <button name="local" value="Central" class="btn btn-primary w-100 mb-3 p-2 fw-semibold">
@@ -20,31 +21,27 @@
                         ☎️ Call Center
                     </button>
                 </form>
+
             </div>
         </div>
     </div>
 </div>
 
 <style>
-    body {
-        overflow: hidden;
-    }
+    body { overflow: hidden !important; }
 </style>
 @endif
 
 <div class="container mt-4">
 
-    {{-- Cabeçalho --}}
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <h2 class="fw-bold mb-0">
-            📋 Recados
-        </h2>
+        <h2 class="fw-bold mb-0">📋 Recados</h2>
 
-        {{-- Botão Novo Recado (usa a sessão) --}}
-        @if(session()->has('local_trabalho'))
-            <a href="{{ route('recados.create') }}" class="btn btn-primary">
-                📄 Novo Recado ({{ session('local_trabalho') }})
-            </a>
+        {{-- Só aparece para Telefonistas que já escolheram local --}}
+        @if(session()->has('local_trabalho') && auth()->user()->grupos->contains('name','Telefonistas'))
+        <a href="{{ route('recados.create') }}" class="btn btn-primary">
+            📄 Novo Recado ({{ session('local_trabalho') }})
+        </a>
         @endif
     </div>
 
@@ -53,6 +50,7 @@
         <div class="p-2 mb-2 bg-light border rounded">
             <h5 class="mb-0">🔍 Filtros Avançados</h5>
         </div>
+
         <div class="p-3 border rounded">
             <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
                 <div class="col-md-2">
@@ -89,25 +87,10 @@
                     <button type="submit" class="btn btn-primary">Filtrar</button>
                 </div>
             </form>
-
-            {{-- Botão Exportar Recados Filtrados --}}
-            <div class="mt-3 d-flex justify-content-end">
-                <form action="{{ route('configuracoes.recados.export.filtered') }}" method="GET">
-                    <input type="hidden" name="id" value="{{ request('id') }}">
-                    <input type="hidden" name="contact_client" value="{{ request('contact_client') }}">
-                    <input type="hidden" name="plate" value="{{ request('plate') }}">
-                    <input type="hidden" name="estado_id" value="{{ request('estado_id') }}">
-                    <input type="hidden" name="tipo_formulario_id" value="{{ request('tipo_formulario_id') }}">
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-file-earmark-arrow-down"></i> Exportar Recados Filtrados
-                    </button>
-                </form>
-            </div>
-
         </div>
     </div>
 
-    {{-- Mensagem de sucesso --}}
+    {{-- Sucesso --}}
     @if(session('success'))
         <div class="alert alert-success shadow-sm">
             <i class="bi bi-check-circle"></i> {{ session('success') }}
@@ -138,6 +121,7 @@
                         <th class="text-nowrap">Criado em</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     @forelse($recados as $recado)
                         <tr class="clickable-row" data-href="{{ route('recados.show', $recado->id) }}">
@@ -156,7 +140,7 @@
                                     };
                                 @endphp
                                 <span class="badge rounded-pill {{ $badgeEstado }}">
-                                    {{ ucfirst($estadoNome) ?: '—' }}
+                                    {{ $estadoNome ? ucfirst($estadoNome) : '—' }}
                                 </span>
                             </td>
                             <td>
@@ -169,7 +153,7 @@
                                     };
                                 @endphp
                                 <span class="badge rounded-pill {{ $badgeTipo }}">
-                                    {{ ucfirst($tipoNome) ?: '—' }}
+                                    {{ $tipoNome ? ucfirst($tipoNome) : '—' }}
                                 </span>
                             </td>
                             <td class="text-nowrap">{{ $recado->created_at->format('d/m/Y H:i') }}</td>
@@ -182,10 +166,10 @@
                 </tbody>
             </table>
 
-            {{-- Paginação --}}
             <div class="d-flex justify-content-center mt-4">
                 {{ $recados->appends(request()->query())->links() }}
             </div>
+
         </div>
     </div>
 
@@ -193,25 +177,15 @@
 @endsection
 
 <style>
-.bg-purple {
-    background-color: #6f42c1 !important;
-}
-
-.clickable-row {
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-.clickable-row:hover {
-    background-color: #f8f9fa;
-}
+.bg-purple { background-color: #6f42c1 !important; }
+.clickable-row { cursor: pointer; transition: background-color 0.2s ease; }
+.clickable-row:hover { background-color: #f8f9fa; }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.clickable-row').forEach(row => {
-        row.addEventListener('click', () => {
-            window.location.href = row.dataset.href;
-        });
-    });
+    document.querySelectorAll('.clickable-row').forEach(row =>
+        row.addEventListener('click', () => window.location.href = row.dataset.href)
+    );
 });
 </script>

@@ -20,7 +20,7 @@ class Recado extends Model
     'name', 'contact_client', 'operator_email', 'sla_id', 'tipo_id', 
     'origem_id', 'setor_id', 'departamento_id', 'mensagem', 'ficheiro',
     'aviso_id', 'estado_id', 'observacoes', 'abertura', 'termino',
-    'tipo_formulario_id', 'wip', 'destinatario_livre', 'plate', 'user_id', 'assunto'
+    'tipo_formulario_id', 'wip', 'destinatario_livre', 'plate', 'user_id', 'assunto',  'campanha_id' 
     
 ];
 
@@ -81,6 +81,14 @@ public function destinatariosLivres()
 {
     return $this->hasMany(Destinatario::class);
 }
+
+public function campanha()
+{
+    return $this->belongsTo(Campanha::class);
+}
+
+
+
 
 
 

@@ -326,9 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const temLivres =
             document.querySelectorAll('input[name="destinatarios_livres[]"]').length > 0;
 
-        const temGrupos =
-            document.querySelector('#destinatarios_grupos')
-            ?.querySelectorAll('option:checked').length > 0;
+       const temGrupos = document.querySelectorAll('input[name="destinatarios_grupos[]"]').length > 0;
 
         if (!temUsers && !temLivres && !temGrupos) {
             e.preventDefault();

@@ -14,7 +14,60 @@
         @csrf
         @method('PUT')
 
-        @include('users.partials.form')
+        {{-- Nome --}}
+        <div class="mb-3">
+            <label for="name" class="form-label">Nome</label>
+            <input type="text" name="name" id="name" class="form-control" value="{{ $user->name }}">
+        </div>
+
+        {{-- Email --}}
+        <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" name="email" id="email" class="form-control" value="{{ $user->email }}">
+        </div>
+
+        {{-- Cargo --}}
+        <div class="mb-3">
+            <label for="cargo_id" class="form-label">Cargo</label>
+            <select name="cargo_id" id="cargo_id" class="form-select">
+                @foreach($cargos as $cargo)
+                    <option value="{{ $cargo->id }}" {{ $user->cargo_id == $cargo->id ? 'selected' : '' }}>
+                        {{ $cargo->name }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+
+       {{-- Departamentos --}}
+<div class="mb-3">
+    <label class="form-label">Departamentos</label>
+    <div class="d-flex flex-wrap gap-3">
+        @foreach($departamentos as $departamento)
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" 
+                       name="departamentos[]" 
+                       value="{{ $departamento->id }}" 
+                       id="departamento_{{ $departamento->id }}"
+                       {{ $user->departamentos->contains($departamento->id) ? 'checked' : '' }}>
+                <label class="form-check-label" for="departamento_{{ $departamento->id }}">
+                    {{ $departamento->name }}
+                </label>
+            </div>
+        @endforeach
+    </div>
+</div>
+
+
+        {{-- Password (opcional) --}}
+        <div class="mb-3">
+            <label for="password" class="form-label">Nova Password</label>
+            <input type="password" name="password" id="password" class="form-control">
+        </div>
+
+        <div class="mb-3">
+            <label for="password_confirmation" class="form-label">Confirmar Password</label>
+            <input type="password" name="password_confirmation" id="password_confirmation" class="form-control">
+        </div>
 
         <button type="submit" class="btn btn-primary">Atualizar</button>
         <a href="{{ route('users.index') }}" class="btn btn-secondary ms-2">Cancelar</a>

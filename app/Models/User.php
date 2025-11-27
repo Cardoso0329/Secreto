@@ -68,6 +68,12 @@ public function recados()
 }
 
 
+public function departamentos()
+{
+    return $this->belongsToMany(Departamento::class);
+}
+
+
 
 
     }

@@ -116,6 +116,10 @@
     <p><strong>Destinatários Livres:</strong> —</p>
 @endif
 
+{{-- 🔥 Campanhas --}}
+<p><strong>Campanha:</strong> {{ $recado->campanha->name ?? '—' }}</p>
+
+
 
                                         <p><strong>Assunto:</strong> {{ $recado->assunto ?? '—' }}</p>
 
