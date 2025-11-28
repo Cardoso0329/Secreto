@@ -23,25 +23,28 @@ class UserController extends Controller
     {
         $cargos = Cargo::all();
         $departamentos = Departamento::all();
+
         return view('users.create', compact('cargos', 'departamentos'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users',
-            'cargo_id' => 'required|exists:cargos,id',
+            'name'         => 'required|string|max:255',
+            'email'        => 'required|email|unique:users',
+            'cargo_id'     => 'required|exists:cargos,id',
             'departamentos' => 'nullable|array',
             'departamentos.*' => 'exists:departamentos,id',
-            'password' => 'required|string|min:6|confirmed',
+            'visibilidade_recados' => 'required|in:todos,campanhas,nenhum',
+            'password'     => 'required|string|min:6|confirmed',
         ]);
 
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'cargo_id' => $request->cargo_id,
-            'password' => Hash::make($request->password),
+            'name'         => $request->name,
+            'email'        => $request->email,
+            'cargo_id'     => $request->cargo_id,
+            'visibilidade_recados' => $request->visibilidade_recados,
+            'password'     => Hash::make($request->password),
         ]);
 
         if ($request->departamentos) {
@@ -55,21 +58,23 @@ class UserController extends Controller
     {
         $cargos = Cargo::all();
         $departamentos = Departamento::all();
+
         return view('users.edit', compact('user', 'cargos', 'departamentos'));
     }
 
     public function update(Request $request, User $user)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
-            'cargo_id' => 'required|exists:cargos,id',
+            'name'         => 'required|string|max:255',
+            'email'        => 'required|email|unique:users,email,' . $user->id,
+            'cargo_id'     => 'required|exists:cargos,id',
             'departamentos' => 'nullable|array',
             'departamentos.*' => 'exists:departamentos,id',
-            'password' => 'nullable|string|min:6|confirmed',
+            'visibilidade_recados' => 'required|in:todos,campanhas,nenhum',
+            'password'     => 'nullable|string|min:6|confirmed',
         ]);
 
-        $data = $request->only('name', 'email', 'cargo_id');
+        $data = $request->only('name', 'email', 'cargo_id', 'visibilidade_recados');
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
@@ -77,7 +82,7 @@ class UserController extends Controller
 
         $user->update($data);
 
-        // Atualiza relação com departamentos
+        // Sincronizar departamentos
         $user->departamentos()->sync($request->departamentos ?? []);
 
         return redirect()->route('users.index')->with('success', 'Utilizador atualizado.');

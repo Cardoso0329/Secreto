@@ -37,6 +37,16 @@ class RecadosCampanhaController extends Controller
     // Variáveis para a view
     $departamentos = Departamento::all();
     $campanhas = Campanha::all();
+    $vis = auth()->user()->visibilidade_recados;
+
+if ($vis === 'nenhum') {
+    $recados = collect();
+}
+
+if ($vis === 'todos') {
+    return redirect()->route('recados.index');
+}
+
 
     return view('recados_campanhas.index', compact('recados', 'departamentos', 'campanhas'));
 }

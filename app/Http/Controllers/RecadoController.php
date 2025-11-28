@@ -59,6 +59,17 @@ $sortDir = data_get($filtros, 'sort_dir', 'desc');
 
         $showPopup = !$request->session()->has('local_trabalho');
 
+        $vis = auth()->user()->visibilidade_recados;
+
+if ($vis === 'nenhum') {
+    $recados = collect(); // lista vazia
+}
+
+if ($vis === 'campanhas') {
+    return redirect()->route('recados_campanhas.index');
+}
+
+
         return view('recados.index', compact('recados','estados','tiposFormulario','filtros','showPopup'));
     }
 
