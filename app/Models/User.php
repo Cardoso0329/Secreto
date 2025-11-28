@@ -70,8 +70,9 @@ public function recados()
 
 public function departamentos()
 {
-    return $this->belongsToMany(Departamento::class);
+    return $this->belongsToMany(Departamento::class, 'departamento_user');
 }
+
 
 
 

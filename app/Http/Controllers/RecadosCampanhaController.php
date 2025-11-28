@@ -4,23 +4,41 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Recado;
+use App\Models\Departamento;
+use App\Models\Campanha;
 
 class RecadosCampanhaController extends Controller
 {
-    public function index()
-    {
-        $user = auth()->user();
+    public function index(Request $request)
+{
+    $user = auth()->user();
+    // Departamentos onde o user pertence
+    $departamentosIds = $user->departamentos->pluck('id')->toArray();
 
-        // Pegar o departamento(s) do usuário
-        $departamentoId = $user->departamento_id;
+    // Criar query base
+    $query = Recado::with(['campanha', 'departamento'])
+        ->whereHas('campanha.departamentos', function ($q) use ($departamentosIds) {
+            $q->whereIn('departamento_id', $departamentosIds);
+        });
 
-        // Pegar recados que têm campanha associada a um departamento do usuário
-        $recados = Recado::whereHas('campanha.departamentos', function($query) use ($departamentoId) {
-            $query->where('departamentos.id', $departamentoId);
-        })
-        ->with(['campanha']) // carrega a campanha associada
-        ->get();
-
-        return view('recados_campanhas.index', compact('recados'));
+    
+    // Filtro por departamento
+    if ($request->filled('departamento')) {
+        $query->where('departamento_id', $request->departamento);
     }
+
+    // Filtro por campanha
+    if ($request->filled('campanha')) {
+        $query->where('campanha_id', $request->campanha);
+    }
+    // Obter resultados
+    $recados = $query->get();
+
+    // Variáveis para a view
+    $departamentos = Departamento::all();
+    $campanhas = Campanha::all();
+
+    return view('recados_campanhas.index', compact('recados', 'departamentos', 'campanhas'));
+}
+
 }

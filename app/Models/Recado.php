@@ -27,7 +27,10 @@ class Recado extends Model
 
 public function setor() { return $this->belongsTo(Setor::class); }
 public function origem() { return $this->belongsTo(Origem::class); }
-public function departamento() { return $this->belongsTo(Departamento::class); }
+public function departamento()
+{
+    return $this->belongsTo(Departamento::class, 'departamento_id');
+}
 public function destinatarios() { return $this->belongsToMany(User::class, 'recado_user', 'recado_id', ); }
 public function estado() { return $this->belongsTo(Estado::class); }
 public function sla() { return $this->belongsTo(SLA::class); }
@@ -84,11 +87,8 @@ public function destinatariosLivres()
 
 public function campanha()
 {
-    return $this->belongsTo(Campanha::class);
+    return $this->belongsTo(Campanha::class, 'campanha_id');
 }
-
-
-
 
 
 

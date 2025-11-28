@@ -108,8 +108,9 @@ Route::post('/recados/{recado}/enviar-aviso', [RecadoController::class, 'enviarA
 
 
 Route::get('/recados-campanhas', [RecadosCampanhaController::class, 'index'])
-    ->name('recados.campanhas.index')
+    ->name('recados_campanhas.index')
     ->middleware('auth');
+
 
 
 
