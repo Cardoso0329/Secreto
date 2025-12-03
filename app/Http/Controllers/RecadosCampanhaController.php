@@ -26,11 +26,12 @@ class RecadosCampanhaController extends Controller
     if ($request->filled('departamento')) {
         $query->where('departamento_id', $request->departamento);
     }
-
+    
     // Filtro por campanha
     if ($request->filled('campanha')) {
         $query->where('campanha_id', $request->campanha);
     }
+
     // Obter resultados
     $recados = $query->get();
 

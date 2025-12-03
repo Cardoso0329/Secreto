@@ -77,7 +77,6 @@
                         <th>ID</th>
                         <th>Departamento</th>
                         <th>Campanha</th>
-                        <th>Assunto</th>
                         <th style="width: 120px;">Ações</th>
                     </tr>
                 </thead>
@@ -102,8 +101,6 @@
                                 @endif
                             </td>
 
-                            {{-- Assunto --}}
-                            <td>{{ $recado->assunto ?? '—' }}</td>
 
                             <td>
                                 <a href="{{ route('recados.show', $recado->id) }}"
