@@ -28,31 +28,26 @@ class UserController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $request->validate([
-            'name'         => 'required|string|max:255',
-            'email'        => 'required|email|unique:users',
-            'cargo_id'     => 'required|exists:cargos,id',
-            'departamentos' => 'nullable|array',
-            'departamentos.*' => 'exists:departamentos,id',
-            'visibilidade_recados' => 'required|in:todos,campanhas,nenhum',
-            'password'     => 'required|string|min:6|confirmed',
-        ]);
+{
+    $request->validate([
+        'name'     => 'required|string|max:255',
+        'email'    => 'required|email|unique:users',
+        'cargo_id' => 'required|exists:cargos,id',
+        'password' => 'required|string|min:6|confirmed',
+    ]);
 
-        $user = User::create([
-            'name'         => $request->name,
-            'email'        => $request->email,
-            'cargo_id'     => $request->cargo_id,
-            'visibilidade_recados' => $request->visibilidade_recados,
-            'password'     => Hash::make($request->password),
-        ]);
+    $user = User::create([
+        'name'     => $request->name,
+        'email'    => $request->email,
+        'cargo_id' => $request->cargo_id,
+        'password' => Hash::make($request->password),
+        // valores default se quiseres:
+        'visibilidade_recados' => 'nenhum', 
+    ]);
 
-        if ($request->departamentos) {
-            $user->departamentos()->sync($request->departamentos);
-        }
+    return redirect()->route('users.index')->with('success', 'Utilizador criado.');
+}
 
-        return redirect()->route('users.index')->with('success', 'Utilizador criado.');
-    }
 
     public function edit(User $user)
     {
