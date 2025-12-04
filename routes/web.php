@@ -7,7 +7,8 @@ use App\Http\Controllers\{
     DepartamentoController, DestinatarioController,
     AvisoController, EstadoController, TipoController,
     RecadoController, UserController, PainelController,
-    ProfileController, CargoController, GrupoController
+    ProfileController, CargoController, GrupoController,
+    CampanhaController, RecadosCampanhaController
 };
 
 // Página inicial
@@ -47,6 +48,8 @@ Route::resource('recados', RecadoController::class);
         Route::resource('estados', EstadoController::class)->parameters(['estados' => 'estado']);
         Route::resource('tipos', TipoController::class)->parameters(['tipos' => 'tipo']);
         Route::put('/recados/{recado}/observacoes', [RecadoController::class, 'adicionarComentario'])->name('recados.observacoes.update');
+        Route::resource('campanhas', CampanhaController::class)->except(['show']);
+
 
 // Atualiza estado pelo select
 Route::put('/recados/{recado}/estado', [RecadoController::class, 'updateEstado'])->name('recados.estado.update');
@@ -101,6 +104,12 @@ Route::put('/recados/{recado}/concluir', [RecadoController::class, 'concluir'])
 Route::post('/recados/{recado}/enviar-aviso', [RecadoController::class, 'enviarAviso'])->name('recados.enviarAviso');
 
 
+
+
+
+Route::get('/recados-campanhas', [RecadosCampanhaController::class, 'index'])
+    ->name('recados_campanhas.index')
+    ->middleware('auth');
 
 
 

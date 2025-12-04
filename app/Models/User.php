@@ -16,7 +16,14 @@ class User extends Authenticatable
     use Notifiable;
 
 
-    protected $fillable = ['name', 'email', 'cargo_id', 'password'];
+    protected $fillable = [
+    'name',
+    'email',
+    'password',
+    'cargo_id',
+    'visibilidade_recados'
+];
+
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -66,6 +73,13 @@ public function recados()
         }
     });
 }
+
+
+public function departamentos()
+{
+    return $this->belongsToMany(Departamento::class, 'departamento_user');
+}
+
 
 
 

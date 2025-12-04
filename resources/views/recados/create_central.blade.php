@@ -80,6 +80,18 @@
                value="{{ $origens->firstWhere('name','Telefone')->id }}">
     </div>
 
+    {{-- Campanha (Só na CENTRAL) --}}
+<div class="mb-4">
+    <label for="campanha_id" class="form-label fw-semibold">Campanha</label>
+    <select name="campanha_id" id="campanha_id" class="form-select rounded-3">
+        <option value="">-- Selecionar Campanha --</option>
+        @foreach($campanhas as $campanha)
+            <option value="{{ $campanha->id }}">{{ $campanha->name }}</option>
+        @endforeach
+    </select>
+</div>
+
+
 @php
 $setoresPermitidos = [
     'Usados','Novos VLP', 'Novos VCL', 'Novos Smart', 'Novos VCP',
@@ -326,9 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const temLivres =
             document.querySelectorAll('input[name="destinatarios_livres[]"]').length > 0;
 
-        const temGrupos =
-            document.querySelector('#destinatarios_grupos')
-            ?.querySelectorAll('option:checked').length > 0;
+       const temGrupos = document.querySelectorAll('input[name="destinatarios_grupos[]"]').length > 0;
 
         if (!temUsers && !temLivres && !temGrupos) {
             e.preventDefault();

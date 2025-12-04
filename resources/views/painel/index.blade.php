@@ -83,19 +83,26 @@
 <body>
   <div class="container-fluid">
     <div class="row g-0">
+      
       <!-- Sidebar -->
       <nav class="col-md-3 col-lg-2 sidebar p-3">
         <h4 class="text-center">📋 Painel</h4>
 
         <!-- Links principais -->
-        <a href="/recados" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/recados';">
+        <a href="#" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/recados';">
           <i class="bi bi-chat-left-dots"></i> Recados
         </a>
+        <a href="#" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/recados-campanhas';">
+  <i class="bi bi-megaphone"></i> Campanhas
+</a>
 
-        <!-- Parte inferior (Configurações + Sair) -->
+
+
+        <!-- Parte inferior -->
         <div class="bottom-links mt-auto">
+
           @if(Auth::check() && Auth::user()->cargo_id === 1)
-            <a href="/configuracoes" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/configuracoes';">
+            <a href="#" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/configuracoes';">
               <i class="bi bi-gear"></i> Configurações
             </a>
           @endif
@@ -106,13 +113,15 @@
               <i class="bi bi-box-arrow-left"></i> Sair
             </button>
           </form>
+
         </div>
       </nav>
 
-      <!-- Conteúdo principal -->
+      <!-- Conteúdo -->
       <main class="col-md-9 col-lg-10 content p-0">
         <iframe id="iframeMain" src="/recados"></iframe>
       </main>
+
     </div>
   </div>
 
