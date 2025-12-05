@@ -156,42 +156,52 @@ class RecadoController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'contact_client' => 'required|string|max:255',
-            'plate' => 'nullable|string|max:255',
-            'operator_email' => 'nullable|email',
-            'sla_id' => 'required|exists:slas,id',
-            'tipo_id' => 'required|exists:tipos,id',
-            'origem_id' => 'required|exists:origens,id',
-            'setor_id' => 'required|exists:setores,id',
-            'departamento_id' => 'required|exists:departamentos,id',
-            'mensagem' => 'required|string',
-            'ficheiro' => 'nullable|file',
-            'aviso_id' => 'nullable|exists:avisos,id',
-            'estado_id' => 'required|exists:estados,id',
-            'observacoes' => 'nullable|string',
-            'abertura' => 'nullable|date',
-            'termino' => 'nullable|date',
-            'destinatarios_users' => 'array',
-            'destinatarios_users.*' => 'exists:users,id',
-            'destinatarios_grupos' => 'array',
-            'destinatarios_grupos.*' => 'exists:grupos,id',
-            'destinatarios_livres' => 'array',
-            'destinatarios_livres.*' => 'email',
-            'tipo_formulario_id' => 'required|exists:tipo_formularios,id',
-            'wip' => 'nullable|string|max:255',
-            'assunto' => 'required|string|max:255',
-        ]);
+{
+    // Detecta o tipo de formulário
+    $tipoFormulario = TipoFormulario::find($request->tipo_formulario_id);
 
-        $validated['user_id'] = auth()->id();
+    // Validação condicional
+    $rules = [
+        'name' => 'required|string|max:255',
+        'contact_client' => 'required|string|max:255',
+        'plate' => 'nullable|string|max:255',
+        'operator_email' => 'nullable|email',
+        'sla_id' => 'required|exists:slas,id',
+        'tipo_id' => 'required|exists:tipos,id',
+        'origem_id' => 'required|exists:origens,id',
+        'setor_id' => 'required|exists:setores,id',
+        'departamento_id' => 'required|exists:departamentos,id',
+        'mensagem' => 'required|string',
+        'ficheiro' => 'nullable|file',
+        'aviso_id' => 'nullable|exists:avisos,id',
+        'estado_id' => 'required|exists:estados,id',
+        'observacoes' => 'nullable|string',
+        'abertura' => 'nullable|date',
+        'termino' => 'nullable|date',
+        'destinatarios_users' => 'array',
+        'destinatarios_users.*' => 'exists:users,id',
+        'destinatarios_grupos' => 'array',
+        'destinatarios_grupos.*' => 'exists:grupos,id',
+        'destinatarios_livres' => 'array',
+        'destinatarios_livres.*' => 'email',
+        'tipo_formulario_id' => 'required|exists:tipo_formularios,id',
+        'wip' => 'nullable|string|max:255',
+    ];
 
-        if ($request->hasFile('ficheiro')) {
-            $validated['ficheiro'] = basename($request->file('ficheiro')->store('recados','public'));
-        }
+    // Só valida 'assunto' se for Call Center
+    if ($tipoFormulario && strtolower($tipoFormulario->name) === 'call center') {
+        $rules['assunto'] = 'required|string|max:255';
+    }
 
-        $recado = Recado::create($validated);
+    $validated = $request->validate($rules);
+
+    $validated['user_id'] = auth()->id();
+
+    if ($request->hasFile('ficheiro')) {
+        $validated['ficheiro'] = basename($request->file('ficheiro')->store('recados','public'));
+    }
+
+    $recado = Recado::create($validated);
 
         // DESTINATÁRIOS (users)
         if ($request->filled('destinatarios_users')) {
