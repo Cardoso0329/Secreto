@@ -18,7 +18,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class RecadoController extends Controller
 {
-    public function index(Request $request)
+   public function index(Request $request)
 {
     $user = auth()->user();
     $estados = Estado::all();
@@ -26,30 +26,18 @@ class RecadoController extends Controller
 
     $recados = Recado::with([
         'setor', 'origem', 'departamento', 'destinatarios', 'estado',
-        'sla', 'tipo', 'aviso', 'tipoFormulario', 'grupos.users',
+        'sla', 'tipo', 'aviso', 'tipoFormulario', 'grupos',
         'guestTokens', 'campanha'
     ]);
-
-    // --- VISIBILIDADE ---
-    if ($user->visibilidade_recados === 'nenhum') {
-    $recados = new LengthAwarePaginator([], 0, 10, 1);
-} elseif ($user->visibilidade_recados === 'campanhas') {
-    return redirect()->route('recados_campanhas.index');
-}
 
     // --- FILTROS ---
     $filtros = $request->query();
     $usarFiltrosIniciais = empty($filtros) && !session()->has('filtros_aplicados');
 
     if ($usarFiltrosIniciais) {
-        // Pegar local escolhido pelo popup (Central / Call Center)
         $local = session('local_trabalho');
-
         if ($local) {
-            $tipoFormulario = TipoFormulario::all()->first(function ($item) use ($local) {
-                return strtolower(trim($item->name)) === strtolower(trim($local));
-            });
-
+            $tipoFormulario = TipoFormulario::all()->first(fn($item) => strtolower(trim($item->name)) === strtolower(trim($local)));
             $estadoPendente = Estado::whereRaw('LOWER(name) = ?', ['pendente'])->first();
 
             $filtros = [
@@ -59,19 +47,24 @@ class RecadoController extends Controller
                 'sort_dir' => 'desc'
             ];
 
-            session(['recados_filtros' => $filtros]);
-            session(['filtros_aplicados' => true]);
+            session(['recados_filtros' => $filtros, 'filtros_aplicados' => true]);
         }
     } elseif (!empty($filtros)) {
-        // Quando o utilizador mexe nos filtros → sobrescrever sessão
-        session(['recados_filtros' => $filtros]);
-        session(['filtros_aplicados' => true]);
+        session(['recados_filtros' => $filtros, 'filtros_aplicados' => true]);
     } else {
-        // Caso contrário, usar filtros guardados na sessão
         $filtros = session('recados_filtros', []);
     }
 
-    // Aplicar filtros ao query builder
+    // --- VISIBILIDADE ---
+    if ($user->cargo?->name !== 'admin') {
+        $recados->where(function ($q) use ($user) {
+            $q->where('user_id', $user->id)
+              ->orWhereHas('destinatarios', fn($q2) => $q2->where('users.id', $user->id))
+              ->orWhereHas('grupos.users', fn($q3) => $q3->where('users.id', $user->id));
+        });
+    }
+
+    // Aplicar filtros
     foreach (['id','contact_client','plate','estado_id','tipo_formulario_id'] as $field) {
         if (!empty($filtros[$field])) {
             if (in_array($field, ['contact_client','plate'])) {
@@ -85,20 +78,21 @@ class RecadoController extends Controller
     // Ordenação
     $sortBy = data_get($filtros, 'sort_by', 'id');
     $sortDir = data_get($filtros, 'sort_dir', 'desc');
-    $recados = $recados->orderBy($sortBy, $sortDir)->paginate(10)->withQueryString();
 
-    // --- VISIBILIDADE ESPECÍFICA ---
+    // --- PAGINAÇÃO E VISIBILIDADE FINAL ---
     if ($user->visibilidade_recados === 'nenhum') {
-        $recados = collect();
+        $recados = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10, 1);
     } elseif ($user->visibilidade_recados === 'campanhas') {
         return redirect()->route('recados_campanhas.index');
+    } else {
+        $recados = $recados->orderBy($sortBy, $sortDir)->paginate(10)->withQueryString();
     }
 
-    // Mostrar popup apenas na primeira vez
     $showPopup = !$request->session()->has('local_trabalho');
 
     return view('recados.index', compact('recados','estados','tiposFormulario','filtros','showPopup'));
 }
+
 
     public function create(Request $request)
     {
