@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Pagination\LengthAwarePaginator;
+
 
 class RecadoController extends Controller
 {
@@ -29,13 +31,11 @@ class RecadoController extends Controller
     ]);
 
     // --- VISIBILIDADE ---
-    if ($user->cargo?->name !== 'admin') {
-        $recados->where(function ($q) use ($user) {
-            $q->where('user_id', $user->id)
-              ->orWhereHas('destinatarios', fn($q2) => $q2->where('users.id', $user->id))
-              ->orWhereHas('grupos.users', fn($q3) => $q3->where('users.id', $user->id));
-        });
-    }
+    if ($user->visibilidade_recados === 'nenhum') {
+    $recados = new LengthAwarePaginator([], 0, 10, 1);
+} elseif ($user->visibilidade_recados === 'campanhas') {
+    return redirect()->route('recados_campanhas.index');
+}
 
     // --- FILTROS ---
     $filtros = $request->query();
