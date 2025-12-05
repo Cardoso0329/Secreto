@@ -36,23 +36,38 @@ class RecadoController extends Controller
 
     if ($usarFiltrosIniciais) {
         $local = session('local_trabalho');
+        $tipoFormulario = null;
+        $estadoPendente = Estado::whereRaw('LOWER(name) = ?', ['pendente'])->first();
+
         if ($local) {
             $tipoFormulario = TipoFormulario::all()->first(fn($item) => strtolower(trim($item->name)) === strtolower(trim($local)));
-            $estadoPendente = Estado::whereRaw('LOWER(name) = ?', ['pendente'])->first();
-
-            $filtros = [
-                'estado_id' => $estadoPendente?->id,
-                'tipo_formulario_id' => $tipoFormulario?->id,
-                'sort_by' => 'id',
-                'sort_dir' => 'desc'
-            ];
-
-            session(['recados_filtros' => $filtros, 'filtros_aplicados' => true]);
         }
-    } elseif (!empty($filtros)) {
+
+        $filtros = [
+            'estado_id' => $estadoPendente?->id,
+            'tipo_formulario_id' => $tipoFormulario?->id,
+            'sort_by' => 'id',
+            'sort_dir' => 'desc'
+        ];
+
         session(['recados_filtros' => $filtros, 'filtros_aplicados' => true]);
     } else {
+        // Usar filtros da sessão
         $filtros = session('recados_filtros', []);
+
+        // Garantir que os filtros obrigatórios sempre existam
+        foreach (['estado_id','tipo_formulario_id'] as $campoObrigatorio) {
+            if (!isset($filtros[$campoObrigatorio])) {
+                if ($campoObrigatorio === 'estado_id') {
+                    $estadoPendente = Estado::whereRaw('LOWER(name) = ?', ['pendente'])->first();
+                    $filtros['estado_id'] = $estadoPendente?->id;
+                } else {
+                    $local = session('local_trabalho');
+                    $tipoFormulario = TipoFormulario::all()->first(fn($item) => strtolower(trim($item->name)) === strtolower(trim($local)));
+                    $filtros['tipo_formulario_id'] = $tipoFormulario?->id;
+                }
+            }
+        }
     }
 
     // --- VISIBILIDADE ---
@@ -64,22 +79,30 @@ class RecadoController extends Controller
         });
     }
 
-    // Aplicar filtros
-    foreach (['id','contact_client','plate','estado_id','tipo_formulario_id'] as $field) {
+    // --- Aplicar filtros obrigatórios ---
+    if (!empty($filtros['estado_id'])) {
+        $recados->where('estado_id', $filtros['estado_id']);
+    }
+    if (!empty($filtros['tipo_formulario_id'])) {
+        $recados->where('tipo_formulario_id', $filtros['tipo_formulario_id']);
+    }
+
+    // --- Aplicar outros filtros manuais ---
+    foreach (['id','contact_client','plate'] as $field) {
         if (!empty($filtros[$field])) {
-            if (in_array($field, ['contact_client','plate'])) {
-                $recados->where($field, 'like', '%'.$filtros[$field].'%');
-            } else {
-                $recados->where($field, $filtros[$field]);
-            }
+            $recados->where(
+                $field,
+                in_array($field,['contact_client','plate']) ? 'like' : '=',
+                in_array($field,['contact_client','plate']) ? '%'.$filtros[$field].'%' : $filtros[$field]
+            );
         }
     }
 
-    // Ordenação
+    // --- Ordenação ---
     $sortBy = data_get($filtros, 'sort_by', 'id');
     $sortDir = data_get($filtros, 'sort_dir', 'desc');
 
-    // --- PAGINAÇÃO E VISIBILIDADE FINAL ---
+    // --- Paginação e visibilidade final ---
     if ($user->visibilidade_recados === 'nenhum') {
         $recados = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10, 1);
     } elseif ($user->visibilidade_recados === 'campanhas') {
@@ -92,6 +115,7 @@ class RecadoController extends Controller
 
     return view('recados.index', compact('recados','estados','tiposFormulario','filtros','showPopup'));
 }
+
 
 
     public function create(Request $request)
