@@ -137,16 +137,17 @@
                                 @php
                                     $destinatarios = collect();
 
+                                    // Users individuais
                                     if($recado->destinatarios->count()) {
                                         $destinatarios = $destinatarios->merge($recado->destinatarios->pluck('name'));
                                     }
 
+                                    // Grupos (apenas nome do grupo)
                                     if($recado->grupos->count()) {
-                                        foreach($recado->grupos as $grupo) {
-                                            $destinatarios = $destinatarios->merge($grupo->users->pluck('name'));
-                                        }
+                                        $destinatarios = $destinatarios->merge($recado->grupos->pluck('name'));
                                     }
 
+                                    // Guest tokens
                                     if($recado->guestTokens->count()) {
                                         $destinatarios = $destinatarios->merge($recado->guestTokens->pluck('email'));
                                     }
