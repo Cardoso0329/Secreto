@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+
 {{-- Modal para escolher local (apenas se o controller mandar mostrar e se for Telefonista) --}}
 @if(isset($showPopup) && $showPopup && auth()->user()->grupos->contains('name','Telefonistas'))
 <div class="modal fade show" id="popupLocal" tabindex="-1" style="display:block; background: rgba(0,0,0,0.6);">
@@ -31,6 +32,7 @@
     body { overflow: hidden !important; }
 </style>
 @endif
+
 
 <div class="container mt-4">
 
@@ -84,7 +86,7 @@
                 </div>
 
                 <div class="col-12">
-                    <button type="submit" class="btn btn-primary">Filtrar</button>
+                    <button type="submit" class="btn btn-primary w-100">Filtrar</button>
                 </div>
             </form>
         </div>
@@ -115,7 +117,7 @@
                         <th>Nome</th>
                         <th>Contacto Cliente</th>
                         <th>Matrícula</th>
-                        <th>Email Operador</th>
+                        <th>Destinatários</th>
                         <th>Estado</th>
                         <th>Tipo</th>
                         <th class="text-nowrap">Criado em</th>
@@ -129,7 +131,33 @@
                             <td>{{ $recado->name }}</td>
                             <td>{{ $recado->contact_client }}</td>
                             <td>{{ $recado->plate ?? '—' }}</td>
-                            <td>{{ $recado->operator_email ?? '—' }}</td>
+
+                            {{-- Destinatários --}}
+                            <td>
+                                @php
+                                    $destinatarios = collect();
+
+                                    if($recado->destinatarios->count()) {
+                                        $destinatarios = $destinatarios->merge($recado->destinatarios->pluck('name'));
+                                    }
+
+                                    if($recado->grupos->count()) {
+                                        foreach($recado->grupos as $grupo) {
+                                            $destinatarios = $destinatarios->merge($grupo->users->pluck('name'));
+                                        }
+                                    }
+
+                                    if($recado->guestTokens->count()) {
+                                        $destinatarios = $destinatarios->merge($recado->guestTokens->pluck('email'));
+                                    }
+
+                                    $destinatarios = $destinatarios->unique();
+                                @endphp
+
+                                {!! $destinatarios->implode('<br>') !!}
+                            </td>
+
+                            {{-- Estado --}}
                             <td>
                                 @php
                                     $estadoNome = strtolower($recado->estado->name ?? '');
@@ -143,6 +171,8 @@
                                     {{ $estadoNome ? ucfirst($estadoNome) : '—' }}
                                 </span>
                             </td>
+
+                            {{-- Tipo --}}
                             <td>
                                 @php
                                     $tipoNome = strtolower($recado->tipoFormulario->name ?? '');
@@ -156,6 +186,7 @@
                                     {{ $tipoNome ? ucfirst($tipoNome) : '—' }}
                                 </span>
                             </td>
+
                             <td class="text-nowrap">{{ $recado->created_at->format('d/m/Y H:i') }}</td>
                         </tr>
                     @empty
