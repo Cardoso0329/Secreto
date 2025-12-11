@@ -118,6 +118,85 @@ class RecadoController extends Controller
         ))->with('tipoFormularioId', $tipoFormulario->id);
     }
 
+     // Editar
+   public function edit(Recado $recado)
+{
+
+    $estados = Estado::all();
+    $tiposFormulario = TipoFormulario::all();
+    $users = User::all();
+    $grupos = Grupo::all();
+    $setores = Setor::all();
+    $origens = Origem::all();
+    $departamentos = Departamento::all();
+    $slas = SLA::all();
+    $tipos = Tipo::all();
+    $avisos = Aviso::all();
+    $campanhas = Campanha::all();
+
+    // Guest tokens já ativos
+    $guestEmails = $recado->guestTokens->pluck('email')->toArray();
+
+    return view('recados.edit', compact(
+        'recado','estados','tiposFormulario','users','grupos','guestEmails',
+        'setores','origens','departamentos','slas','tipos','avisos','campanhas'
+    ));
+}
+
+public function update(Request $request, Recado $recado)
+{
+    // Atualiza campos simples
+    $recado->name = $request->input('name');
+    $recado->contact_client = $request->input('contact_client');
+    $recado->plate = $request->input('plate');
+    $recado->mensagem = $request->input('mensagem');
+    $recado->observacoes = $request->input('observacoes');
+
+    // Atualiza selects (pode ser null)
+    $recado->estado_id = $request->input('estado_id') ?: null;
+    $recado->tipo_formulario_id = $request->input('tipo_formulario_id') ?: null;
+    $recado->sla_id = $request->input('sla_id') ?: null;
+    $recado->tipo_id = $request->input('tipo_id') ?: null;
+    $recado->origem_id = $request->input('origem_id') ?: null;
+    $recado->setor_id = $request->input('setor_id') ?: null;
+    $recado->departamento_id = $request->input('departamento_id') ?: null;
+    $recado->aviso_id = $request->input('aviso_id') ?: null;
+    $recado->campanha_id = $request->input('campanha_id') ?: null;
+
+    // Datas (pode ser null)
+    $recado->abertura = $request->input('abertura') ?: null;
+    $recado->termino = $request->input('termino') ?: null;
+
+    // Ficheiro
+    if($request->hasFile('ficheiro')){
+        $file = $request->file('ficheiro');
+        $filename = time().'_'.$file->getClientOriginalName();
+        $file->storeAs('public/recados', $filename);
+        $recado->ficheiro = $filename;
+    }
+
+    $recado->save();
+
+    // Atualiza destinatários
+    $recado->destinatariosUsers()->sync($request->input('destinatarios_users', []));
+    $recado->grupos()->sync($request->input('destinatarios_grupos', []));
+
+   // Emails livres (guest emails) - apenas adiciona novos
+if($request->has('destinatarios_livres')){
+    foreach($request->destinatarios_livres as $email){
+        $email = trim($email);
+        if(!empty($email) && !$recado->guestEmails->contains('email', $email)){
+            $recado->guestEmails()->create(['email' => $email]);
+        }
+    }
+}
+
+
+
+    return redirect()->route('recados.index')->with('success', 'Recado atualizado com sucesso!');
+}
+
+
     public function store(Request $request)
 {
     // Detecta o tipo de formulário

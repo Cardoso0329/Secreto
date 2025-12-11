@@ -85,9 +85,10 @@
                     </select>
                 </div>
 
-                <div class="col-12">
-                    <button type="submit" class="btn btn-primary w-100">Filtrar</button>
-                </div>
+                <div class="col-12 d-flex gap-2">
+    <button type="submit" class="btn btn-primary w-50">Filtrar</button>
+</div>
+
             </form>
         </div>
     </div>
@@ -121,6 +122,9 @@
                         <th>Estado</th>
                         <th>Tipo</th>
                         <th class="text-nowrap">Criado em</th>
+                        @if(auth()->user()->cargo->name === 'admin')
+                        <th>Ações</th>
+                        @endif
                     </tr>
                 </thead>
 
@@ -137,17 +141,14 @@
                                 @php
                                     $destinatarios = collect();
 
-                                    // Users individuais
                                     if($recado->destinatarios->count()) {
                                         $destinatarios = $destinatarios->merge($recado->destinatarios->pluck('name'));
                                     }
 
-                                    // Grupos (apenas nome do grupo)
                                     if($recado->grupos->count()) {
                                         $destinatarios = $destinatarios->merge($recado->grupos->pluck('name'));
                                     }
 
-                                    // Guest tokens
                                     if($recado->guestTokens->count()) {
                                         $destinatarios = $destinatarios->merge($recado->guestTokens->pluck('email'));
                                     }
@@ -189,10 +190,22 @@
                             </td>
 
                             <td class="text-nowrap">{{ $recado->created_at->format('d/m/Y H:i') }}</td>
+
+                            @if(auth()->user()->cargo->name === 'admin')
+                            <td class="text-nowrap">
+                                <a href="{{ route('recados.edit', $recado->id) }}" class="btn btn-sm btn-warning mb-1">Editar</a>
+                                <form action="{{ route('recados.destroy', $recado->id) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem a certeza que deseja eliminar este recado?')">Eliminar</button>
+                                </form>
+                            </td>
+                            @endif
+
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center text-muted">Nenhum recado encontrado.</td>
+                            <td colspan="{{ auth()->user()->cargo->name === 'Administrador' ? '9' : '8' }}" class="text-center text-muted">Nenhum recado encontrado.</td>
                         </tr>
                     @endforelse
                 </tbody>
