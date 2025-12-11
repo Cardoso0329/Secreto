@@ -18,55 +18,33 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class RecadoController extends Controller
 {
-   public function index(Request $request)
+  public function index(Request $request)
 {
     $user = auth()->user();
     $estados = Estado::all();
     $tiposFormulario = TipoFormulario::all();
 
     $recados = Recado::with([
-        'setor', 'origem', 'departamento', 'destinatarios', 'estado',
-        'sla', 'tipo', 'aviso', 'tipoFormulario', 'grupos',
-        'guestTokens', 'campanha'
+        'setor','origem','departamento','destinatarios','estado',
+        'sla','tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
     ]);
 
-    // --- FILTROS ---
-    $filtros = $request->query();
-    $usarFiltrosIniciais = empty($filtros) && !session()->has('filtros_aplicados');
+    // --- FILTROS PRINCIPAIS (estado + tipo) ---
+    $estado_id = $request->input('estado_id') ?? session('recados_filtros.estado_id');
+    $tipo_formulario_id = $request->input('tipo_formulario_id') ?? session('recados_filtros.tipo_formulario_id');
 
-    if ($usarFiltrosIniciais) {
-        $local = session('local_trabalho');
-        $tipoFormulario = null;
-        $estadoPendente = Estado::whereRaw('LOWER(name) = ?', ['pendente'])->first();
+    if ($estado_id) $recados->where('estado_id', $estado_id);
+    if ($tipo_formulario_id) $recados->where('tipo_formulario_id', $tipo_formulario_id);
 
-        if ($local) {
-            $tipoFormulario = TipoFormulario::all()->first(fn($item) => strtolower(trim($item->name)) === strtolower(trim($local)));
-        }
-
-        $filtros = [
-            'estado_id' => $estadoPendente?->id,
-            'tipo_formulario_id' => $tipoFormulario?->id,
-            'sort_by' => 'id',
-            'sort_dir' => 'desc'
-        ];
-
-        session(['recados_filtros' => $filtros, 'filtros_aplicados' => true]);
-    } else {
-        // Usar filtros da sessão
-        $filtros = session('recados_filtros', []);
-
-        // Garantir que os filtros obrigatórios sempre existam
-        foreach (['estado_id','tipo_formulario_id'] as $campoObrigatorio) {
-            if (!isset($filtros[$campoObrigatorio])) {
-                if ($campoObrigatorio === 'estado_id') {
-                    $estadoPendente = Estado::whereRaw('LOWER(name) = ?', ['pendente'])->first();
-                    $filtros['estado_id'] = $estadoPendente?->id;
-                } else {
-                    $local = session('local_trabalho');
-                    $tipoFormulario = TipoFormulario::all()->first(fn($item) => strtolower(trim($item->name)) === strtolower(trim($local)));
-                    $filtros['tipo_formulario_id'] = $tipoFormulario?->id;
-                }
-            }
+    // --- FILTROS MANUAIS (id, contact_client, plate) ---
+    $manualFilters = ['id','contact_client','plate'];
+    foreach ($manualFilters as $field) {
+        if ($request->filled($field)) {
+            $recados->where(
+                $field,
+                in_array($field,['contact_client','plate']) ? 'like' : '=',
+                in_array($field,['contact_client','plate']) ? '%'.$request->input($field).'%' : $request->input($field)
+            );
         }
     }
 
@@ -79,42 +57,27 @@ class RecadoController extends Controller
         });
     }
 
-    // --- Aplicar filtros obrigatórios ---
-    if (!empty($filtros['estado_id'])) {
-        $recados->where('estado_id', $filtros['estado_id']);
-    }
-    if (!empty($filtros['tipo_formulario_id'])) {
-        $recados->where('tipo_formulario_id', $filtros['tipo_formulario_id']);
-    }
-
-    // --- Aplicar outros filtros manuais ---
-    foreach (['id','contact_client','plate'] as $field) {
-        if (!empty($filtros[$field])) {
-            $recados->where(
-                $field,
-                in_array($field,['contact_client','plate']) ? 'like' : '=',
-                in_array($field,['contact_client','plate']) ? '%'.$filtros[$field].'%' : $filtros[$field]
-            );
-        }
-    }
-
     // --- Ordenação ---
-    $sortBy = data_get($filtros, 'sort_by', 'id');
-    $sortDir = data_get($filtros, 'sort_dir', 'desc');
+    $sortBy = $request->input('sort_by', 'id');
+    $sortDir = $request->input('sort_dir', 'desc');
 
-    // --- Paginação e visibilidade final ---
-    if ($user->visibilidade_recados === 'nenhum') {
-        $recados = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10, 1);
-    } elseif ($user->visibilidade_recados === 'campanhas') {
-        return redirect()->route('recados_campanhas.index');
-    } else {
-        $recados = $recados->orderBy($sortBy, $sortDir)->paginate(10)->withQueryString();
-    }
+    // --- Paginação ---
+    $recados = $recados->orderBy($sortBy, $sortDir)->paginate(10)->withQueryString();
+
+    // Guardar filtros obrigatórios na sessão (para export)
+    session([
+        'recados_filtros' => [
+            'estado_id' => $estado_id,
+            'tipo_formulario_id' => $tipo_formulario_id,
+        ]
+    ]);
 
     $showPopup = !$request->session()->has('local_trabalho');
 
-    return view('recados.index', compact('recados','estados','tiposFormulario','filtros','showPopup'));
+    return view('recados.index', compact('recados','estados','tiposFormulario','showPopup'));
 }
+
+
 
 
 
@@ -231,17 +194,25 @@ class RecadoController extends Controller
             }
         }
 
-        // GRUPOS
-        if ($request->filled('destinatarios_grupos')) {
-            $recado->grupos()->sync($request->destinatarios_grupos);
+       // GRUPOS
+$gruposSelecionados = $request->input('destinatarios_grupos', []);
 
-            $emails = User::whereHas('grupos', fn($q) => $q->whereIn('grupos.id', $request->destinatarios_grupos))
-                ->pluck('email')->unique();
+// Garantir que Telefonistas esteja sempre incluído
+$telefonistasId = Grupo::where('name','Telefonistas')->first()?->id;
+if ($telefonistasId && !in_array($telefonistasId, $gruposSelecionados)) {
+    $gruposSelecionados[] = $telefonistasId;
+}
 
-            foreach ($emails as $email) {
-                Mail::to($email)->send(new RecadoCriadoMail($recado));
-            }
-        }
+$recado->grupos()->sync($gruposSelecionados);
+
+// Enviar emails para todos os usuários dos grupos
+$emails = User::whereHas('grupos', fn($q) => $q->whereIn('grupos.id', $gruposSelecionados))
+    ->pluck('email')->unique();
+
+foreach ($emails as $email) {
+    Mail::to($email)->send(new RecadoCriadoMail($recado));
+}
+
 
         // Garantir estado pendente
         $estadoPendente = Estado::where('name','Pendente')->first();
@@ -345,19 +316,36 @@ class RecadoController extends Controller
     }
 
     public function exportFiltered(Request $request)
-    {
-        $filters = $request->only(['id','contact_client','plate','estado_id','tipo_formulario_id']);
-        $query = Recado::with(['estado','tipoFormulario','destinatarios','grupos.users']);
+{
+    // Recuperar filtros obrigatórios da sessão
+    $filtros = session('recados_filtros', []);
 
-        foreach ($filters as $key => $value) {
-            if (!empty($value)) {
-                $query->where($key, $key=='contact_client'||$key=='plate'?'like':'=',$key=='contact_client'||$key=='plate'?'%'.$value.'%':$value);
-            }
-        }
+    $query = Recado::with(['estado','tipoFormulario','destinatarios','grupos.users','guestTokens']);
 
-        $recados = $query->get();
-        return Excel::download(new RecadosExport($recados),'recados_filtrados.xlsx');
+    // Aplicar filtros obrigatórios
+    if (!empty($filtros['estado_id'])) {
+        $query->where('estado_id', $filtros['estado_id']);
     }
+    if (!empty($filtros['tipo_formulario_id'])) {
+        $query->where('tipo_formulario_id', $filtros['tipo_formulario_id']);
+    }
+
+    // Aplicar filtros manuais vindos da query GET (se houver)
+    foreach (['id','contact_client','plate'] as $field) {
+        if ($request->filled($field)) {
+            $query->where(
+                $field,
+                in_array($field,['contact_client','plate']) ? 'like' : '=',
+                in_array($field,['contact_client','plate']) ? '%'.$request->input($field).'%' : $request->input($field)
+            );
+        }
+    }
+
+    $recados = $query->get();
+
+    return Excel::download(new RecadosExport($recados), 'recados_filtrados.xlsx');
+}
+
 
     public function concluir(Recado $recado)
     {

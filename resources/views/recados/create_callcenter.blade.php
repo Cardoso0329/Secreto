@@ -133,21 +133,19 @@
                     <div id="listaDestinatarios" class="mt-3 d-flex flex-wrap gap-2"></div>
                     <div id="destinatariosInputs"></div>
                 </div>
-
-                {{-- Grupo Destinatário (fixo: Telefonistas) --}}
-                <div class="mb-4">
-                    <label class="form-label fw-semibold">Grupo Destinatário</label>
-                    <select class="form-select rounded-3" disabled>
-                        @foreach (\App\Models\Grupo::all() as $grupo)
-                            <option value="{{ $grupo->id }}"
-                                {{ $grupo->name === 'Telefonistas' ? 'selected' : '' }}>
-                                {{ $grupo->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <input type="hidden" name="destinatarios_grupos[]"
-                        value="{{ \App\Models\Grupo::where('name', 'Telefonistas')->first()->id }}">
-                </div>
+{{-- Grupo Destinatário (pré-seleciona Telefonistas, mas editável) --}}
+<div class="mb-4">
+    <label class="form-label fw-semibold">Grupo Destinatário</label>
+    <select name="destinatarios_grupos[]" id="destinatarios_grupos" class="form-select rounded-3" multiple>
+        @foreach (\App\Models\Grupo::all() as $grupo)
+            <option value="{{ $grupo->id }}" 
+                {{ $grupo->name === 'Telefonistas' ? 'selected' : '' }}>
+                {{ $grupo->name }}
+            </option>
+        @endforeach
+    </select>
+    <small class="form-text text-muted">Segure Ctrl (Windows).</small>
+</div>
 
                 {{-- Destinatários Livres --}}
                 <div class="mb-4">

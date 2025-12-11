@@ -151,17 +151,21 @@ $setoresPermitidos = [
     </div>
 
     <div class="mb-4">
-    <label class="form-label fw-semibold">Grupo Destinatário</label>
 
-    {{-- Select apenas para visualizar, não editável --}}
-    <select class="form-select rounded-3" disabled>
+    {{-- Grupo Destinatário (pré-seleciona Telefonistas, mas editável) --}}
+<div class="mb-4">
+    <label class="form-label fw-semibold">Grupo Destinatário</label>
+    <select name="destinatarios_grupos[]" id="destinatarios_grupos" class="form-select rounded-3" multiple>
         @foreach (\App\Models\Grupo::all() as $grupo)
-            <option value="{{ $grupo->id }}"
+            <option value="{{ $grupo->id }}" 
                 {{ $grupo->name === 'Telefonistas' ? 'selected' : '' }}>
                 {{ $grupo->name }}
             </option>
         @endforeach
     </select>
+    <small class="form-text text-muted">Segure Ctrl (Windows).</small>
+</div>
+
 
     {{-- Hidden real para enviar no formulário --}}
     <input type="hidden" name="destinatarios_grupos[]"
