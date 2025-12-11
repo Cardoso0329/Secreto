@@ -111,6 +111,9 @@ Route::get('/recados-campanhas', [RecadosCampanhaController::class, 'index'])
     ->name('recados_campanhas.index')
     ->middleware('auth');
 
+Route::get('/recados/export', [RecadoController::class, 'exportFiltered'])
+    ->name('recados.exportFiltered')
+    ->middleware('auth'); // garante que só quem está logado acede
 
 
 

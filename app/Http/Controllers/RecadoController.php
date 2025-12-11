@@ -394,28 +394,17 @@ foreach ($emails as $email) {
         return redirect()->route('recados.index');
     }
 
-    public function exportFiltered(Request $request)
+   public function exportFiltered(Request $request)
 {
-    // Recuperar filtros obrigatórios da sessão
-    $filtros = session('recados_filtros', []);
-
     $query = Recado::with(['estado','tipoFormulario','destinatarios','grupos.users','guestTokens']);
 
-    // Aplicar filtros obrigatórios
-    if (!empty($filtros['estado_id'])) {
-        $query->where('estado_id', $filtros['estado_id']);
-    }
-    if (!empty($filtros['tipo_formulario_id'])) {
-        $query->where('tipo_formulario_id', $filtros['tipo_formulario_id']);
-    }
-
-    // Aplicar filtros manuais vindos da query GET (se houver)
-    foreach (['id','contact_client','plate'] as $field) {
+    // Aplicar todos os filtros possíveis vindos da query string
+    foreach (['id','contact_client','plate','estado_id','tipo_formulario_id'] as $field) {
         if ($request->filled($field)) {
             $query->where(
                 $field,
-                in_array($field,['contact_client','plate']) ? 'like' : '=',
-                in_array($field,['contact_client','plate']) ? '%'.$request->input($field).'%' : $request->input($field)
+                in_array($field, ['contact_client', 'plate']) ? 'like' : '=',
+                in_array($field, ['contact_client', 'plate']) ? '%'.$request->input($field).'%' : $request->input($field)
             );
         }
     }
@@ -424,6 +413,7 @@ foreach ($emails as $email) {
 
     return Excel::download(new RecadosExport($recados), 'recados_filtrados.xlsx');
 }
+
 
 
     public function concluir(Recado $recado)

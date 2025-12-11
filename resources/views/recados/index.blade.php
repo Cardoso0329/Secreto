@@ -87,7 +87,16 @@
 
                 <div class="col-12 d-flex gap-2">
     <button type="submit" class="btn btn-primary w-50">Filtrar</button>
+
+<a href="{{ route('recados.exportFiltered', request()->query()) }}" class="btn btn-success w-50">
+    📤 Exportar
+</a>
+
+
+
 </div>
+
+
 
             </form>
         </div>
