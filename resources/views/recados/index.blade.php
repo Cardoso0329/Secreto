@@ -47,60 +47,73 @@
         @endif
     </div>
 
-    {{-- Filtros --}}
-    <div class="mb-4">
-        <div class="p-2 mb-2 bg-light border rounded">
-            <h5 class="mb-0">🔍 Filtros Avançados</h5>
-        </div>
 
-        <div class="p-3 border rounded">
-            <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
-                <div class="col-md-2">
-                    <input type="text" name="id" class="form-control" placeholder="ID..." value="{{ request('id') }}">
-                </div>
-                <div class="col-md-2">
-                    <input type="text" name="contact_client" class="form-control" placeholder="Contacto..." value="{{ request('contact_client') }}">
-                </div>
-                <div class="col-md-2">
-                    <input type="text" name="plate" class="form-control" placeholder="Matrícula..." value="{{ request('plate') }}">
-                </div>
-                <div class="col-md-3">
-                    <select name="estado_id" class="form-select">
-                        <option value="">Todos os Estados</option>
-                        @foreach($estados as $estado)
-                            <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
-                                {{ $estado->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <select name="tipo_formulario_id" class="form-select">
-                        <option value="">Todos os Tipos</option>
-                        @foreach($tiposFormulario as $tipo_formulario)
-                            <option value="{{ $tipo_formulario->id }}" {{ request('tipo_formulario_id') == $tipo_formulario->id ? 'selected' : '' }}>
-                                {{ $tipo_formulario->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+    <div class="mb-3 d-flex align-items-center gap-2">
+    <label class="mb-0 fw-semibold">Vistas Guardadas:</label>
 
-                <div class="col-12 d-flex gap-2">
-    <button type="submit" class="btn btn-primary w-50">Filtrar</button>
-
-<a href="{{ route('recados.exportFiltered', request()->query()) }}" class="btn btn-success w-50">
-    📤 Exportar
-</a>
-
-
-
+    <select id="vistaSelect" class="form-select form-select-sm w-auto">
+    <option value="">-- Nenhuma --</option>
+    @foreach($vistas as $v)
+        <option
+            value="{{ $v->id }}"
+            data-filtros='@json($v->filtros, JSON_HEX_APOS | JSON_HEX_QUOT)'
+            {{ request('vista_id') == $v->id ? 'selected' : '' }}
+        >
+            {{ request('vista_id') == $v->id ? '⭐ ' : '' }}{{ $v->nome }} ({{ ucfirst($v->acesso) }})
+        </option>
+    @endforeach
+</select>
 </div>
 
 
 
-            </form>
-        </div>
+    <form id="filtrosForm" action="{{ route('recados.index') }}" method="GET" class="row g-3">
+
+    <input type="hidden" name="vista_id" id="vistaIdInput" value="{{ request('vista_id') }}">
+
+    <div class="col-md-2">
+        <input type="text" name="id" class="form-control" placeholder="ID..." value="{{ request('id') }}">
     </div>
+
+    <div class="col-md-2">
+        <input type="text" name="contact_client" class="form-control" placeholder="Contacto..." value="{{ request('contact_client') }}">
+    </div>
+
+    <div class="col-md-2">
+        <input type="text" name="plate" class="form-control" placeholder="Matrícula..." value="{{ request('plate') }}">
+    </div>
+
+    <div class="col-md-3">
+        <select name="estado_id" class="form-select">
+            <option value="">Todos os Estados</option>
+            @foreach($estados as $estado)
+                <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
+                    {{ $estado->name }}
+                </option>
+            @endforeach
+        </select>
+    </div>
+
+    <div class="col-md-3">
+        <select name="tipo_formulario_id" class="form-select">
+            <option value="">Todos os Tipos</option>
+            @foreach($tiposFormulario as $tipo_formulario)
+                <option value="{{ $tipo_formulario->id }}" {{ request('tipo_formulario_id') == $tipo_formulario->id ? 'selected' : '' }}>
+                    {{ $tipo_formulario->name }}
+                </option>
+            @endforeach
+        </select>
+    </div>
+
+    <div class="col-12 d-flex gap-2">
+        <button type="submit" class="btn btn-primary w-50">Filtrar</button>
+
+        <a href="{{ route('recados.exportFiltered', request()->query()) }}" class="btn btn-success w-50">
+            📤 Exportar
+        </a>
+    </div>
+</form>
+
 
     {{-- Sucesso --}}
     @if(session('success'))
@@ -214,7 +227,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ auth()->user()->cargo->name === 'Administrador' ? '9' : '8' }}" class="text-center text-muted">Nenhum recado encontrado.</td>
+                            <td colspan="{{ auth()->user()->cargo->name === 'admin' ? '9' : '8' }}" class="text-center text-muted">Nenhum recado encontrado.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -238,8 +251,48 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.clickable-row').forEach(row =>
-        row.addEventListener('click', () => window.location.href = row.dataset.href)
-    );
+    // --- Vistas ---
+    const vistaSelect = document.getElementById('vistaSelect');
+    const filtrosForm = document.getElementById('filtrosForm');
+    const vistaIdInput = document.getElementById('vistaIdInput');
+
+    if (vistaSelect && filtrosForm) {
+        vistaSelect.addEventListener('change', () => {
+            const option = vistaSelect.selectedOptions[0];
+            const filtros = option.dataset.filtros ? JSON.parse(option.dataset.filtros) : {};
+
+            vistaIdInput.value = vistaSelect.value || '';
+
+            // Preencher inputs/selects
+            Object.entries(filtros).forEach(([campo, valor]) => {
+                const input = filtrosForm.querySelector(`[name="${campo}"]`);
+                if(input) {
+                    if(input.tagName === 'SELECT') {
+                        Array.from(input.options).forEach(opt => {
+                            opt.selected = (opt.value == valor);
+                        });
+                    } else {
+                        input.value = valor ?? '';
+                    }
+                }
+            });
+
+            filtrosForm.submit();
+        });
+    }
+
+    // --- Linhas clicáveis ---
+    const rows = document.querySelectorAll('.clickable-row');
+    rows.forEach(row => {
+        row.addEventListener('click', (e) => {
+            // Ignorar cliques em links e botões
+            if(e.target.tagName.toLowerCase() === 'a' || e.target.tagName.toLowerCase() === 'button') return;
+
+            const href = row.dataset.href;
+            if(href) window.location.href = href;
+        });
+    });
 });
 </script>
+
+

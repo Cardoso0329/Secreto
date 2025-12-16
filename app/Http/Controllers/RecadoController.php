@@ -6,8 +6,10 @@ use App\Mail\RecadoAvisoMail;
 use App\Mail\RecadoCriadoMail;
 use App\Models\{
     SLA, Recado, Setor, Origem, Departamento, Aviso, Estado, Tipo, User,
-    Destinatario, TipoFormulario, Grupo, Campanha, RecadoGuestToken
+    Destinatario, TipoFormulario, Grupo, Campanha, RecadoGuestToken, Vista,
 };
+
+use App\Filters\RecadoFilter;
 use App\Exports\RecadosExport;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
@@ -21,64 +23,64 @@ class RecadoController extends Controller
   public function index(Request $request)
 {
     $user = auth()->user();
+
     $estados = Estado::all();
     $tiposFormulario = TipoFormulario::all();
 
     $recados = Recado::with([
-        'setor','origem','departamento','destinatarios','estado',
-        'sla','tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
+        'setor','origem','departamento','destinatarios','estado','sla',
+        'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
     ]);
 
-    // --- FILTROS PRINCIPAIS (estado + tipo) ---
-    $estado_id = $request->input('estado_id') ?? session('recados_filtros.estado_id');
-    $tipo_formulario_id = $request->input('tipo_formulario_id') ?? session('recados_filtros.tipo_formulario_id');
+    // --- Filtros base do formulário ---
+    $filtros = $request->only(['id','contact_client','plate','estado_id','tipo_formulario_id']);
 
-    if ($estado_id) $recados->where('estado_id', $estado_id);
-    if ($tipo_formulario_id) $recados->where('tipo_formulario_id', $tipo_formulario_id);
-
-    // --- FILTROS MANUAIS (id, contact_client, plate) ---
-    $manualFilters = ['id','contact_client','plate'];
-    foreach ($manualFilters as $field) {
-        if ($request->filled($field)) {
-            $recados->where(
-                $field,
-                in_array($field,['contact_client','plate']) ? 'like' : '=',
-                in_array($field,['contact_client','plate']) ? '%'.$request->input($field).'%' : $request->input($field)
-            );
+    // --- Aplicar filtros da VISTA ---
+    $vista = null;
+    if ($request->filled('vista_id')) {
+        $vista = Vista::find($request->vista_id);
+        if ($vista && is_array($vista->filtros)) {
+            // Substituir pelos filtros da vista, ignorando campos vazios
+            foreach ($vista->filtros as $campo => $valor) {
+                if ($valor !== "" && $valor !== null) {
+                    $filtros[$campo] = $valor;
+                }
+            }
         }
     }
 
-    // --- VISIBILIDADE ---
-    if ($user->cargo?->name !== 'admin') {
-        $recados->where(function ($q) use ($user) {
-            $q->where('user_id', $user->id)
-              ->orWhereHas('destinatarios', fn($q2) => $q2->where('users.id', $user->id))
-              ->orWhereHas('grupos.users', fn($q3) => $q3->where('users.id', $user->id));
-        });
-    }
+    // --- Aplicar filtros ---
+    $recados = RecadoFilter::apply($recados, $filtros);
 
     // --- Ordenação ---
-    $sortBy = $request->input('sort_by', 'id');
-    $sortDir = $request->input('sort_dir', 'desc');
+    $sortBy  = $request->input('sort_by','id');
+    $sortDir = $request->input('sort_dir','desc');
+    $recados = $recados->orderBy($sortBy,$sortDir)
+                       ->paginate(10)
+                       ->withQueryString();
 
-    // --- Paginação ---
-    $recados = $recados->orderBy($sortBy, $sortDir)->paginate(10)->withQueryString();
+    // --- Guardar filtros na sessão ---
+    session(['recados_filtros' => $filtros]);
 
-    // Guardar filtros obrigatórios na sessão (para export)
-    session([
-        'recados_filtros' => [
-            'estado_id' => $estado_id,
-            'tipo_formulario_id' => $tipo_formulario_id,
-        ]
-    ]);
+    // --- Vistas disponíveis ---
+    $vistas = Vista::query()
+        ->where(function ($q) use ($user) {
+            $q->where('acesso','publico')
+              ->orWhere('user_id',$user->id)
+              ->orWhere(function ($q2) use ($user) {
+                  $q2->where('acesso','especifico')
+                     ->whereJsonContains('usuarios_acesso', $user->id);
+              });
+        })
+        ->get();
 
+    // --- Popup local ---
     $showPopup = !$request->session()->has('local_trabalho');
 
-    return view('recados.index', compact('recados','estados','tiposFormulario','showPopup'));
+    return view('recados.index', compact(
+        'recados','estados','tiposFormulario','vistas','vista','showPopup'
+    ));
 }
-
-
-
 
 
     public function create(Request $request)
@@ -448,4 +450,41 @@ foreach ($emails as $email) {
 
         return back()->with('success','Aviso enviado com sucesso!');
     }
+
+    public function storeVista(Request $request)
+{
+    $request->validate([
+        'nome' => 'required|string|max:255',
+        'filtros' => 'required|array',
+        'logica' => 'required|in:AND,OR',
+        'colunas_visiveis' => 'array',
+        'acesso' => 'required|in:privado,publico,especifico',
+        'usuarios_acesso' => 'array'
+    ]);
+
+    Vista::create([
+        'nome' => $request->nome,
+        'user_id' => auth()->id(),
+        'filtros' => $request->filtros,
+        'logica' => $request->logica,
+        'colunas_visiveis' => $request->colunas_visiveis,
+        'acesso' => $request->acesso,
+        'usuarios_acesso' => $request->usuarios_acesso ?? []
+    ]);
+
+    return redirect()->back()->with('success','Vista guardada com sucesso!');
+}
+
+
+public function destroyVista(Vista $vista)
+{
+    $user = auth()->user();
+    if ($vista->user_id !== $user->id && $user->cargo?->name !== 'admin') {
+        abort(403,'Não autorizado');
+    }
+
+    $vista->delete();
+    return redirect()->back()->with('success','Vista eliminada com sucesso.');
+}
+
 }

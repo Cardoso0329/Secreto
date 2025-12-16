@@ -8,7 +8,7 @@ use App\Http\Controllers\{
     AvisoController, EstadoController, TipoController,
     RecadoController, UserController, PainelController,
     ProfileController, CargoController, GrupoController,
-    CampanhaController, RecadosCampanhaController
+    CampanhaController, RecadosCampanhaController, VistaController
 };
 
 // Página inicial
@@ -115,7 +115,13 @@ Route::get('/recados/export', [RecadoController::class, 'exportFiltered'])
     ->name('recados.exportFiltered')
     ->middleware('auth'); // garante que só quem está logado acede
 
+     Route::get('/vistas', [VistaController::class, 'index'])->name('vistas.index');
 
+    Route::post('/vistas', [VistaController::class, 'store'])
+        ->name('vistas.store');
+
+    Route::delete('/vistas/{vista}', [VistaController::class, 'destroy'])
+        ->name('vistas.destroy');
 
 
 
