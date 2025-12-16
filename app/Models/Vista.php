@@ -14,10 +14,12 @@ class Vista extends Model
         'usuarios_acesso'
     ];
 
-    protected $casts = [
-        'filtros' => 'array',
-        'usuarios_acesso' => 'array',
-    ];
+  protected $casts = [
+    'filtros' => 'array',
+    'colunas_visiveis' => 'array',
+    'usuarios_acesso' => 'array',
+];
+
 
     public function user()
     {

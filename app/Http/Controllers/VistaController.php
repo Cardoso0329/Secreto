@@ -41,13 +41,16 @@ class VistaController extends Controller
             'acesso'  => 'required|in:privado,publico,especifico',
         ]);
 
-        Vista::create([
-            'nome' => $request->nome,
-            'user_id' => auth()->id(),
-            'acesso' => $request->acesso,
-            'filtros' => json_decode($request->filtros, true),
-            'usuarios_acesso' => $request->usuarios_acesso ?? null
-        ]);
+{
+    Vista::create([
+        'nome' => $request->nome,
+        'user_id' => auth()->id(),
+        'filtros' => $request->filtros, // garante que é JSON
+        'acesso' => $request->acesso,
+    ]);
+}
+
+
 
         return back()->with('success', 'Vista guardada com sucesso!');
     }

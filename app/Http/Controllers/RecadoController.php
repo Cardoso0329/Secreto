@@ -36,18 +36,35 @@ class RecadoController extends Controller
     $filtros = $request->only(['id','contact_client','plate','estado_id','tipo_formulario_id']);
 
     // --- Aplicar filtros da VISTA ---
-    $vista = null;
-    if ($request->filled('vista_id')) {
-        $vista = Vista::find($request->vista_id);
-        if ($vista && is_array($vista->filtros)) {
-            // Substituir pelos filtros da vista, ignorando campos vazios
-            foreach ($vista->filtros as $campo => $valor) {
-                if ($valor !== "" && $valor !== null) {
-                    $filtros[$campo] = $valor;
-                }
+// --- Aplicar filtros da VISTA ---
+$vista = null;
+
+// Se veio vista_id no request, guarda na sessão
+if ($request->filled('vista_id')) {
+    $vista = Vista::find($request->vista_id);
+    if ($vista) {
+        $request->session()->put('vista_id', $vista->id);
+    }
+}
+// Se não veio no request, tenta buscar da sessão
+elseif ($request->session()->has('vista_id')) {
+    $vista = Vista::find($request->session()->get('vista_id'));
+}
+
+// Aplicar filtros da vista
+if ($vista && $vista->filtros) {
+    $vistaFiltros = json_decode($vista->filtros, true);
+
+    if (is_array($vistaFiltros)) {
+        foreach ($vistaFiltros as $campo => $valor) {
+            if ($valor !== "" && $valor !== null) {
+                $filtros[$campo] = $valor;
             }
         }
     }
+}
+
+
 
     // --- Aplicar filtros ---
     $recados = RecadoFilter::apply($recados, $filtros);
