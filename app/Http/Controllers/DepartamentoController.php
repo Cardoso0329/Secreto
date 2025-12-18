@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Departamento;
+use App\Models\User;
+
 
 
 class DepartamentoController extends Controller
@@ -11,7 +13,7 @@ class DepartamentoController extends Controller
     
     public function index()
     {
-        $departamentos = Departamento::all();
+        $departamentos = Departamento::orderBy('name', 'asc')->get();
         return view('departamentos.index', compact('departamentos'));
     }
 
@@ -36,21 +38,34 @@ class DepartamentoController extends Controller
         return view('departamentos.show', compact('departamento'));
     }
 
-    public function edit(Departamento $departamento)
-    {
-        return view('departamentos.edit', compact('departamento'));
-    }
+   public function edit(Departamento $departamento)
+{
+    $users = User::orderBy('name')->get();
+    $departamento->load('users'); // carrega a relação
 
-    public function update(Request $request, Departamento $departamento)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-        ]);
+    return view('departamentos.edit', compact('departamento', 'users'));
+}
 
-        $departamento->update($request->all());
 
-        return redirect()->route('departamentos.index');
-    }
+
+  public function update(Request $request, Departamento $departamento)
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'users' => 'array'
+    ]);
+
+    // Atualiza o nome do departamento
+    $departamento->update(['name' => $request->name]);
+
+    // Sincroniza os utilizadores selecionados na pivot
+    $departamento->users()->sync($request->users ?? []);
+
+    return redirect()->route('departamentos.index')
+                     ->with('success', 'Departamento atualizado com sucesso.');
+}
+
+
 
     public function destroy(Departamento $departamento)
     {

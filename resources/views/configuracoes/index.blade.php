@@ -118,6 +118,8 @@
                         <div class="col-md-2">
                             <input type="text" name="plate" class="form-control" placeholder="Matrícula..." value="{{ request('plate') }}">
                         </div>
+
+
                         <div class="col-md-3">
                             <select name="estado_id" class="form-select">
                                 <option value="">Todos os Estados</option>
@@ -138,6 +140,8 @@
                                 @endforeach
                             </select>
                         </div>
+
+                        
 
                         <div class="col-12 d-flex gap-2 mt-2">
                             <button type="submit" class="btn btn-primary">Filtrar</button>

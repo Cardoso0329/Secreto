@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -29,17 +28,19 @@
 
     {{-- Tabela --}}
     <div class="card shadow-sm">
-        <div class="card-body">
+        <div class="card-body p-0">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
+                        <th>#</th>
                         <th>Nome</th>
                         <th class="text-end">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($cargos as $cargo)
+                    @forelse($cargos as $index => $cargo)
                         <tr>
+                            <td>{{ ($cargos->currentPage() - 1) * $cargos->perPage() + $index + 1 }}</td>
                             <td>{{ $cargo->name }}</td>
                             <td class="text-end">
                                 <a href="{{ route('cargos.edit', $cargo) }}" class="btn btn-sm btn-outline-warning me-1">Editar</a>
@@ -52,7 +53,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="2" class="text-center text-muted">Nenhum cargo encontrado.</td>
+                            <td colspan="3" class="text-center text-muted">Nenhum cargo encontrado.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -71,4 +72,3 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-

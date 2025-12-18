@@ -9,7 +9,7 @@ class TipoController extends Controller
 {
     public function index()
     {
-        $tipos = Tipo::all();
+       $tipos = Tipo::orderBy('name', 'asc')->get();
         return view('tipos.index', compact('tipos'));
     }
 

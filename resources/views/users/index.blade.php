@@ -19,7 +19,6 @@
         <h2 class="fw-bold mb-0">Utilizadores</h2>
 
         <div class="d-flex flex-wrap gap-2 align-items-center">
-
             <a href="{{ route('users.create') }}" class="btn btn-primary d-flex align-items-center gap-1">
                 <i class="bi bi-person-plus-fill"></i> Criar
             </a>
@@ -43,14 +42,14 @@
         <input type="text" id="search" class="form-control" placeholder="Pesquisar pelo nome...">
     </div>
 
-    {{-- Mensagens de sessão --}}
+    {{-- Mensagens --}}
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <div class="alert alert-success alert-dismissible fade show">
             <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @elseif(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <div class="alert alert-danger alert-dismissible fade show">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
@@ -63,7 +62,7 @@
                 <table class="table table-striped align-middle" id="users-table">
                     <thead class="table-light">
                         <tr>
-                            <th>ID</th>
+                            <th>#</th>
                             <th>Nome</th>
                             <th>Email</th>
                             <th>Cargo</th>
@@ -71,10 +70,10 @@
                             <th class="text-end">Ações</th>
                         </tr>
                     </thead>
-                    <tbody id="users-tbody">
-                        @foreach($users as $user)
+                    <tbody>
+                        @foreach($users as $index => $user)
                         <tr>
-                            <td>{{ $user->id }}</td>
+                            <td>{{ $index + 1 }}</td>
                             <td>{{ $user->name }}</td>
                             <td>{{ $user->email }}</td>
                             <td>{{ $user->cargo->name ?? '-' }}</td>
@@ -107,7 +106,7 @@
 
 </div>
 
-{{-- JS pesquisa dinâmica com debounce --}}
+{{-- JS Pesquisa AJAX --}}
 <script>
 function debounce(func, wait) {
     let timeout;
@@ -117,9 +116,7 @@ function debounce(func, wait) {
     };
 }
 
-const searchInput = document.getElementById('search');
-
-searchInput.addEventListener('input', debounce(function() {
+document.getElementById('search').addEventListener('input', debounce(function () {
     const query = this.value;
 
     fetch(`{{ route('users.search') }}?q=${encodeURIComponent(query)}`)
@@ -128,19 +125,19 @@ searchInput.addEventListener('input', debounce(function() {
             const tbody = document.querySelector('#users-table tbody');
             tbody.innerHTML = '';
 
-            if(users.length === 0){
+            if (!users.length) {
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhum utilizador encontrado.</td></tr>';
                 return;
             }
 
-            users.forEach(user => {
-                const grupos = user.grupos && user.grupos.length
+            users.forEach((user, index) => {
+                const grupos = user.grupos?.length
                     ? user.grupos.map(g => `<span class="badge bg-dark">${g.name}</span>`).join(' ')
                     : '<span class="text-muted">Sem grupo</span>';
 
                 tbody.innerHTML += `
                     <tr>
-                        <td>${user.id}</td>
+                        <td>${index + 1}</td>
                         <td>${user.name}</td>
                         <td>${user.email}</td>
                         <td>${user.cargo?.name ?? '-'}</td>
@@ -164,7 +161,6 @@ searchInput.addEventListener('input', debounce(function() {
 }, 300));
 </script>
 
-{{-- Bootstrap JS --}}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

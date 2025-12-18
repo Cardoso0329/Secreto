@@ -15,7 +15,9 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with(['cargo', 'departamentos'])->get();
+        $users = User::with(['cargo', 'departamentos'])
+        ->orderBy('name', 'asc')
+        ->get();
         return view('users.index', compact('users'));
     }
 
@@ -31,9 +33,17 @@ class UserController extends Controller
 {
     $request->validate([
         'name'     => 'required|string|max:255',
-        'email'    => 'required|email|unique:users',
+        'email'    => [
+            'required',
+            'email',
+            'unique:users,email',
+            'regex:/^[\w\.-]+@soccsantos\.pt$/'
+        ],
         'cargo_id' => 'required|exists:cargos,id',
         'password' => 'required|string|min:6|confirmed',
+    ], [
+        'email.regex' => '⚠️ O email tem de ser do domínio @soccsantos.pt.',
+        'email.unique' => '⚠️ Este email já está registado.',
     ]);
 
     $user = User::create([
@@ -41,47 +51,51 @@ class UserController extends Controller
         'email'    => $request->email,
         'cargo_id' => $request->cargo_id,
         'password' => Hash::make($request->password),
-        // valores default se quiseres:
-        'visibilidade_recados' => 'nenhum', 
+        'visibilidade_recados' => 'nenhum',
     ]);
 
-    return redirect()->route('users.index')->with('success', 'Utilizador criado.');
+    return redirect()->route('users.index')
+        ->with('success', 'Utilizador criado.');
 }
+
 
 
     public function edit(User $user)
     {
         $cargos = Cargo::all();
-        $departamentos = Departamento::all();
-
-        return view('users.edit', compact('user', 'cargos', 'departamentos'));
+        return view('users.edit', compact('user', 'cargos'));
     }
 
     public function update(Request $request, User $user)
-    {
-        $request->validate([
-            'name'         => 'required|string|max:255',
-            'email'        => 'required|email|unique:users,email,' . $user->id,
-            'cargo_id'     => 'required|exists:cargos,id',
-            'departamentos' => 'nullable|array',
-            'departamentos.*' => 'exists:departamentos,id',
-            'visibilidade_recados' => 'required|in:todos,campanhas,nenhum',
-            'password'     => 'nullable|string|min:6|confirmed',
-        ]);
+{
+    $request->validate([
+        'name'     => 'required|string|max:255',
+        'email'    => [
+            'required',
+            'email',
+            'unique:users,email,' . $user->id,
+            'regex:/^[\w\.-]+@soccsantos\.pt$/'
+        ],
+        'cargo_id' => 'required|exists:cargos,id',
+        'visibilidade_recados' => 'required|in:todos,campanhas,nenhum',
+        'password' => 'nullable|string|min:6|confirmed',
+    ], [
+        'email.regex' => '⚠️ O email tem de ser do domínio @soccsantos.pt.',
+        'email.unique' => '⚠️ Este email já está registado.',
+    ]);
 
-        $data = $request->only('name', 'email', 'cargo_id', 'visibilidade_recados');
+    $data = $request->only('name', 'email', 'cargo_id', 'visibilidade_recados');
 
-        if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->password);
-        }
-
-        $user->update($data);
-
-        // Sincronizar departamentos
-        $user->departamentos()->sync($request->departamentos ?? []);
-
-        return redirect()->route('users.index')->with('success', 'Utilizador atualizado.');
+    if ($request->filled('password')) {
+        $data['password'] = Hash::make($request->password);
     }
+
+    $user->update($data);
+
+    return redirect()->route('users.index')
+        ->with('success', 'Utilizador atualizado.');
+}
+
 
     public function destroy(User $user)
     {

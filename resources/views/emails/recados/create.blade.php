@@ -17,25 +17,34 @@
 <h1>📩 Novo Recado Criado - {{ $recado->tipoFormulario->name ?? 'Tipo Desconhecido' }}</h1>
 
         <p><span class="label">ID:</span> <span class="value">{{ $recado->id }}</span></p>
-        <p><span class="label">Nome:</span> <span class="value">{{ $recado->name }}</span></p>
-        <p><span class="label">Contato:</span> <span class="value">{{ $recado->contact_client }}</span></p>
 
-        @if(!empty($recado->email))
-            <p><span class="label">Email:</span> <span class="value">{{ $recado->email }}</span></p>
-        @endif
+<p><span class="label">Nome:</span> <span class="value">{{ $recado->name }}</span></p>
 
-        <p><span class="label">Assunto:</span><br><span class="value">{{ $recado->assunto }}</span></p>
+<p><span class="label">Contacto:</span>
+    <span class="value">{{ $recado->contact_client }}</span>
+</p>
 
-        @if(isset($recado->setor))
-            <p><span class="label">Setor:</span> <span class="value">{{ $recado->setor->name }}</span></p>
-        @endif
+@if(!empty($recado->matricula))
+    <p><span class="label">Matrícula:</span>
+        <span class="value">{{ $recado->matricula }}</span>
+    </p>
+@endif
 
-        @if(isset($recado->sla))
-            <p><span class="label">SLA:</span> <span class="value">{{ $recado->sla->name }} </span></p>
-        @endif
+@if(!empty($recado->assunto))
+    <p><span class="label">Assunto:</span><br>
+        <span class="value">{{ $recado->assunto }}</span>
+    </p>
+@endif
 
-        <p><span class="label">Criado por:</span> <span class="value">{{ $recado->user->name ?? 'Sistema' }}</span></p>
-        <p><span class="label">Data:</span> <span class="value">{{ $recado->created_at->format('d/m/Y H:i') }}</span></p>
+@if(isset($recado->sla))
+    <p><span class="label">SLA:</span>
+        <span class="value">{{ $recado->sla->name }}</span>
+    </p>
+@endif
+
+<p><span class="label">Data:</span>
+    <span class="value">{{ $recado->created_at->format('d/m/Y H:i') }}</span>
+</p>
 
         @if($guestUrl)
             <a href="{{ $guestUrl }}" class="button">🔍 Ver Recado (Acesso Convidado)</a>

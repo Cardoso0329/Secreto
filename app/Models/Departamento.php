@@ -21,9 +21,11 @@ class Departamento extends Model
     return $this->belongsToMany(Campanha::class, 'campanha_departamento');
 }
 
+// app/Models/Departamento.php
 public function users()
 {
-    return $this->hasMany(User::class); // já deve existir
+    return $this->belongsToMany(User::class, 'departamento_user');
 }
+
 
 }

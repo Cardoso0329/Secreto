@@ -12,7 +12,8 @@ class SLAController extends Controller
     public function index()
     {
         
-        $slas = SLA::all();
+               $slas = SLA::orderBy('name', 'asc')->get();
+
         return view('slas.index', compact('slas'));
     }
 

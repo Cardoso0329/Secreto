@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -24,7 +23,7 @@
     {{-- Mensagens --}}
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
+            {{ session('success') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
@@ -36,6 +35,7 @@
                 <thead class="table-light">
                     <tr>
                         <th>Nome</th>
+                        <th>Utilizadores</th>
                         <th class="text-end">Ações</th>
                     </tr>
                 </thead>
@@ -43,6 +43,18 @@
                     @forelse ($departamentos as $departamento)
                         <tr>
                             <td>{{ $departamento->name }}</td>
+
+                            {{-- Lista de utilizadores associados --}}
+                            <td>
+                                @if($departamento->users->count())
+                                    @foreach($departamento->users as $user)
+                                        <span class="badge bg-info text-dark me-1">{{ $user->name }}</span>
+                                    @endforeach
+                                @else
+                                    <span class="text-muted">Nenhum</span>
+                                @endif
+                            </td>
+
                             <td class="text-end">
                                 <a href="{{ route('departamentos.edit', $departamento->id) }}" class="btn btn-sm btn-outline-warning me-1">Editar</a>
                                 <form action="{{ route('departamentos.destroy', $departamento->id) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Tem certeza que deseja excluir?')">
@@ -54,7 +66,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="2" class="text-center text-muted">Nenhum departamento encontrado.</td>
+                            <td colspan="3" class="text-center text-muted">Nenhum departamento encontrado.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -68,4 +80,3 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-

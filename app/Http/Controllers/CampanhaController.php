@@ -13,7 +13,7 @@ class CampanhaController extends Controller
     // ============================
     public function index()
     {
-        $campanhas = Campanha::with('departamentos')->get();
+        $campanhas = Campanha::orderBy('name', 'asc')->get();
         return view('campanhas.index', compact('campanhas'));
     }
 

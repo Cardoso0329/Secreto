@@ -95,7 +95,7 @@ if ($vista && $vista->filtros) {
     $showPopup = !$request->session()->has('local_trabalho');
 
     return view('recados.index', compact(
-        'recados','estados','tiposFormulario','vistas','vista','showPopup'
+        'recados','estados','tiposFormulario','vistas','vista','showPopup',
     ));
 }
 
@@ -216,12 +216,12 @@ if($request->has('destinatarios_livres')){
 }
 
 
-    public function store(Request $request)
+   public function store(Request $request)
 {
-    // Detecta o tipo de formulário
+    // Tipo de formulário
     $tipoFormulario = TipoFormulario::find($request->tipo_formulario_id);
 
-    // Validação condicional
+    // Validação (SEM estado_id)
     $rules = [
         'name' => 'required|string|max:255',
         'contact_client' => 'required|string|max:255',
@@ -235,7 +235,6 @@ if($request->has('destinatarios_livres')){
         'mensagem' => 'required|string',
         'ficheiro' => 'nullable|file',
         'aviso_id' => 'nullable|exists:avisos,id',
-        'estado_id' => 'required|exists:estados,id',
         'observacoes' => 'nullable|string',
         'abertura' => 'nullable|date',
         'termino' => 'nullable|date',
@@ -249,78 +248,102 @@ if($request->has('destinatarios_livres')){
         'wip' => 'nullable|string|max:255',
     ];
 
-    // Só valida 'assunto' se for Call Center
+    // Assunto obrigatório apenas no Call Center
     if ($tipoFormulario && strtolower($tipoFormulario->name) === 'call center') {
         $rules['assunto'] = 'required|string|max:255';
     }
 
     $validated = $request->validate($rules);
 
+    // Garantir utilizador criador
     $validated['user_id'] = auth()->id();
 
+    // Upload ficheiro
     if ($request->hasFile('ficheiro')) {
-        $validated['ficheiro'] = basename($request->file('ficheiro')->store('recados','public'));
+        $validated['ficheiro'] = basename(
+            $request->file('ficheiro')->store('recados', 'public')
+        );
     }
 
+    // 🔒 ESTADO FORÇADO PARA "NOVO"
+    $estadoNovo = Estado::where('name', 'Novo')->firstOrFail();
+    $validated['estado_id'] = $estadoNovo->id;
+
+    // Criar recado
     $recado = Recado::create($validated);
 
-        // DESTINATÁRIOS (users)
-        if ($request->filled('destinatarios_users')) {
-            $recado->destinatariosUsers()->sync($request->destinatarios_users);
+    /*
+    |--------------------------------------------------------------------------
+    | DESTINATÁRIOS (UTILIZADORES)
+    |--------------------------------------------------------------------------
+    */
+    if ($request->filled('destinatarios_users')) {
+        $recado->destinatariosUsers()->sync($request->destinatarios_users);
 
-            foreach (User::whereIn('id', $request->destinatarios_users)->pluck('email') as $email) {
-                Mail::to($email)->send(new RecadoCriadoMail($recado));
-            }
+        foreach (
+            User::whereIn('id', $request->destinatarios_users)->pluck('email')
+            as $email
+        ) {
+            Mail::to($email)->send(new RecadoCriadoMail($recado));
         }
-
-        // DEST LIVRES
-        if ($request->filled('destinatarios_livres')) {
-            foreach ($request->destinatarios_livres as $email) {
-                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $token = Str::random(60);
-
-                    RecadoGuestToken::create([
-                        'recado_id' => $recado->id,
-                        'email' => $email,
-                        'token' => $token,
-                        'expires_at' => now()->addMonth(),
-                        'is_active' => true
-                    ]);
-
-                    Mail::to($email)->send(new RecadoCriadoMail($recado, route('recados.guest', $token)));
-                }
-            }
-        }
-
-       // GRUPOS
-$gruposSelecionados = $request->input('destinatarios_grupos', []);
-
-// Garantir que Telefonistas esteja sempre incluído
-$telefonistasId = Grupo::where('name','Telefonistas')->first()?->id;
-if ($telefonistasId && !in_array($telefonistasId, $gruposSelecionados)) {
-    $gruposSelecionados[] = $telefonistasId;
-}
-
-$recado->grupos()->sync($gruposSelecionados);
-
-// Enviar emails para todos os usuários dos grupos
-$emails = User::whereHas('grupos', fn($q) => $q->whereIn('grupos.id', $gruposSelecionados))
-    ->pluck('email')->unique();
-
-foreach ($emails as $email) {
-    Mail::to($email)->send(new RecadoCriadoMail($recado));
-}
-
-
-        // Garantir estado pendente
-        $estadoPendente = Estado::where('name','Pendente')->first();
-        if ($estadoPendente) {
-            $recado->estado_id = $estadoPendente->id;
-            $recado->save();
-        }
-
-        return redirect()->route('recados.index')->with('success','Recado criado e emails enviados.');
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | DESTINATÁRIOS LIVRES (GUESTS)
+    |--------------------------------------------------------------------------
+    */
+    if ($request->filled('destinatarios_livres')) {
+        foreach ($request->destinatarios_livres as $email) {
+            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+
+                $token = Str::random(60);
+
+                RecadoGuestToken::create([
+                    'recado_id' => $recado->id,
+                    'email' => $email,
+                    'token' => $token,
+                    'expires_at' => now()->addMonth(),
+                    'is_active' => true
+                ]);
+
+                Mail::to($email)->send(
+                    new RecadoCriadoMail(
+                        $recado,
+                        route('recados.guest', $token)
+                    )
+                );
+            }
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | GRUPOS (GARANTIR TELEFONISTAS)
+    |--------------------------------------------------------------------------
+    */
+    $gruposSelecionados = $request->input('destinatarios_grupos', []);
+
+    $telefonistasId = Grupo::where('name', 'Telefonistas')->first()?->id;
+    if ($telefonistasId && !in_array($telefonistasId, $gruposSelecionados)) {
+        $gruposSelecionados[] = $telefonistasId;
+    }
+
+    $recado->grupos()->sync($gruposSelecionados);
+
+    // Enviar emails para utilizadores dos grupos
+    $emails = User::whereHas('grupos', fn ($q) =>
+        $q->whereIn('grupos.id', $gruposSelecionados)
+    )->pluck('email')->unique();
+
+    foreach ($emails as $email) {
+        Mail::to($email)->send(new RecadoCriadoMail($recado));
+    }
+
+    return redirect()
+        ->route('recados.index')
+        ->with('success', 'Recado criado com sucesso!');
+}
 
 
     public function show($id)

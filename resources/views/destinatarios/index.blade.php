@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -13,15 +12,16 @@
 
 <div class="container mt-5">
 
-    {{-- Cabeçalho --}}
+    {{-- Cabeçalho com pesquisa e botão criar --}}
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold mb-0">Lista de Destinatários</h2>
-        <div>
+        <div class="d-flex">
+            <input type="text" id="searchInput" class="form-control me-2" placeholder="Pesquisar destinatário...">
             <a href="{{ route('destinatarios.create') }}" class="btn btn-primary">Criar Novo Destinatário</a>
         </div>
     </div>
 
-    {{-- Mensagens --}}
+    {{-- Mensagens de sucesso --}}
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
@@ -29,10 +29,10 @@
         </div>
     @endif
 
-    {{-- Tabela --}}
+    {{-- Tabela de destinatários --}}
     <div class="card shadow-sm">
         <div class="card-body">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0" id="destinatariosTable">
                 <thead class="table-light">
                     <tr>
                         <th>Nome</th>
@@ -68,6 +68,20 @@
 
 {{-- Bootstrap JS --}}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+{{-- Pesquisa automática --}}
+<script>
+    document.getElementById('searchInput').addEventListener('input', function() {
+        let filter = this.value.toLowerCase();
+        let rows = document.querySelectorAll('#destinatariosTable tbody tr');
+
+        rows.forEach(row => {
+            let name = row.cells[0].textContent.toLowerCase();
+            let email = row.cells[1].textContent.toLowerCase();
+            row.style.display = (name.includes(filter) || email.includes(filter)) ? '' : 'none';
+        });
+    });
+</script>
+
 </body>
 </html>
-

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -33,17 +32,19 @@
 
     {{-- Tabela --}}
     <div class="card shadow-sm">
-        <div class="card-body">
+        <div class="card-body p-0">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
+                        <th>#</th>
                         <th>Nome</th>
                         <th class="text-end">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($origens as $origem)
+                    @forelse ($origens as $index => $origem)
                         <tr>
+                            <td>{{ $index + 1 }}</td>
                             <td>{{ $origem->name }}</td>
                             <td class="text-end">
                                 <a href="{{ route('origens.edit', $origem->id) }}" class="btn btn-sm btn-outline-warning me-1">Editar</a>
@@ -56,7 +57,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="2" class="text-center text-muted">Nenhuma origem encontrada.</td>
+                            <td colspan="3" class="text-center text-muted">Nenhuma origem encontrada.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -70,4 +71,3 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-

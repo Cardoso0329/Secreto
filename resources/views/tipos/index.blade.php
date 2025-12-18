@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -37,13 +36,15 @@
             <table class="table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
+                        <th>#</th>
                         <th>Nome</th>
                         <th class="text-end">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($tipos as $tipo)
+                    @forelse ($tipos as $index => $tipo)
                         <tr>
+                            <td>{{ $index + 1 }}</td>
                             <td>{{ $tipo->name }}</td>
                             <td class="text-end">
                                 <a href="{{ route('tipos.edit', $tipo->id) }}" class="btn btn-sm btn-outline-warning me-1">Editar</a>
@@ -56,7 +57,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="2" class="text-center text-muted">Nenhum tipo encontrado.</td>
+                            <td colspan="3" class="text-center text-muted">Nenhum tipo encontrado.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -70,4 +71,3 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-

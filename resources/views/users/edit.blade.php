@@ -70,24 +70,6 @@
                     </select>
                 </div>
 
-                {{-- Departamentos --}}
-                <div class="mb-4">
-                    <label class="section-title">Departamentos</label>
-                    <div class="d-flex flex-wrap gap-2">
-                        @foreach($departamentos as $departamento)
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox"
-                                       name="departamentos[]"
-                                       value="{{ $departamento->id }}"
-                                       id="departamento_{{ $departamento->id }}"
-                                       {{ $user->departamentos->contains($departamento->id) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="departamento_{{ $departamento->id }}">
-                                    {{ $departamento->name }}
-                                </label>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
 
                 {{-- Visibilidade --}}
                 <div class="mb-4">

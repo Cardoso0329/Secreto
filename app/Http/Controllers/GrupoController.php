@@ -8,7 +8,7 @@ class GrupoController extends Controller
 {
     public function index()
     {
-        $grupos = Grupo::all();
+        $grupos = Grupo::orderBy('name', 'asc')->get();
         return view('grupos.index', compact('grupos'));
     }
 

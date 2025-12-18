@@ -26,13 +26,20 @@ class RecadoCriadoMail extends Mailable
     /**
      * Build the message.
      */
-    public function build()
-    {
-        return $this->subject('Novo Recado Criado')
-                    ->view('emails.recados.create')
-                    ->with([
-                        'recado' => $this->recado,
-                        'guestUrl' => $this->guestUrl,
-                    ]);
+   public function build()
+{
+    $subject = 'Recado #' . $this->recado->id;
+
+    if (!empty($this->recado->plate)) {
+        $subject .= ' | Matrícula: ' . $this->recado->plate;
     }
+
+    return $this->subject($subject)
+                ->view('emails.recados.create')
+                ->with([
+                    'recado' => $this->recado,
+                    'guestUrl' => $this->guestUrl,
+                ]);
+}
+
 }

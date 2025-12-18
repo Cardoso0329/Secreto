@@ -12,15 +12,39 @@
 <body>
 <div class="container mt-4">
 
-    <!-- Título + botão voltar -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <h2 class="fw-bold mb-0">
-            👥 Utilizadores no Grupo: <span class="text-primary">{{ $grupo->name }}</span>
-        </h2>
-        <a href="{{ route('grupos.index') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Voltar
-        </a>
+   <!-- Título + botão voltar -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h2 class="fw-bold mb-0">
+        👥 Utilizadores no Grupo: 
+        <span class="text-primary">{{ $grupo->name }}</span>
+    </h2>
+    <a href="{{ route('grupos.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+</div>
+
+<!-- Formulário para editar o nome do grupo -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-warning text-dark fw-semibold">
+        ✏️ Editar Nome do Grupo
     </div>
+    <div class="card-body">
+        <form action="{{ route('grupos.update', $grupo->id) }}" method="POST">
+            @csrf
+            @method('PUT')
+
+            <div class="mb-3">
+                <label for="group_name" class="form-label">Nome do Grupo</label>
+                <input type="text" class="form-control" id="group_name" name="name" value="{{ $grupo->name }}" required>
+            </div>
+
+            <button type="submit" class="btn btn-warning">
+                <i class="bi bi-pencil-square"></i> Atualizar Nome
+            </button>
+        </form>
+    </div>
+</div>
+
 
     <!-- Alertas -->
     @if(session('success'))
