@@ -79,6 +79,13 @@ public function departamentos()
 {
     return $this->belongsToMany(Departamento::class, 'departamento_user');
 }
+public function vistas()
+{
+    return $this->belongsToMany(Vista::class)
+                ->withPivot('tipo');
+}
+
+
 
 
 

@@ -119,7 +119,6 @@
                             <input type="text" name="plate" class="form-control" placeholder="Matrícula..." value="{{ request('plate') }}">
                         </div>
 
-
                         <div class="col-md-3">
                             <select name="estado_id" class="form-select">
                                 <option value="">Todos os Estados</option>
@@ -140,6 +139,30 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div class="col-md-3">
+    <select name="campanha_id" class="form-select">
+        <option value="">Todas as Campanhas</option>
+        @foreach($campanhas as $campanha)
+            <option value="{{ $campanha->id }}" {{ request('campanha_id') == $campanha->id ? 'selected' : '' }}>
+                {{ $campanha->name }}
+            </option>
+        @endforeach
+    </select>
+</div>
+
+<div class="col-md-3">
+    <select name="tipo_id" class="form-select">
+        <option value="">Todos os Tipos</option>
+        @foreach($tipos as $tipo)
+            <option value="{{ $tipo->id }}" {{ request('tipo_id') == $tipo->id ? 'selected' : '' }}>
+                {{ $tipo->name }}
+            </option>
+        @endforeach
+    </select>
+</div>
+
+
+
 
                         
 
@@ -265,34 +288,40 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-{{-- Script para modal --}}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Guardar filtros como JSON
+document.addEventListener('DOMContentLoaded', function () {
+
     const formModal = document.querySelector('#guardarVistaModal form');
-    if(formModal){
-        formModal.addEventListener('submit', function() {
+
+    if (formModal) {
+        formModal.addEventListener('submit', function () {
+
             const filtros = {
-                id: document.querySelector('[name="id"]').value,
-                contact_client: document.querySelector('[name="contact_client"]').value,
-                plate: document.querySelector('[name="plate"]').value,
-                estado_id: document.querySelector('[name="estado_id"]').value,
-                tipo_formulario_id: document.querySelector('[name="tipo_formulario_id"]').value
+                id: document.querySelector('[name="id"]')?.value ?? null,
+                contact_client: document.querySelector('[name="contact_client"]')?.value ?? null,
+                plate: document.querySelector('[name="plate"]')?.value ?? null,
+                estado_id: document.querySelector('[name="estado_id"]')?.value ?? null,
+                tipo_formulario_id: document.querySelector('[name="tipo_formulario_id"]')?.value ?? null,
+                campanha_id: document.querySelector('[name="campanha_id"]')?.value ?? null,
+                tipo_id: document.querySelector('[name="tipo_id"]')?.value ?? null,
             };
+
+            // 🔥 ISTO É O QUE FALTAVA
             document.getElementById('filtrosJson').value = JSON.stringify(filtros);
         });
     }
 
-    // Inicializar abas manualmente
-    var triggerTabList = [].slice.call(document.querySelectorAll('#configTabs button'))
+    // Inicializar abas
+    var triggerTabList = [].slice.call(document.querySelectorAll('#configTabs button'));
     triggerTabList.forEach(function (triggerEl) {
-        var tabTrigger = new bootstrap.Tab(triggerEl)
+        var tabTrigger = new bootstrap.Tab(triggerEl);
         triggerEl.addEventListener('click', function (event) {
-            event.preventDefault()
-            tabTrigger.show()
-        })
-    })
+            event.preventDefault();
+            tabTrigger.show();
+        });
+    });
 });
 </script>
+
 
 @endsection

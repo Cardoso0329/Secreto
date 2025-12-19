@@ -51,17 +51,35 @@
     <div class="mb-3 d-flex align-items-center gap-2">
     <label class="mb-0 fw-semibold">Vistas Guardadas:</label>
 
-    <select id="vistaSelect" class="form-select form-select-sm w-auto">
+   @php
+    $vistasPessoal = auth()->user()->vistas->where('pivot.tipo', 'pessoal');
+    $vistasDepartamento = auth()->user()->vistas->where('pivot.tipo', 'departamento');
+@endphp
+
+<select id="vistaSelect" class="form-select form-select-sm w-auto">
     <option value="">-- Nenhuma --</option>
-    @foreach($vistas as $v)
-        <option
-            value="{{ $v->id }}"
-            data-filtros='@json($v->filtros, JSON_HEX_APOS | JSON_HEX_QUOT)'
-            {{ request('vista_id') == $v->id ? 'selected' : '' }}
-        >
-            {{ request('vista_id') == $v->id ? '⭐ ' : '' }}{{ $v->nome }} ({{ ucfirst($v->acesso) }})
-        </option>
-    @endforeach
+
+    @if($vistasPessoal->count())
+        <optgroup label="Pessoal">
+            @foreach($vistasPessoal as $v)
+                <option value="{{ $v->id }}"
+                        data-filtros='@json($v->filtros)'>
+                    {{ $v->nome }}
+                </option>
+            @endforeach
+        </optgroup>
+    @endif
+
+    @if($vistasDepartamento->count())
+        <optgroup label="Departamento">
+            @foreach($vistasDepartamento as $v)
+                <option value="{{ $v->id }}"
+                        data-filtros='@json($v->filtros)'>
+                    {{ $v->nome }}
+                </option>
+            @endforeach
+        </optgroup>
+    @endif
 </select>
 </div>
 
@@ -75,26 +93,12 @@
         <input type="text" name="id" class="form-control" placeholder="ID..." value="{{ request('id') }}">
     </div>
 
-    <div class="col-md-3">
-        <select name="estado_id" class="form-select">
-            <option value="">Todos os Estados</option>
-            @foreach($estados as $estado)
-                <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
-                    {{ $estado->name }}
-                </option>
-            @endforeach
-        </select>
+     <div class="col-md-2">
+        <input type="text" name="contact_client" class="form-control" placeholder="Contacto..." value="{{ request('contact_client') }}">
     </div>
 
-    <div class="col-md-3">
-        <select name="tipo_formulario_id" class="form-select">
-            <option value="">Todos os Tipos</option>
-            @foreach($tiposFormulario as $tipo_formulario)
-                <option value="{{ $tipo_formulario->id }}" {{ request('tipo_formulario_id') == $tipo_formulario->id ? 'selected' : '' }}>
-                    {{ $tipo_formulario->name }}
-                </option>
-            @endforeach
-        </select>
+    <div class="col-md-2">
+        <input type="text" name="plate" class="form-control" placeholder="Matrícula..." value="{{ request('plate') }}">
     </div>
 
     <div class="col-12 d-flex gap-2">
@@ -177,8 +181,9 @@
                 @php
                     $estadoNome = strtolower($recado->estado->name ?? '');
                     $badgeEstado = match($estadoNome) {
+                        'novo' => 'bg-purple text-white',
                         'pendente' => 'bg-warning text-dark',
-                        'tratado' => 'bg-purple text-white',
+                        'tratado' => 'bg-success text-white',
                         default => 'bg-secondary text-white'
                     };
                 @endphp

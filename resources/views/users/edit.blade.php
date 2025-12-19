@@ -69,21 +69,58 @@
                         @endforeach
                     </select>
                 </div>
+                <div class="mb-3 d-flex align-items-center gap-2">
 
 
-                {{-- Visibilidade --}}
-                <div class="mb-4">
-                    <label class="section-title">O que este utilizador pode ver?</label>
-                    <select name="visibilidade_recados" class="form-select form-select-lg">
-                        <option value="todos" {{ $user->visibilidade_recados == 'todos' ? 'selected' : '' }}>
-                            Ver TODOS os Recados
-                        </option>
-                        <option value="campanhas" {{ $user->visibilidade_recados == 'campanhas' ? 'selected' : '' }}>
-                            Ver apenas Recados de Campanhas
-                        </option>
-                        
-                    </select>
+    {{-- Vistas --}}
+<div class="mb-4">
+    <label class="section-title">Vistas Guardadas</label>
+
+    @foreach($vistas as $vista)
+        @php
+            $tipo = $user->vistas
+                ->firstWhere('id', $vista->id)
+                ?->pivot->tipo;
+        @endphp
+
+        <div class="border rounded p-3 mb-2 bg-white">
+            <div class="fw-semibold mb-2">
+                {{ $vista->nome }}
+            </div>
+
+            <div class="d-flex gap-3">
+                <div class="form-check">
+                    <input class="form-check-input"
+                           type="radio"
+                           name="vistas[{{ $vista->id }}]"
+                           value="pessoal"
+                           {{ $tipo === 'pessoal' ? 'checked' : '' }}>
+                    <label class="form-check-label">Pessoal</label>
                 </div>
+
+                <div class="form-check">
+                    <input class="form-check-input"
+                           type="radio"
+                           name="vistas[{{ $vista->id }}]"
+                           value="departamento"
+                           {{ $tipo === 'departamento' ? 'checked' : '' }}>
+                    <label class="form-check-label">Departamento</label>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input"
+                           type="radio"
+                           name="vistas[{{ $vista->id }}]"
+                           value=""
+                           {{ !$tipo ? 'checked' : '' }}>
+                    <label class="form-check-label text-muted">Não mostrar</label>
+                </div>
+            </div>
+        </div>
+    @endforeach
+</div>
+
+
 
                 {{-- Password --}}
                 <div class="mb-4">

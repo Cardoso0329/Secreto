@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Cargo;
 use App\Models\Departamento;
+use App\Models\Vista;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
@@ -16,8 +17,9 @@ class UserController extends Controller
     public function index()
     {
         $users = User::with(['cargo', 'departamentos'])
-        ->orderBy('name', 'asc')
-        ->get();
+            ->orderBy('name', 'asc')
+            ->get();
+
         return view('users.index', compact('users'));
     }
 
@@ -30,86 +32,103 @@ class UserController extends Controller
     }
 
     public function store(Request $request)
-{
-    $request->validate([
-        'name'     => 'required|string|max:255',
-        'email'    => [
-            'required',
-            'email',
-            'unique:users,email',
-            'regex:/^[\w\.-]+@soccsantos\.pt$/'
-        ],
-        'cargo_id' => 'required|exists:cargos,id',
-        'password' => 'required|string|min:6|confirmed',
-    ], [
-        'email.regex' => '⚠️ O email tem de ser do domínio @soccsantos.pt.',
-        'email.unique' => '⚠️ Este email já está registado.',
-    ]);
+    {
+        $request->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => [
+                'required',
+                'email',
+                'unique:users,email',
+                'regex:/^[\w\.-]+@soccsantos\.pt$/'
+            ],
+            'cargo_id' => 'required|exists:cargos,id',
+            'password' => 'required|string|min:6|confirmed',
+        ], [
+            'email.regex'  => '⚠️ O email tem de ser do domínio @soccsantos.pt.',
+            'email.unique' => '⚠️ Este email já está registado.',
+        ]);
 
-    $user = User::create([
-        'name'     => $request->name,
-        'email'    => $request->email,
-        'cargo_id' => $request->cargo_id,
-        'password' => Hash::make($request->password),
-        'visibilidade_recados' => 'nenhum',
-    ]);
+        User::create([
+            'name'     => $request->name,
+            'email'    => $request->email,
+            'cargo_id' => $request->cargo_id,
+            'password' => Hash::make($request->password),
+            'visibilidade_recados' => 'nenhum',
+        ]);
 
-    return redirect()->route('users.index')
-        ->with('success', 'Utilizador criado.');
-}
-
-
+        return redirect()
+            ->route('users.index')
+            ->with('success', 'Utilizador criado.');
+    }
 
     public function edit(User $user)
     {
         $cargos = Cargo::all();
-        return view('users.edit', compact('user', 'cargos'));
+        $vistas = Vista::all();
+
+        // carregar vistas com pivot
+        $user->load('vistas');
+
+        return view('users.edit', compact('user', 'cargos', 'vistas'));
     }
 
     public function update(Request $request, User $user)
-{
-    $request->validate([
-        'name'     => 'required|string|max:255',
-        'email'    => [
-            'required',
-            'email',
-            'unique:users,email,' . $user->id,
-            'regex:/^[\w\.-]+@soccsantos\.pt$/'
-        ],
-        'cargo_id' => 'required|exists:cargos,id',
-        'visibilidade_recados' => 'required|in:todos,campanhas,nenhum',
-        'password' => 'nullable|string|min:6|confirmed',
-    ], [
-        'email.regex' => '⚠️ O email tem de ser do domínio @soccsantos.pt.',
-        'email.unique' => '⚠️ Este email já está registado.',
-    ]);
+    {
+        $request->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => [
+                'required',
+                'email',
+                'unique:users,email,' . $user->id,
+                'regex:/^[\w\.-]+@soccsantos\.pt$/'
+            ],
+            'cargo_id' => 'required|exists:cargos,id',
+            'password' => 'nullable|string|min:6|confirmed',
+            'vistas'   => 'array',
+        ], [
+            'email.regex'  => '⚠️ O email tem de ser do domínio @soccsantos.pt.',
+            'email.unique' => '⚠️ Este email já está registado.',
+        ]);
 
-    $data = $request->only('name', 'email', 'cargo_id', 'visibilidade_recados');
+        $data = $request->only(['name', 'email', 'cargo_id']);
 
-    if ($request->filled('password')) {
-        $data['password'] = Hash::make($request->password);
+        if ($request->filled('password')) {
+            $data['password'] = bcrypt($request->password);
+        }
+
+        $user->update($data);
+
+        /**
+         * 🔥 ATUALIZAÇÃO DAS VISTAS (pivot com tipo)
+         */
+        $user->vistas()->detach();
+
+        foreach ($request->input('vistas', []) as $vistaId => $tipo) {
+            if (in_array($tipo, ['pessoal', 'departamento'])) {
+                $user->vistas()->attach($vistaId, [
+                    'tipo' => $tipo
+                ]);
+            }
+        }
+
+        return redirect()
+            ->route('users.edit', $user->id)
+            ->with('success', 'Utilizador atualizado com sucesso!');
     }
-
-    $user->update($data);
-
-    return redirect()->route('users.index')
-        ->with('success', 'Utilizador atualizado.');
-}
-
 
     public function destroy(User $user)
     {
         $user->delete();
-        return redirect()->route('users.index')->with('success', 'Utilizador removido.');
+        return redirect()
+            ->route('users.index')
+            ->with('success', 'Utilizador removido.');
     }
 
-    // Exportar utilizadores
     public function export()
     {
         return Excel::download(new UsersExport, 'users.xlsx');
     }
 
-    // Importar utilizadores
     public function import(Request $request)
     {
         $request->validate([
@@ -118,9 +137,9 @@ class UserController extends Controller
 
         try {
             Excel::import(new UsersImport, $request->file('file'));
-            return redirect()->back()->with('success', 'Utilizadores importados com sucesso!');
+            return back()->with('success', 'Utilizadores importados com sucesso!');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Erro ao importar: ' . $e->getMessage());
+            return back()->with('error', 'Erro ao importar: ' . $e->getMessage());
         }
     }
 

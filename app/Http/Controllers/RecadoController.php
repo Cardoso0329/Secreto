@@ -90,6 +90,8 @@ if ($vista && $vista->filtros) {
               });
         })
         ->get();
+        User::withCount('vistas')->get();
+
 
     // --- Popup local ---
     $showPopup = !$request->session()->has('local_trabalho');
