@@ -14,9 +14,13 @@
 </head>
 <body>
     <div class="email-container">
+<<<<<<< HEAD
        <h1>📩 Novo Recado Criado</h1>
         <h2 style="color: #0d6efd;">🚘 Matrícula: {{ $recado->plate }}</h2>
 
+=======
+<h1>📩 Novo Recado Criado - {{ $recado->tipoFormulario->name ?? 'Tipo Desconhecido' }}</h1>
+>>>>>>> main
 
         <p><span class="label">ID:</span> <span class="value">{{ $recado->id }}</span></p>
         <p><span class="label">Nome:</span> <span class="value">{{ $recado->name }}</span></p>

@@ -42,6 +42,11 @@
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="estados-tab" data-bs-toggle="tab" data-bs-target="#estados" type="button" role="tab">📊 Estados</button>
         </li>
+        <li class="nav-item" role="presentation">
+    <button class="nav-link" id="campanhas-tab" data-bs-toggle="tab" data-bs-target="#campanhas" type="button" role="tab">🏷️ Campanhas</button>
+</li>
+
+
     </ul>
 
     <!-- Conteúdo das abas -->
@@ -254,6 +259,11 @@
         <div class="tab-pane fade" id="estados" role="tabpanel">
             <iframe src="{{ route('estados.index') }}" width="100%" height="600" frameborder="0"></iframe>
         </div>
+        <!-- Campanhas -->
+<div class="tab-pane fade" id="campanhas" role="tabpanel">
+    <iframe src="{{ route('campanhas.index') }}" width="100%" height="600" frameborder="0"></iframe>
+</div>
+
 
     </div>
 </div>

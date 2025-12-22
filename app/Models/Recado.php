@@ -20,14 +20,17 @@ class Recado extends Model
     'name', 'contact_client', 'operator_email', 'sla_id', 'tipo_id', 
     'origem_id', 'setor_id', 'departamento_id', 'mensagem', 'ficheiro',
     'aviso_id', 'estado_id', 'observacoes', 'abertura', 'termino',
-    'tipo_formulario_id', 'wip', 'destinatario_livre', 'plate', 'user_id', 'assunto'
+    'tipo_formulario_id', 'wip', 'destinatario_livre', 'plate', 'user_id', 'assunto',  'campanha_id' 
     
 ];
 
 
 public function setor() { return $this->belongsTo(Setor::class); }
 public function origem() { return $this->belongsTo(Origem::class); }
-public function departamento() { return $this->belongsTo(Departamento::class); }
+public function departamento()
+{
+    return $this->belongsTo(Departamento::class, 'departamento_id');
+}
 public function destinatarios() { return $this->belongsToMany(User::class, 'recado_user', 'recado_id', ); }
 public function estado() { return $this->belongsTo(Estado::class); }
 public function sla() { return $this->belongsTo(SLA::class); }
@@ -80,6 +83,11 @@ public function destinatariosUsers()
 public function destinatariosLivres()
 {
     return $this->hasMany(Destinatario::class);
+}
+
+public function campanha()
+{
+    return $this->belongsTo(Campanha::class, 'campanha_id');
 }
 
 
