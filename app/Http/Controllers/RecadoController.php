@@ -81,16 +81,16 @@ if ($vista && $vista->filtros) {
 
     // --- Vistas disponíveis ---
     $vistas = Vista::query()
-        ->where(function ($q) use ($user) {
-            $q->where('acesso','publico')
-              ->orWhere('user_id',$user->id)
-              ->orWhere(function ($q2) use ($user) {
-                  $q2->where('acesso','especifico')
-                     ->whereJsonContains('usuarios_acesso', $user->id);
-              });
-        })
-        ->get();
-        User::withCount('vistas')->get();
+    ->where(function ($q) use ($user) {
+        $q->where('acesso', 'publico')
+          ->orWhere(function ($q2) use ($user) {
+              $q2->where('acesso', 'privado')
+                 ->where('user_id', $user->id);
+          });
+    })
+    ->orderBy('created_at', 'desc')
+    ->get();
+
 
 
     // --- Popup local ---
@@ -496,23 +496,18 @@ if($request->has('destinatarios_livres')){
     public function storeVista(Request $request)
 {
     $request->validate([
-        'nome' => 'required|string|max:255',
-        'filtros' => 'required|array',
-        'logica' => 'required|in:AND,OR',
-        'colunas_visiveis' => 'array',
-        'acesso' => 'required|in:privado,publico,especifico',
-        'usuarios_acesso' => 'array'
-    ]);
+    'nome' => 'required|string|max:255',
+    'filtros' => 'required|array',
+    'acesso' => 'required|in:privado,publico',
+]);
 
-    Vista::create([
-        'nome' => $request->nome,
-        'user_id' => auth()->id(),
-        'filtros' => $request->filtros,
-        'logica' => $request->logica,
-        'colunas_visiveis' => $request->colunas_visiveis,
-        'acesso' => $request->acesso,
-        'usuarios_acesso' => $request->usuarios_acesso ?? []
-    ]);
+
+   Vista::create([
+    'nome' => $request->nome,
+    'user_id' => auth()->id(),
+    'filtros' => $request->filtros,
+    'acesso' => $request->acesso,
+]);
 
     return redirect()->back()->with('success','Vista guardada com sucesso!');
 }

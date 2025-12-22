@@ -117,6 +117,9 @@ Route::get('/recados/export', [RecadoController::class, 'exportFiltered'])
 
      Route::get('/vistas', [VistaController::class, 'index'])->name('vistas.index');
 
+     Route::get('vistas/{vista}/edit', [VistaController::class, 'edit'])->name('vistas.edit');
+Route::put('vistas/{vista}', [VistaController::class, 'update'])->name('vistas.update');
+
     Route::post('/vistas', [VistaController::class, 'store'])
         ->name('vistas.store');
 

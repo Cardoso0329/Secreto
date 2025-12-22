@@ -5,231 +5,221 @@
     <div class="card shadow-lg border-0 rounded-4">
         <div class="card-body p-5">
 
-<div class="d-flex justify-content-between align-items-center mb-5">
-    <h2 class="fw-bold m-0">📨 Criar Novo Recado</h2>
-    <a href="{{ route('recados.index') }}" class="btn btn-light btn-sm rounded-circle border" title="Voltar">
-        <i class="bi bi-x-lg"></i>
-    </a>
-</div>
+            <div class="d-flex justify-content-between align-items-center mb-5">
+                <h2 class="fw-bold m-0">📨 Criar Novo Recado</h2>
+                <a href="{{ route('recados.index') }}" class="btn btn-light btn-sm rounded-circle border" title="Voltar">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
 
-<form action="{{ route('recados.store') }}" method="POST" enctype="multipart/form-data">
-    @csrf
-    <input type="hidden" name="tipo_formulario_id" value="{{ $tipoFormularioId }}">
+            @php
+                // Garantir que temos tipo_formulario_id válido
+                $tipoFormularioId = $tipoFormularioId ?? session('local_trabalho_tipo_id');
+                if (!$tipoFormularioId) {
+                    // Redireciona se não existir tipo_formulario
+                    echo '<div class="alert alert-danger">Tipo de formulário não selecionado.</div>';
+                }
+            @endphp
 
-    {{-- Nome do Cliente --}}
-    <div class="form-floating mb-4">
-        <input type="text" name="name" id="name" class="form-control rounded-3" required>
-        <label for="name">Nome do Cliente *</label>
-    </div>
+            <form action="{{ route('recados.store') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" name="tipo_formulario_id" value="{{ $tipoFormularioId }}">
 
-    {{-- Contacto do Cliente --}}
-    <div class="form-floating mb-4">
-        <input type="text" name="contact_client" id="contact_client" class="form-control rounded-3" required>
-        <label for="contact_client">Contacto do Cliente *</label>
-    </div>
+                {{-- Nome do Cliente --}}
+                <div class="form-floating mb-4">
+                    <input type="text" name="name" id="name" class="form-control rounded-3" required>
+                    <label for="name">Nome do Cliente *</label>
+                </div>
 
-    {{-- Matrícula --}}
-    <div class="form-floating mb-4">
-        <input type="text" name="plate" id="plate" class="form-control rounded-3">
-        <label for="plate">Matrícula</label>
-    </div>
+                {{-- Contacto do Cliente --}}
+                <div class="form-floating mb-4">
+                    <input type="text" name="contact_client" id="contact_client" class="form-control rounded-3" required>
+                    <label for="contact_client">Contacto do Cliente *</label>
+                </div>
 
-    {{-- Email do Operador --}}
-    <div class="form-floating mb-4">
-        <input type="email" name="operator_email" id="operator_email" class="form-control rounded-3 bg-light"
-               value="{{ Auth::user()->email }}" readonly>
-        <label for="operator_email">Email do Operador *</label>
-    </div>
+                {{-- Matrícula --}}
+                <div class="form-floating mb-4">
+                    <input type="text" name="plate" id="plate" class="form-control rounded-3">
+                    <label for="plate">Matrícula</label>
+                </div>
 
-    {{-- SLA --}}
-    <div class="mb-4">
-        <label class="form-label fw-semibold">SLA *</label>
-        <select name="sla_id" id="sla_id" class="form-select rounded-3" required>
-            @foreach ($slas as $item)
-                <option value="{{ $item->id }}"
-                    {{ $item->name === 'A resolver - 12h' ? 'selected' : '' }}>
-                    {{ $item->name }}
-                </option>
-            @endforeach
-        </select>
-    </div>
+                {{-- Email do Operador --}}
+                <div class="form-floating mb-4">
+                    <input type="email" name="operator_email" id="operator_email" class="form-control rounded-3 bg-light"
+                           value="{{ Auth::user()->email }}" readonly>
+                    <label for="operator_email">Email do Operador *</label>
+                </div>
 
-    {{-- Tipo --}}
-    <div class="mb-4">
-        <label class="form-label fw-semibold">Tipo *</label>
-        <select name="tipo_id" id="tipo_id" class="form-select rounded-3" required>
-            <option value="">-- Selecione --</option>
-            @foreach ($tipos as $item)
-                <option value="{{ $item->id }}">{{ $item->name }}</option>
-            @endforeach
-        </select>
-    </div>
+                {{-- SLA --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">SLA *</label>
+                    <select name="sla_id" id="sla_id" class="form-select rounded-3" required>
+                        @foreach ($slas as $item)
+                            <option value="{{ $item->id }}" {{ $item->name === 'A resolver - 12h' ? 'selected' : '' }}>
+                                {{ $item->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-    {{-- Origem --}}
-    <div class="mb-4">
-        <label class="form-label fw-semibold">Origem *</label>
-        <select class="form-select rounded-3" disabled>
-            @foreach ($origens as $item)
-                <option value="{{ $item->id }}" {{ $item->name === 'Telefone' ? 'selected' : '' }}>
-                    {{ $item->name }}
-                </option>
-            @endforeach
-        </select>
+                {{-- Tipo --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Tipo *</label>
+                    <select name="tipo_id" id="tipo_id" class="form-select rounded-3" required>
+                        <option value="">-- Selecione --</option>
+                        @foreach ($tipos as $item)
+                            <option value="{{ $item->id }}">{{ $item->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-        <input type="hidden" name="origem_id"
-               value="{{ $origens->firstWhere('name','Telefone')->id }}">
-    </div>
+                {{-- Origem (fixo Telefone) --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Origem *</label>
+                    <select class="form-select rounded-3" disabled>
+                        @foreach ($origens as $item)
+                            <option value="{{ $item->id }}" {{ $item->name === 'Telefone' ? 'selected' : '' }}>
+                                {{ $item->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <input type="hidden" name="origem_id"
+                           value="{{ $origens->firstWhere('name','Telefone')->id }}">
+                </div>
 
-    {{-- Campanha (Só na CENTRAL) --}}
-<div class="mb-4">
-    <label for="campanha_id" class="form-label fw-semibold">Campanha</label>
-    <select name="campanha_id" id="campanha_id" class="form-select rounded-3">
-        <option value="">-- Selecionar Campanha --</option>
-        @foreach($campanhas as $campanha)
-            <option value="{{ $campanha->id }}">{{ $campanha->name }}</option>
-        @endforeach
-    </select>
-</div>
+                {{-- Campanha --}}
+                <div class="mb-4">
+                    <label for="campanha_id" class="form-label fw-semibold">Campanha</label>
+                    <select name="campanha_id" id="campanha_id" class="form-select rounded-3">
+                        <option value="">-- Selecionar Campanha --</option>
+                        @foreach($campanhas as $campanha)
+                            <option value="{{ $campanha->id }}">{{ $campanha->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
+                @php
+                $setoresPermitidos = [
+                    'Usados','Novos VLP', 'Novos VCL','Novos Smart','Novos VCP',
+                    'Peças','Oficina VLP','Oficina Smart','Oficina VCL','Oficina VCP','Oficina Colisão',
+                    'Marcações VLP','Marcações Smart','Marcações VCL','Marcações VCP','Marcações Colisão',
+                    'Orçamentos VLP','Orçamentos Smart','Orçamentos VCL','Orçamentos VCP','Orçamentos Colisão',
+                    'Financiamento','Recursos Humanos','Informática','Administração','Jurídico',
+                    'RAC','Marketing','Contabilidade','Financeiro',
+                ];
+                @endphp
 
-@php
-$setoresPermitidos = [
-    'Usados','Novos VLP', 'Novos VCL', 'Novos Smart', 'Novos VCP',
-    'Peças',
-    'Oficina VLP','Oficina Smart','Oficina VCL','Oficina VCP','Oficina Colisão',
-    'Marcações VLP','Marcações Smart','Marcações VCL','Marcações VCP','Marcações Colisão',
-    'Orçamentos VLP','Orçamentos Smart','Orçamentos VCL','Orçamentos VCP','Orçamentos Colisão',
-    'Financiamento','Recursos Humanos','Informática','Administração','Jurídico',
-    'RAC','Marketing','Contabilidade','Financeiro',
-];
-@endphp
+                {{-- Setor --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Setores *</label>
+                    <select name="setor_id" id="setor_id" class="form-select rounded-3" required>
+                        <option value="">-- Selecione --</option>
+                        @foreach ($setores as $setor)
+                            @if(in_array($setor->name, $setoresPermitidos))
+                                <option value="{{ $setor->id }}">{{ $setor->name }}</option>
+                            @endif
+                        @endforeach
+                    </select>
+                </div>
 
-    {{-- Setor --}}
-    <div class="mb-4">
-        <label class="form-label fw-semibold">Setores *</label>
-        <select name="setor_id" id="setor_id" class="form-select rounded-3" required>
-            <option value="">-- Selecione --</option>
-            @foreach ($setores as $setor)
-                @if(in_array($setor->name, $setoresPermitidos))
-                    <option value="{{ $setor->id }}">{{ $setor->name }}</option>
-                @endif
-            @endforeach
-        </select>
-    </div>
+                {{-- Departamento --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Departamento *</label>
+                    <select name="departamento_id" id="departamento_id" class="form-select rounded-3" required>
+                        <option value="">-- Selecione --</option>
+                        @foreach ($departamentos as $item)
+                            <option value="{{ $item->id }}">{{ $item->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-    {{-- Departamento --}}
-    <div class="mb-4">
-        <label class="form-label fw-semibold">Departamento *</label>
-        <select name="departamento_id" id="departamento_id" class="form-select rounded-3" required>
-            <option value="">-- Selecione --</option>
-            @foreach ($departamentos as $item)
-                <option value="{{ $item->id }}">{{ $item->name }}</option>
-            @endforeach
-        </select>
-    </div>
+                {{-- Destinatários Users --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Destinatários</label>
+                    <div class="input-group">
+                        <select id="novoDestinatario" class="form-select rounded-start">
+                            <option value="">Selecione um destinatário</option>
+                            @foreach (\App\Models\User::all() as $user)
+                                <option value="{{ $user->id }}" data-name="{{ $user->name }}">{{ $user->name }}</option>
+                            @endforeach
+                        </select>
+                        <button type="button" id="adicionarDestinatario" class="btn btn-success rounded-end" disabled>
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                    <div id="listaDestinatarios" class="mt-3 d-flex flex-wrap gap-2"></div>
+                    <div id="destinatariosInputs"></div>
+                </div>
 
-    {{-- GRUPOS DESTINATÁRIOS OCULTO --}}
+                {{-- Destinatários Grupos --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Grupo Destinatário</label>
+                    <select name="destinatarios_grupos[]" id="destinatarios_grupos" class="form-select rounded-3" multiple>
+                        @foreach (\App\Models\Grupo::all() as $grupo)
+                            <option value="{{ $grupo->id }}" {{ $grupo->name === 'Telefonistas' ? 'selected' : '' }}>
+                                {{ $grupo->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <small class="form-text text-muted">Segure Ctrl (Windows) ou Cmd (Mac).</small>
+                </div>
 
+                {{-- Hidden Telefonistas (garante envio) --}}
+                <input type="hidden" name="destinatarios_grupos[]" value="{{ \App\Models\Grupo::where('name','Telefonistas')->first()->id }}">
 
-    {{-- Destinatários Dinâmicos --}}
-    <div class="mb-4">
-        <label class="form-label fw-semibold">Destinatários</label>
-        <div class="input-group">
-            <select id="novoDestinatario" class="form-select rounded-start">
-                <option value="">Selecione um destinatário</option>
-                @foreach (\App\Models\User::all() as $user)
-                    <option value="{{ $user->id }}" data-name="{{ $user->name }}">{{ $user->name }}</option>
-                @endforeach
-            </select>
-            <button type="button" id="adicionarDestinatario" class="btn btn-success rounded-end" disabled>
-                <i class="bi bi-plus-lg"></i>
-            </button>
-        </div>
+                {{-- Destinatários Livres --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Destinatários Livres</label>
+                    <div class="input-group">
+                        <input type="text" id="novoDestinatarioLivre" class="form-control rounded-start" placeholder="Adicionar destinatário livre">
+                        <button type="button" id="adicionarDestinatarioLivre" class="btn btn-success rounded-end" disabled>
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                    <div id="listaDestinatariosLivres" class="mt-3 d-flex flex-wrap gap-2"></div>
+                    <div id="destinatariosLivresInputs"></div>
+                </div>
 
-        <div id="listaDestinatarios" class="mt-3 d-flex flex-wrap gap-2"></div>
-        <div id="destinatariosInputs"></div>
-    </div>
+                {{-- Mensagem --}}
+                <div class="mb-4">
+                    <label for="mensagem" class="form-label fw-semibold">Mensagem *</label>
+                    <textarea name="mensagem" id="mensagem" class="form-control rounded-3" rows="4" required></textarea>
+                </div>
 
-    <div class="mb-4">
+                {{-- Ficheiro --}}
+                <div class="mb-4">
+                    <label for="ficheiro" class="form-label fw-semibold">Ficheiro</label>
+                    <input type="file" name="ficheiro" id="ficheiro" class="form-control rounded-3">
+                </div>
 
-    {{-- Grupo Destinatário (pré-seleciona Telefonistas, mas editável) --}}
-<div class="mb-4">
-    <label class="form-label fw-semibold">Grupo Destinatário</label>
-    <select name="destinatarios_grupos[]" id="destinatarios_grupos" class="form-select rounded-3" multiple>
-        @foreach (\App\Models\Grupo::all() as $grupo)
-            <option value="{{ $grupo->id }}" 
-                {{ $grupo->name === 'Telefonistas' ? 'selected' : '' }}>
-                {{ $grupo->name }}
-            </option>
-        @endforeach
-    </select>
-    <small class="form-text text-muted">Segure Ctrl (Windows).</small>
-</div>
+                {{-- Aviso --}}
+                <div class="mb-4">
+                    <label for="aviso_id" class="form-label fw-semibold">Aviso</label>
+                    <select name="aviso_id" id="aviso_id" class="form-select rounded-3">
+                        <option value="">-- Selecione --</option>
+                        @foreach ($avisos as $aviso)
+                            <option value="{{ $aviso->id }}">{{ $aviso->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
+                {{-- Estado oculto --}}
+                <input type="hidden" name="estado_id" value="{{ $estados->firstWhere('name', 'Pendente')?->id }}">
 
-    {{-- Hidden real para enviar no formulário --}}
-    <input type="hidden" name="destinatarios_grupos[]"
-           value="{{ \App\Models\Grupo::where('name','Telefonistas')->first()->id }}">
-</div>
+                {{-- Abertura --}}
+                <div class="form-floating mb-4">
+                    <input type="datetime-local" name="abertura" id="abertura" class="form-control rounded-3"
+                           value="{{ now()->format('Y-m-d\TH:i') }}">
+                    <label for="abertura">Data de Abertura</label>
+                </div>
 
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-lg rounded-pill">
+                        <i class="bi bi-send me-1"></i> Enviar Recado
+                    </button>
+                </div>
 
-    {{-- Destinatários Livres --}}
-    <div class="mb-4">
-        <label class="form-label fw-semibold">Destinatários Livres</label>
-        <div class="input-group">
-            <input type="text" id="novoDestinatarioLivre" class="form-control rounded-start"
-                   placeholder="Adicionar destinatário livre">
-            <button type="button" id="adicionarDestinatarioLivre" class="btn btn-success rounded-end" disabled>
-                <i class="bi bi-plus-lg"></i>
-            </button>
-        </div>
-
-        <div id="listaDestinatariosLivres" class="mt-3 d-flex flex-wrap gap-2"></div>
-        <div id="destinatariosLivresInputs"></div>
-    </div>
-
-    {{-- Mensagem --}}
-    <div class="mb-4">
-        <label for="mensagem" class="form-label fw-semibold">Mensagem *</label>
-        <textarea name="mensagem" id="mensagem" class="form-control rounded-3" rows="4" required></textarea>
-    </div>
-
-    {{-- Ficheiro --}}
-    <div class="mb-4">
-        <label for="ficheiro" class="form-label fw-semibold">Ficheiro</label>
-        <input type="file" name="ficheiro" id="ficheiro" class="form-control rounded-3">
-    </div>
-
-    {{-- Aviso --}}
-    <div class="mb-4">
-        <label for="aviso_id" class="form-label fw-semibold">Aviso</label>
-        <select name="aviso_id" id="aviso_id" class="form-select rounded-3">
-            <option value="">-- Selecione --</option>
-            @foreach ($avisos as $aviso)
-                <option value="{{ $aviso->id }}">{{ $aviso->name }}</option>
-            @endforeach
-        </select>
-    </div>
-
-    @php
-        $estadoPendente = $estados->firstWhere('name', 'Pendente');
-    @endphp
-    <input type="hidden" name="estado_id" value="{{ $estadoPendente?->id }}">
-
-    {{-- Abertura --}}
-    <div class="form-floating mb-4">
-        <input type="datetime-local" name="abertura" id="abertura" class="form-control rounded-3"
-               value="{{ now()->format('Y-m-d\TH:i') }}">
-        <label for="abertura">Data de Abertura</label>
-    </div>
-
-    <div class="d-grid">
-        <button type="submit" class="btn btn-primary btn-lg rounded-pill">
-            <i class="bi bi-send me-1"></i> Enviar Recado
-        </button>
-    </div>
-
-</form>
+            </form>
 
         </div>
     </div>
@@ -285,7 +275,6 @@ document.addEventListener('DOMContentLoaded', () => {
         atualizarBotao();
     });
 
-
     // ============================
     // Destinatários Livres
     // ============================
@@ -295,9 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const badgeContainerLivre = document.getElementById('listaDestinatariosLivres');
     const inputContainerLivre = document.getElementById('destinatariosLivresInputs');
 
-    const atualizarBotaoLivre = () =>
-        addBtnLivre.disabled = inputLivre.value.trim().length === 0;
-
+    const atualizarBotaoLivre = () => addBtnLivre.disabled = inputLivre.value.trim().length === 0;
     inputLivre.addEventListener('input', atualizarBotaoLivre);
 
     addBtnLivre.addEventListener('click', () => {
@@ -330,19 +317,14 @@ document.addEventListener('DOMContentLoaded', () => {
         atualizarBotaoLivre();
     });
 
-
     // ============================
     // Validação Antes do Submit
     // ============================
     document.querySelector('form').addEventListener('submit', function (e) {
 
-        const temUsers =
-            document.querySelectorAll('input[name="destinatarios_users[]"]').length > 0;
-
-        const temLivres =
-            document.querySelectorAll('input[name="destinatarios_livres[]"]').length > 0;
-
-       const temGrupos = document.querySelectorAll('input[name="destinatarios_grupos[]"]').length > 0;
+        const temUsers = document.querySelectorAll('input[name="destinatarios_users[]"]').length > 0;
+        const temLivres = document.querySelectorAll('input[name="destinatarios_livres[]"]').length > 0;
+        const temGrupos = document.querySelectorAll('input[name="destinatarios_grupos[]"]').length > 0;
 
         if (!temUsers && !temLivres && !temGrupos) {
             e.preventDefault();
