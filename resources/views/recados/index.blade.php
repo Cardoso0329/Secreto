@@ -33,7 +33,6 @@
 </style>
 @endif
 
-
 <div class="container mt-4">
 
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -86,8 +85,8 @@
                 </div>
 
                 <div class="col-12 d-flex gap-2">
-    <button type="submit" class="btn btn-primary w-50">Filtrar</button>
-</div>
+                    <button type="submit" class="btn btn-primary w-50">Filtrar</button>
+                </div>
 
             </form>
         </div>
@@ -140,22 +139,17 @@
                             <td>
                                 @php
                                     $destinatarios = collect();
-
                                     if($recado->destinatarios->count()) {
                                         $destinatarios = $destinatarios->merge($recado->destinatarios->pluck('name'));
                                     }
-
                                     if($recado->grupos->count()) {
                                         $destinatarios = $destinatarios->merge($recado->grupos->pluck('name'));
                                     }
-
                                     if($recado->guestTokens->count()) {
                                         $destinatarios = $destinatarios->merge($recado->guestTokens->pluck('email'));
                                     }
-
                                     $destinatarios = $destinatarios->unique();
                                 @endphp
-
                                 {!! $destinatarios->implode('<br>') !!}
                             </td>
 
@@ -164,6 +158,7 @@
                                 @php
                                     $estadoNome = strtolower($recado->estado->name ?? '');
                                     $badgeEstado = match($estadoNome) {
+                                        'novo' => 'bg-info text-white',
                                         'pendente' => 'bg-warning text-dark',
                                         'tratado' => 'bg-purple text-white',
                                         default => 'bg-secondary text-white'
@@ -192,15 +187,46 @@
                             <td class="text-nowrap">{{ $recado->created_at->format('d/m/Y H:i') }}</td>
 
                             @if(auth()->user()->cargo->name === 'admin')
-                            <td class="text-nowrap">
-                                <a href="{{ route('recados.edit', $recado->id) }}" class="btn btn-sm btn-warning mb-1">Editar</a>
-                                <form action="{{ route('recados.destroy', $recado->id) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem a certeza que deseja eliminar este recado?')">Eliminar</button>
-                                </form>
-                            </td>
-                            @endif
+<td class="text-nowrap text-center" onclick="event.stopPropagation();">
+
+    <div class="dropdown">
+        <button
+    class="btn btn-sm btn-light border-0"
+    type="button"
+    data-bs-toggle="dropdown"
+    aria-expanded="false"
+    onclick="event.stopPropagation();"
+>
+
+            <i class="bi bi-three-dots-vertical fs-5"></i>
+        </button>
+
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+            <li>
+                <a class="dropdown-item" href="{{ route('recados.edit', $recado->id) }}">
+                    ✏️ Editar
+                </a>
+            </li>
+
+            <li><hr class="dropdown-divider"></li>
+
+            <li>
+                <form action="{{ route('recados.destroy', $recado->id) }}" method="POST"
+                      onsubmit="return confirm('Tem a certeza que deseja eliminar este recado?')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="dropdown-item text-danger">
+                        🗑️ Apagar
+                    </button>
+                </form>
+            </li>
+        </ul>
+    </div>
+
+</td>
+@endif
+
+
 
                         </tr>
                     @empty
@@ -223,6 +249,7 @@
 
 <style>
 .bg-purple { background-color: #6f42c1 !important; }
+.bg-info { background-color: #17a2b8 !important; }
 .clickable-row { cursor: pointer; transition: background-color 0.2s ease; }
 .clickable-row:hover { background-color: #f8f9fa; }
 </style>
