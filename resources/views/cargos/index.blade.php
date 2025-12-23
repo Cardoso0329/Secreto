@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -33,6 +32,7 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
+                        <th>ID</th>
                         <th>Nome</th>
                         <th class="text-end">Ações</th>
                     </tr>
@@ -40,6 +40,7 @@
                 <tbody>
                     @forelse($cargos as $cargo)
                         <tr>
+                            <td>{{ $loop->iteration }}</td> <!-- ID sequencial -->
                             <td>{{ $cargo->name }}</td>
                             <td class="text-end">
                                 <a href="{{ route('cargos.edit', $cargo) }}" class="btn btn-sm btn-outline-warning me-1">Editar</a>
@@ -52,7 +53,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="2" class="text-center text-muted">Nenhum cargo encontrado.</td>
+                            <td colspan="3" class="text-center text-muted">Nenhum cargo encontrado.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -71,4 +72,3 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-

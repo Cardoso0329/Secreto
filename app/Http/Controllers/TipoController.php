@@ -8,10 +8,12 @@ use Illuminate\Http\Request;
 class TipoController extends Controller
 {
     public function index()
-    {
-        $tipos = Tipo::all();
-        return view('tipos.index', compact('tipos'));
-    }
+{
+    // Ordenar tipos por nome
+    $tipos = Tipo::orderBy('name', 'asc')->get();
+    return view('tipos.index', compact('tipos'));
+}
+
 
     public function create()
     {

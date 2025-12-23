@@ -10,11 +10,12 @@ class SLAController extends Controller
 {
 
     public function index()
-    {
-        
-        $slas = SLA::all();
-        return view('slas.index', compact('slas'));
-    }
+{
+    // Ordenar SLAs por nome
+    $slas = SLA::orderBy('name', 'asc')->get();
+    return view('slas.index', compact('slas'));
+}
+
 
     public function create()
     {

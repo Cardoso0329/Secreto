@@ -92,9 +92,7 @@
         <a href="#" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/recados';">
           <i class="bi bi-chat-left-dots"></i> Recados
         </a>
-        <a href="#" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/recados-campanhas';">
-  <i class="bi bi-megaphone"></i> Campanhas
-</a>
+        
 
 
 

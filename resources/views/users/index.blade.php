@@ -19,7 +19,6 @@
         <h2 class="fw-bold mb-0">Utilizadores</h2>
 
         <div class="d-flex flex-wrap gap-2 align-items-center">
-
             <a href="{{ route('users.create') }}" class="btn btn-primary d-flex align-items-center gap-1">
                 <i class="bi bi-person-plus-fill"></i> Criar
             </a>
@@ -74,7 +73,7 @@
                     <tbody id="users-tbody">
                         @foreach($users as $user)
                         <tr>
-                            <td>{{ $user->id }}</td>
+                            <td>{{ $loop->iteration }}</td> <!-- ID sequencial baseado na ordem alfabética -->
                             <td>{{ $user->name }}</td>
                             <td>{{ $user->email }}</td>
                             <td>{{ $user->cargo->name ?? '-' }}</td>
@@ -133,14 +132,17 @@ searchInput.addEventListener('input', debounce(function() {
                 return;
             }
 
-            users.forEach(user => {
+            // Ordenar resultados da pesquisa por nome
+            users.sort((a, b) => a.name.localeCompare(b.name));
+
+            users.forEach((user, index) => {
                 const grupos = user.grupos && user.grupos.length
                     ? user.grupos.map(g => `<span class="badge bg-dark">${g.name}</span>`).join(' ')
                     : '<span class="text-muted">Sem grupo</span>';
 
                 tbody.innerHTML += `
                     <tr>
-                        <td>${user.id}</td>
+                        <td>${index + 1}</td> <!-- ID sequencial -->
                         <td>${user.name}</td>
                         <td>${user.email}</td>
                         <td>${user.cargo?.name ?? '-'}</td>

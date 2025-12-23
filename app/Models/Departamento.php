@@ -23,7 +23,8 @@ class Departamento extends Model
 
 public function users()
 {
-    return $this->hasMany(User::class); // já deve existir
+    return $this->belongsToMany(User::class);
 }
+
 
 }
