@@ -6,7 +6,7 @@ use App\Mail\RecadoAvisoMail;
 use App\Mail\RecadoCriadoMail;
 use App\Models\{
     SLA, Recado, Setor, Origem, Departamento, Aviso, Estado, Tipo, User,
-    Destinatario, TipoFormulario, Grupo, Campanha, RecadoGuestToken
+    Destinatario, TipoFormulario, Grupo, Campanha, RecadoGuestToken, Vista
 };
 use App\Exports\RecadosExport;
 use Illuminate\Support\Facades\Mail;
@@ -18,97 +18,86 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class RecadoController extends Controller
 {
-  public function index(Request $request)
-    {
-        $user = auth()->user();
-        $estados = Estado::all();
-        $tiposFormulario = TipoFormulario::all();
+public function index(Request $request)
+{
+    $user = auth()->user();
 
-        $recados = Recado::with([
-            'setor','origem','departamento','destinatarios','estado',
-            'sla','tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
-        ]);
+    // Dados base
+    $estados = Estado::orderBy('name')->get();
+    $tiposFormulario = TipoFormulario::orderBy('name')->get();
+    $vistas = Vista::visiveisPara($user)->orderBy('nome')->get();
 
-        // --- FILTROS PRINCIPAIS ---
-        $estado_id = $request->input('estado_id') ?? session('recados_filtros.estado_id');
-        $tipo_formulario_id = $request->input('tipo_formulario_id') ?? session('recados_filtros.tipo_formulario_id');
+    // Query base
+    $recados = Recado::with([
+        'setor','origem','departamento','destinatarios','estado','sla',
+        'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
+    ]);
 
-        if ($estado_id) $recados->where('estado_id', $estado_id);
-        if ($tipo_formulario_id) $recados->where('tipo_formulario_id', $tipo_formulario_id);
+    // Preparar Vista
+    $vistaConditions = [];
+    if ($request->filled('vista_id')) {
+        $vista = Vista::visiveisPara($user)
+            ->where('id', $request->vista_id)
+            ->firstOrFail();
 
-        // --- FILTROS MANUAIS ---
-        foreach (['id','contact_client','plate'] as $field) {
-            if ($request->filled($field)) {
-                $recados->where(
-                    $field,
-                    in_array($field,['contact_client','plate']) ? 'like' : '=',
-                    in_array($field,['contact_client','plate']) ? '%'.$request->input($field).'%' : $request->input($field)
-                );
-            }
-        }
+        // Aplica filtros da Vista via método apply()
+        $recados = $vista->apply($recados);
 
-        // --- VISIBILIDADE ---
-        if ($user->cargo?->name !== 'admin') {
-            $recados->where(function ($q) use ($user) {
-                $q->where('user_id', $user->id)
-                  ->orWhereHas('destinatarios', fn($q2) => $q2->where('users.id', $user->id))
-                  ->orWhereHas('grupos.users', fn($q3) => $q3->where('users.id', $user->id));
-            });
-        }
-
-        // --- Ordenação e Paginação ---
-        $sortBy = $request->input('sort_by', 'id');
-        $sortDir = $request->input('sort_dir', 'desc');
-        $recados = $recados->orderBy($sortBy, $sortDir)->paginate(10)->withQueryString();
-
-        session([
-            'recados_filtros' => [
-                'estado_id' => $estado_id,
-                'tipo_formulario_id' => $tipo_formulario_id,
-            ]
-        ]);
-
-        $showPopup = !$request->session()->has('local_trabalho');
-
-        return view('recados.index', compact('recados','estados','tiposFormulario','showPopup'));
+        $vistaConditions = $vista->filtros['conditions'] ?? [];
     }
 
-    public function create(Request $request)
-    {
-        $tipoFormularioName = $request->query('tipo_formulario') ?? $request->session()->get('local_trabalho');
-        if (!$tipoFormularioName) {
-            return redirect()->route('recados.index')->with('error','Tipo de formulário não selecionado.');
+    // Filtros avançados do request (sobrescrevem a Vista)
+    $filtros = ['id', 'contact_client', 'plate', 'estado_id', 'tipo_formulario_id'];
+
+    foreach ($filtros as $field) {
+        $value = $request->input($field)
+            ?? (collect($vistaConditions)->firstWhere('field', $field)['value'] ?? null);
+
+        if ($value !== null && $value !== '') {
+            $operator = in_array($field, ['contact_client', 'plate']) ? 'like' : '=';
+            if ($operator === 'like') $value = "%$value%";
+
+            $recados->where($field, $operator, $value);
         }
-
-        $tipoFormulario = TipoFormulario::where('name', $tipoFormularioName)->first();
-        if (!$tipoFormulario) {
-            return redirect()->route('recados.index')->with('error','Tipo de formulário inválido.');
-        }
-
-        $campanhas = Campanha::all();
-        $setores = Setor::all();
-        $origens = Origem::all();
-        $departamentos = Departamento::all();
-        $slas = SLA::all();
-        $tipos = Tipo::whereIn('name', [
-            'Pedido de Contacto','Pedido de Informação','Pedido de Marcação',
-            'Pedido de Orçamento','Tomada de Conhecimento','Reclamação/Insatisfação'
-        ])->get();
-        $estados = Estado::all();
-        $avisos = Aviso::all();
-        $destinatarios = Destinatario::with('user')->get();
-
-        $view = match($tipoFormularioName) {
-            'Central' => 'recados.create_central',
-            'Call Center' => 'recados.create_callcenter',
-            default => null
-        };
-
-        return view($view, compact(
-            'setores','origens','departamentos','slas','tipos',
-            'estados','avisos','destinatarios','campanhas'
-        ))->with('tipoFormularioId', $tipoFormulario->id);
     }
+
+    // Visibilidade / Segurança
+    if ($user->cargo?->name !== 'admin') {
+        $recados->where(function ($q) use ($user) {
+            $q->where('user_id', $user->id)
+              ->orWhereHas('destinatarios', function($q2) use ($user) {
+                  $q2->where('users.id', $user->id);
+              })
+              ->orWhereHas('grupos.users', function($q3) use ($user) {
+                  $q3->where('users.id', $user->id);
+              });
+        });
+    }
+
+    // Ordenação + Paginação
+    $sortBy  = $request->input('sort_by', 'id');
+    $sortDir = $request->input('sort_dir', 'desc');
+
+    $recados = $recados->orderBy($sortBy, $sortDir)
+                       ->paginate(10)
+                       ->withQueryString();
+
+    // Guardar filtros em sessão
+    session([
+        'recados_filtros' => [
+            'estado_id' => $request->input('estado_id'),
+            'tipo_formulario_id' => $request->input('tipo_formulario_id'),
+        ]
+    ]);
+
+    // Popup de Local de Trabalho
+    $showPopup = !$request->session()->has('local_trabalho');
+
+    return view('recados.index', compact(
+        'recados', 'estados', 'tiposFormulario', 'vistas', 'showPopup', 'vistaConditions'
+    ));
+}
+
      // Editar
    public function edit(Recado $recado)
 {

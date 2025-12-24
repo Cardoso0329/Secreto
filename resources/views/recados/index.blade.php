@@ -46,51 +46,120 @@
         @endif
     </div>
 
-    {{-- Filtros --}}
+    {{-- Seleção de Vista --}}
     <div class="mb-4">
-        <div class="p-2 mb-2 bg-light border rounded">
-            <h5 class="mb-0">🔍 Filtros Avançados</h5>
+        <div class="p-2 mb-2 bg-light border rounded d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">🗂️ Vista</h5>
+
+            
         </div>
 
         <div class="p-3 border rounded">
-            <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
-                <div class="col-md-2">
-                    <input type="text" name="id" class="form-control" placeholder="ID..." value="{{ request('id') }}">
-                </div>
-                <div class="col-md-2">
-                    <input type="text" name="contact_client" class="form-control" placeholder="Contacto..." value="{{ request('contact_client') }}">
-                </div>
-                <div class="col-md-2">
-                    <input type="text" name="plate" class="form-control" placeholder="Matrícula..." value="{{ request('plate') }}">
-                </div>
-                <div class="col-md-3">
-                    <select name="estado_id" class="form-select">
-                        <option value="">Todos os Estados</option>
-                        @foreach($estados as $estado)
-                            <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
-                                {{ $estado->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <select name="tipo_formulario_id" class="form-select">
-                        <option value="">Todos os Tipos</option>
-                        @foreach($tiposFormulario as $tipo_formulario)
-                            <option value="{{ $tipo_formulario->id }}" {{ request('tipo_formulario_id') == $tipo_formulario->id ? 'selected' : '' }}>
-                                {{ $tipo_formulario->name }}
+            <form action="{{ route('recados.index') }}" method="GET" class="row g-3 align-items-center">
+
+                {{-- manter todos os filtros já aplicados --}}
+                @foreach(request()->except('vista_id','page') as $key => $value)
+                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                @endforeach
+
+                <div class="col-md-6">
+                    <select name="vista_id" class="form-select" onchange="this.form.submit()">
+                        <option value="">— Todas as Vistas —</option>
+
+                        @foreach($vistas as $vista)
+                            <option
+                                value="{{ $vista->id }}"
+                                {{ request('vista_id') == $vista->id ? 'selected' : '' }}>
+                                {{ $vista->nome }}
                             </option>
                         @endforeach
                     </select>
                 </div>
 
-                <div class="col-12 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary w-50">Filtrar</button>
-                </div>
+                @if(request('vista_id'))
+                    <div class="col-md-6">
+                        <span class="badge bg-info text-dark">
+                            Vista aplicada
+                        </span>
+                    </div>
+                @endif
 
             </form>
         </div>
     </div>
+
+    @php
+    $vistaSelecionada = null;
+    $vistaConditions = [];
+
+    if(request('vista_id')) {
+        $vistaSelecionada = $vistas->firstWhere('id', request('vista_id'));
+        $vistaConditions = $vistaSelecionada->filtros['conditions'] ?? [];
+    }
+    @endphp
+
+    {{-- Filtros Avançados --}}
+<div class="mb-4">
+    <div class="p-2 mb-2 bg-light border rounded">
+        <h5 class="mb-0">🔍 Filtros Avançados</h5>
+    </div>
+
+    <div class="p-3 border rounded">
+        <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
+            {{-- manter vista_id --}}
+            @if(request('vista_id'))
+                <input type="hidden" name="vista_id" value="{{ request('vista_id') }}">
+            @endif
+
+            @php
+                $getFiltro = fn($field) => 
+                    collect($vistaConditions)->firstWhere('field', $field)['value'] ?? request($field);
+            @endphp
+
+            <div class="col-md-2">
+                <input type="text" name="id" class="form-control" placeholder="ID..."
+                    value="{{ $getFiltro('id') }}">
+            </div>
+
+            <div class="col-md-2">
+                <input type="text" name="contact_client" class="form-control" placeholder="Contacto..."
+                    value="{{ $getFiltro('contact_client') }}">
+            </div>
+
+            <div class="col-md-2">
+                <input type="text" name="plate" class="form-control" placeholder="Matrícula..."
+                    value="{{ $getFiltro('plate') }}">
+            </div>
+
+            <div class="col-md-3">
+                <select name="estado_id" class="form-select">
+                    <option value="">Todos os Estados</option>
+                    @foreach($estados as $estado)
+                        <option value="{{ $estado->id }}" {{ $estado->id == $getFiltro('estado_id') ? 'selected' : '' }}>
+                            {{ $estado->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <select name="tipo_formulario_id" class="form-select">
+                    <option value="">Todos os Tipos</option>
+                    @foreach($tiposFormulario as $tipo_formulario)
+                        <option value="{{ $tipo_formulario->id }}" {{ $tipo_formulario->id == $getFiltro('tipo_formulario_id') ? 'selected' : '' }}>
+                            {{ $tipo_formulario->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-50">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 
     {{-- Sucesso --}}
     @if(session('success'))
@@ -225,8 +294,6 @@
 
 </td>
 @endif
-
-
 
                         </tr>
                     @empty

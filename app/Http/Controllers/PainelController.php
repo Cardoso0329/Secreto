@@ -11,7 +11,15 @@ use App\Models\Aviso;
 use App\Models\Estado;
 use App\Models\Setor;
 use App\Models\Tipo;
+use App\Models\Cargo;
+use App\Models\Campanha;
+use App\Models\User;
+use App\Models\CampanhaDepartamento;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Auth;
 use App\Models\Recado;
+use App\Models\Vista;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\RecadosExport;
 use App\Imports\RecadosImport;
@@ -47,6 +55,11 @@ class PainelController extends Controller
 
     $estados = Estado::all();
     $tiposFormulario = TipoFormulario::all();
+
+    if ($request->vista_id) {
+    $vista = Vista::findOrFail($request->vista_id);
+    $this->aplicarVista($recados, $vista);
+}
 
     return view('configuracoes.index', compact('recados', 'estados', 'tiposFormulario'));
 }
@@ -98,6 +111,18 @@ public function indexConfiguracoes(Request $request)
     $tiposFormulario = TipoFormulario::all();
 
     return view('configuracoes.index', compact('recados', 'estados', 'tiposFormulario'));
+}
+
+private function aplicarVista($query, $vista)
+{
+    $conditions = $vista->filtros['conditions'] ?? [];
+
+    $query->where(function ($q) use ($conditions, $vista) {
+        foreach ($conditions as $cond) {
+            $method = $vista->logica === 'AND' ? 'where' : 'orWhere';
+            $q->$method($cond['field'], $cond['operator'], $cond['value']);
+        }
+    });
 }
 
 

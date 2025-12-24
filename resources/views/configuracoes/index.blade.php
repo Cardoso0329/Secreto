@@ -46,6 +46,10 @@
     <button class="nav-link" id="campanhas-tab" data-bs-toggle="tab" data-bs-target="#campanhas" type="button" role="tab">🏷️ Campanhas</button>
 </li>
 
+<li class="nav-item" role="presentation">
+    <button class="nav-link" id="campanhas-tab" data-bs-toggle="tab" data-bs-target="#vistas" type="button" role="tab"> Vistas</button>
+</li>
+
 
     </ul>
 
@@ -262,6 +266,10 @@
         <!-- Campanhas -->
 <div class="tab-pane fade" id="campanhas" role="tabpanel">
     <iframe src="{{ route('campanhas.index') }}" width="100%" height="600" frameborder="0"></iframe>
+</div>
+
+<div class="tab-pane fade" id="vistas" role="tabpanel">
+    <iframe src="{{ route('vistas.index') }}" width="100%" height="600" frameborder="0"></iframe>
 </div>
 
 
