@@ -42,11 +42,11 @@
         {{-- Acesso --}}
         <div class="mb-3">
             <label for="acesso" class="form-label">Acesso</label>
-            <select name="access_type" id="acesso" class="form-select" required>
-                <option value="all" {{ old('access_type')=='all'?'selected':'' }}>Todos</option>
-                <option value="department" {{ old('access_type')=='department'?'selected':'' }}>Departamento</option>
-                <option value="owner" {{ old('access_type')=='owner'?'selected':'' }}>Proprietário</option>
-                <option value="specific" {{ old('access_type')=='specific'?'selected':'' }}>Utilizadores específicos</option>
+            <select name="acesso" id="acesso" class="form-select" required>
+                <option value="all" {{ old('acesso')=='all'?'selected':'' }}>Todos</option>
+                <option value="department" {{ old('acesso')=='department'?'selected':'' }}>Departamento</option>
+                <option value="owner" {{ old('acesso')=='owner'?'selected':'' }}>Proprietário</option>
+                <option value="specific" {{ old('acesso')=='specific'?'selected':'' }}>Utilizadores específicos</option>
             </select>
         </div>
 
@@ -122,7 +122,7 @@ function addCondition(data = {}) {
             input.type = cfg.type==='date'?'date':'text';
             input.name = `conditions[${conditionIndex}][value]`;
             input.className = 'form-control';
-            input.value = data.value??'';
+            input.value = data.value ?? '';
             valueWrapper.appendChild(input);
         }
     }
@@ -145,8 +145,8 @@ function divWrap(el){
     return d;
 }
 
-// Cria a primeira condição automaticamente
-addCondition();
+// **Não criamos condição automática vazia**.
+// O utilizador adiciona a primeira condição manualmente clicando em "➕ Adicionar condição".
 </script>
 
 <!-- Bootstrap JS -->

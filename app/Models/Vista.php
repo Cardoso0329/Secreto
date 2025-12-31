@@ -66,42 +66,60 @@ class Vista extends Model
    // App/Models/Vista.php
 public function apply($query)
 {
-    if (!empty($this->filtros['conditions'])) {
-        foreach ($this->filtros['conditions'] as $condition) {
-            $field = $condition['field'] ?? null;
-            $value = $condition['value'] ?? null;
+    $conditions = $this->filtros['conditions'] ?? [];
+    if (empty($conditions)) return $query;
+
+    $logic = strtolower($this->logica ?? 'and');
+
+    $query->where(function ($q) use ($conditions, $logic) {
+
+        foreach ($conditions as $condition) {
+            $field    = $condition['field'] ?? null;
+            $value    = $condition['value'] ?? null;
             $operator = $condition['operator'] ?? '=';
 
-            if (!$field || $value === null) continue;
+            if (!$field || $value === null || $value === '') continue;
 
-            // --- Campos diretos da tabela recados ---
-            $directColumns = ['id','contact_client','plate','estado_id','tipo_formulario_id','sla_id','tipo_id','origem_id','setor_id','departamento_id','aviso_id','campanha_id'];
+            $method = $logic === 'or' ? 'orWhere' : 'where';
+
+            // Campos diretos da tabela recados
+            $directColumns = [
+                'id','contact_client','plate','estado_id',
+                'tipo_formulario_id','sla_id','tipo_id',
+                'origem_id','setor_id','departamento_id',
+                'aviso_id','campanha_id'
+            ];
 
             if (in_array($field, $directColumns)) {
                 if (strtolower($operator) === 'like') {
-                    $query->where($field, 'like', "%$value%");
+                    $q->$method($field, 'like', "%{$value}%");
                 } else {
-                    $query->where($field, $operator, $value);
+                    $q->$method($field, $operator, $value);
                 }
                 continue;
             }
 
-            // --- Campos via relacionamento (ex: departamento.name) ---
+            // Campos por relacionamento (ex: estado.name)
             if (str_contains($field, '.')) {
                 [$relation, $column] = explode('.', $field, 2);
-                $query->whereHas($relation, function($q) use ($column, $operator, $value) {
-                    if (strtolower($operator) === 'like') {
-                        $q->where($column, 'like', "%$value%");
-                    } else {
-                        $q->where($column, $operator, $value);
-                    }
+
+                $q->$method(function ($sub) use ($relation, $column, $operator, $value) {
+                    $sub->whereHas($relation, function ($r) use ($column, $operator, $value) {
+                        if (strtolower($operator) === 'like') {
+                            $r->where($column, 'like', "%{$value}%");
+                        } else {
+                            $r->where($column, $operator, $value);
+                        }
+                    });
                 });
             }
         }
-    }
+
+    });
 
     return $query;
 }
+
 
 
 }

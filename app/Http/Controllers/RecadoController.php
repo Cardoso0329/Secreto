@@ -22,79 +22,96 @@ public function index(Request $request)
 {
     $user = auth()->user();
 
-    // Dados base
+    /* ================= DADOS BASE ================= */
+
     $estados = Estado::orderBy('name')->get();
     $tiposFormulario = TipoFormulario::orderBy('name')->get();
     $vistas = Vista::visiveisPara($user)->orderBy('nome')->get();
 
-    // Query base
+    /* ================= QUERY BASE ================= */
+
     $recados = Recado::with([
         'setor','origem','departamento','destinatarios','estado','sla',
         'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
     ]);
 
-    // Preparar Vista
-    $vistaConditions = [];
+    /* ================= APLICAR VISTA ================= */
+
     if ($request->filled('vista_id')) {
+
         $vista = Vista::visiveisPara($user)
             ->where('id', $request->vista_id)
             ->firstOrFail();
 
-        // Aplica filtros da Vista via método apply()
+        // 👉 aplica TODA a lógica da vista aqui
         $recados = $vista->apply($recados);
-
-        $vistaConditions = $vista->filtros['conditions'] ?? [];
     }
 
-    // Filtros avançados do request (sobrescrevem a Vista)
-    $filtros = ['id', 'contact_client', 'plate', 'estado_id', 'tipo_formulario_id'];
+    /* ================= FILTROS MANUAIS (SOBRESCREVEM A VISTA) ================= */
 
-    foreach ($filtros as $field) {
-        $value = $request->input($field)
-            ?? (collect($vistaConditions)->firstWhere('field', $field)['value'] ?? null);
-
-        if ($value !== null && $value !== '') {
-            $operator = in_array($field, ['contact_client', 'plate']) ? 'like' : '=';
-            if ($operator === 'like') $value = "%$value%";
-
-            $recados->where($field, $operator, $value);
-        }
+    if ($request->filled('id')) {
+        $recados->where('id', $request->id);
     }
 
-    // Visibilidade / Segurança
+    if ($request->filled('contact_client')) {
+        $recados->where('contact_client', 'like', '%' . $request->contact_client . '%');
+    }
+
+    if ($request->filled('plate')) {
+        $recados->where('plate', 'like', '%' . $request->plate . '%');
+    }
+
+    if ($request->filled('estado_id')) {
+        $recados->where('estado_id', $request->estado_id);
+    }
+
+    if ($request->filled('tipo_formulario_id')) {
+        $recados->where('tipo_formulario_id', $request->tipo_formulario_id);
+    }
+
+    /* ================= SEGURANÇA / VISIBILIDADE ================= */
+
     if ($user->cargo?->name !== 'admin') {
         $recados->where(function ($q) use ($user) {
             $q->where('user_id', $user->id)
-              ->orWhereHas('destinatarios', function($q2) use ($user) {
-                  $q2->where('users.id', $user->id);
-              })
-              ->orWhereHas('grupos.users', function($q3) use ($user) {
-                  $q3->where('users.id', $user->id);
-              });
+              ->orWhereHas('destinatarios', fn ($d) =>
+                    $d->where('users.id', $user->id)
+              )
+              ->orWhereHas('grupos.users', fn ($g) =>
+                    $g->where('users.id', $user->id)
+              );
         });
     }
 
-    // Ordenação + Paginação
+    /* ================= ORDENAÇÃO ================= */
+
     $sortBy  = $request->input('sort_by', 'id');
     $sortDir = $request->input('sort_dir', 'desc');
 
-    $recados = $recados->orderBy($sortBy, $sortDir)
-                       ->paginate(10)
-                       ->withQueryString();
+    $recados = $recados
+        ->orderBy($sortBy, $sortDir)
+        ->paginate(10)
+        ->withQueryString();
 
-    // Guardar filtros em sessão
+    /* ================= GUARDAR FILTROS NA SESSÃO ================= */
+
     session([
         'recados_filtros' => [
-            'estado_id' => $request->input('estado_id'),
-            'tipo_formulario_id' => $request->input('tipo_formulario_id'),
+            'estado_id' => $request->estado_id,
+            'tipo_formulario_id' => $request->tipo_formulario_id,
         ]
     ]);
 
-    // Popup de Local de Trabalho
+    /* ================= POPUP LOCAL ================= */
+
     $showPopup = !$request->session()->has('local_trabalho');
 
     return view('recados.index', compact(
-        'recados', 'estados', 'tiposFormulario', 'vistas', 'showPopup', 'vistaConditions'
+        'recados',
+        'estados',
+        'tiposFormulario',
+        'vistas',
+        'showPopup'
     ));
 }
 

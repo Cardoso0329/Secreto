@@ -44,10 +44,22 @@
                             <td>{{ ucfirst($vista->acesso) }}</td>
                             <td>{{ $vista->user->name ?? '—' }}</td>
                             <td class="text-end">
-                                <a href="{{ route('vistas.edit', $vista) }}" class="btn btn-sm btn-outline-primary">
-                                    ✏️ Editar
-                                </a>
-                            </td>
+    <a href="{{ route('vistas.edit', $vista) }}" class="btn btn-sm btn-outline-primary me-1">
+        ✏️ Editar
+    </a>
+
+    <form action="{{ route('vistas.destroy', $vista) }}"
+          method="POST"
+          class="d-inline"
+          onsubmit="return confirm('Tens a certeza que queres eliminar esta vista?');">
+        @csrf
+        @method('DELETE')
+        <button type="submit" class="btn btn-sm btn-outline-danger">
+            🗑️ Eliminar
+        </button>
+    </form>
+</td>
+
                         </tr>
                     @empty
                         <tr>
