@@ -9,6 +9,7 @@ use App\Models\{
     Destinatario, TipoFormulario, Grupo, Campanha, RecadoGuestToken, Vista
 };
 use App\Exports\RecadosExport;
+use App\Queries\RecadoQuery;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -23,54 +24,44 @@ public function index(Request $request)
     $user = auth()->user();
 
     /* ================= DADOS BASE ================= */
-
     $estados = Estado::orderBy('name')->get();
     $tiposFormulario = TipoFormulario::orderBy('name')->get();
     $vistas = Vista::visiveisPara($user)->orderBy('nome')->get();
 
     /* ================= QUERY BASE ================= */
-
     $recados = Recado::with([
         'setor','origem','departamento','destinatarios','estado','sla',
         'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
     ]);
 
     /* ================= APLICAR VISTA ================= */
-
     if ($request->filled('vista_id')) {
-
         $vista = Vista::visiveisPara($user)
             ->where('id', $request->vista_id)
             ->firstOrFail();
 
-        // 👉 aplica TODA a lógica da vista aqui
         $recados = $vista->apply($recados);
     }
 
+    /* ================= FILTROS TEMPORÁRIOS (JSON/Array do formulário) ================= */
+    if ($request->filled('filtros')) {
+        // Espera-se que 'filtros' seja um array de arrays: [{field, operator, value}, ...]
+        $filtros = $request->input('filtros', []);
+        $logica = $request->input('logica', 'AND');
+
+        $recados = RecadoQuery::applyFilters($recados, $filtros, $logica);
+    }
+
     /* ================= FILTROS MANUAIS (SOBRESCREVEM A VISTA) ================= */
-
-    if ($request->filled('id')) {
-        $recados->where('id', $request->id);
-    }
-
-    if ($request->filled('contact_client')) {
-        $recados->where('contact_client', 'like', '%' . $request->contact_client . '%');
-    }
-
-    if ($request->filled('plate')) {
-        $recados->where('plate', 'like', '%' . $request->plate . '%');
-    }
-
-    if ($request->filled('estado_id')) {
-        $recados->where('estado_id', $request->estado_id);
-    }
-
-    if ($request->filled('tipo_formulario_id')) {
-        $recados->where('tipo_formulario_id', $request->tipo_formulario_id);
+    foreach (['id','contact_client','plate','estado_id','tipo_formulario_id'] as $field) {
+        if ($request->filled($field)) {
+            $operator = in_array($field,['contact_client','plate']) ? 'like' : '=';
+            $value = in_array($field,['contact_client','plate']) ? '%'.$request->input($field).'%' : $request->input($field);
+            $recados->where($field, $operator, $value);
+        }
     }
 
     /* ================= SEGURANÇA / VISIBILIDADE ================= */
-
     if ($user->cargo?->name !== 'admin') {
         $recados->where(function ($q) use ($user) {
             $q->where('user_id', $user->id)
@@ -84,7 +75,6 @@ public function index(Request $request)
     }
 
     /* ================= ORDENAÇÃO ================= */
-
     $sortBy  = $request->input('sort_by', 'id');
     $sortDir = $request->input('sort_dir', 'desc');
 
@@ -94,16 +84,16 @@ public function index(Request $request)
         ->withQueryString();
 
     /* ================= GUARDAR FILTROS NA SESSÃO ================= */
-
     session([
         'recados_filtros' => [
             'estado_id' => $request->estado_id,
             'tipo_formulario_id' => $request->tipo_formulario_id,
+            'filtros' => $request->input('filtros', []),
+            'logica' => $request->input('logica', 'AND'),
         ]
     ]);
 
     /* ================= POPUP LOCAL ================= */
-
     $showPopup = !$request->session()->has('local_trabalho');
 
     return view('recados.index', compact(
@@ -114,6 +104,7 @@ public function index(Request $request)
         'showPopup'
     ));
 }
+
 
      // Editar
    public function edit(Recado $recado)

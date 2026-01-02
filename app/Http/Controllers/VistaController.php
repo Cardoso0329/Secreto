@@ -46,6 +46,7 @@ class VistaController extends Controller
 
     public function store(Request $request)
     {
+
         $data = $request->validate([
             'nome'        => 'required|string|max:255',
             'logica'      => 'required|in:AND,OR',
