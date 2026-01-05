@@ -36,16 +36,43 @@ public function index(Request $request)
         'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
     ]);
 
-    /* ================= APLICAR VISTA ================= */
-    if ($request->filled('vista_id')) {
-        $vista = \App\Services\VistaRepo::findOrFail($request->vista_id);
+    /* ================= DETETAR FILTROS MANUAIS ================= */
+    $manualFields = ['id','contact_client','plate','estado_id','tipo_formulario_id'];
 
+    $temFiltrosManuais =
+        $request->filled('filtros') ||
+        collect($manualFields)->contains(fn ($f) => $request->filled($f));
+
+    /* ================= VISTA ATIVA (GET + SESSÃO) ================= */
+    // - se vier vista_id no GET -> atualizar sessão (inclui limpar vista com "")
+    if ($request->has('vista_id')) {
+        $vistaId = $request->input('vista_id');
+
+        if ($vistaId) {
+            $request->session()->put('recados_vista_id', $vistaId);
+        } else {
+            $request->session()->forget('recados_vista_id');
+        }
+    }
+
+    // - vistaId final: GET (se vier) senão sessão
+    $vistaId = $request->filled('vista_id')
+        ? $request->input('vista_id')
+        : $request->session()->get('recados_vista_id');
+
+    /* ================= APLICAR VISTA (SÓ SE NÃO HÁ FILTROS MANUAIS) ================= */
+    if (!$temFiltrosManuais && !empty($vistaId)) {
+
+        $vista = \App\Services\VistaRepo::findOrFail($vistaId);
+
+        // segurança: só pode usar vistas que aparecem no dropdown dele
         if (!$vistas->pluck('id')->contains($vista['id'])) {
             abort(403);
         }
 
-        // ✅ aceita os 2 formatos: antigo e novo
         $vistaFiltros = $vista['filtros'] ?? [];
+
+        // aceita formato antigo {conditions: []}
         if (is_array($vistaFiltros) && array_key_exists('conditions', $vistaFiltros)) {
             $vistaFiltros = $vistaFiltros['conditions'] ?? [];
         }
@@ -55,7 +82,6 @@ public function index(Request $request)
             $vistaFiltros,
             $vista['logica'] ?? 'AND'
         );
-
     }
 
     /* ================= FILTROS TEMPORÁRIOS ================= */
@@ -66,10 +92,10 @@ public function index(Request $request)
     }
 
     /* ================= FILTROS MANUAIS ================= */
-    foreach (['id','contact_client','plate','estado_id','tipo_formulario_id'] as $field) {
+    foreach ($manualFields as $field) {
         if ($request->filled($field)) {
-            $operator = in_array($field,['contact_client','plate']) ? 'LIKE' : '=';
-            $value = in_array($field,['contact_client','plate'])
+            $operator = in_array($field, ['contact_client','plate']) ? 'LIKE' : '=';
+            $value = in_array($field, ['contact_client','plate'])
                 ? '%'.$request->input($field).'%'
                 : $request->input($field);
 
@@ -105,6 +131,7 @@ public function index(Request $request)
         'showPopup'
     ));
 }
+
 
 public function create(Request $request)
 {

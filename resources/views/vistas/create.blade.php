@@ -122,6 +122,12 @@ const fieldsConfig = {
         type: 'select',
         options: @json($campanhas->map(fn($c)=>['id'=>$c->id,'name'=>$c->name])->values())
     },
+    
+    departamento_id: {
+        label: 'Departamento',
+        type: 'select',
+        options: @json($departamentos->map(fn($d)=>['id'=>$d->id,'name'=>$d->name])->values())
+    },
 
     abertura: { label: 'Data de Abertura', type: 'date' }
 };

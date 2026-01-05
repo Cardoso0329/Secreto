@@ -33,6 +33,22 @@
 </style>
 @endif
 
+@php
+    // ✅ vista ativa: GET ou sessão
+    $vistaAtivaId = request('vista_id') ?? session('recados_vista_id');
+
+    $vistaSelecionada = null;
+    $vistaConditions = [];
+
+    if($vistaAtivaId) {
+        $vistaSelecionada = $vistas->firstWhere('id', $vistaAtivaId);
+        $vistaConditions = $vistaSelecionada['filtros'] ?? [];
+    }
+
+    $getFiltro = fn($field) =>
+        collect($vistaConditions)->firstWhere('field', $field)['value'] ?? request($field);
+@endphp
+
 <div class="container mt-4">
 
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -73,14 +89,14 @@
                         @foreach($vistas as $vista)
                             <option
                                 value="{{ $vista['id'] }}"
-                                {{ request('vista_id') == $vista['id'] ? 'selected' : '' }}>
+                                {{ (string)$vistaAtivaId === (string)$vista['id'] ? 'selected' : '' }}>
                                 {{ $vista['nome'] }}
                             </option>
                         @endforeach
                     </select>
                 </div>
 
-                @if(request('vista_id'))
+                @if($vistaAtivaId)
                     <div class="col-md-6">
                         <span class="badge bg-info text-dark">
                             Vista aplicada
@@ -92,19 +108,6 @@
         </div>
     </div>
 
-    @php
-        $vistaSelecionada = null;
-        $vistaConditions = [];
-
-        if(request('vista_id')) {
-            $vistaSelecionada = $vistas->firstWhere('id', request('vista_id'));
-            $vistaConditions = $vistaSelecionada['filtros'] ?? [];
-        }
-
-        $getFiltro = fn($field) =>
-            collect($vistaConditions)->firstWhere('field', $field)['value'] ?? request($field);
-    @endphp
-
     {{-- Filtros Avançados --}}
     <div class="mb-4">
         <div class="p-2 mb-2 bg-light border rounded">
@@ -113,9 +116,9 @@
 
         <div class="p-3 border rounded">
             <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
-                {{-- manter vista_id --}}
-                @if(request('vista_id'))
-                    <input type="hidden" name="vista_id" value="{{ request('vista_id') }}">
+                {{-- ✅ manter vista_id (GET ou sessão) --}}
+                @if($vistaAtivaId)
+                    <input type="hidden" name="vista_id" value="{{ $vistaAtivaId }}">
                 @endif
 
                 <div class="col-md-2">
@@ -132,7 +135,6 @@
                     <input type="text" name="plate" class="form-control" placeholder="Matrícula..."
                         value="{{ $getFiltro('plate') }}">
                 </div>
-
 
                 <div class="col-12 d-flex gap-2">
                     <button type="submit" class="btn btn-primary w-50">Filtrar</button>
@@ -274,7 +276,6 @@
                         </tr>
                     @empty
                         <tr>
-                            {{-- ✅ corrigido: usa a mesma lógica de "admin" --}}
                             <td colspan="{{ auth()->user()->cargo->name === 'admin' ? '9' : '8' }}" class="text-center text-muted">
                                 Nenhum recado encontrado.
                             </td>
