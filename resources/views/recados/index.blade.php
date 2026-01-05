@@ -50,8 +50,6 @@
     <div class="mb-4">
         <div class="p-2 mb-2 bg-light border rounded d-flex justify-content-between align-items-center">
             <h5 class="mb-0">🗂️ Vista</h5>
-
-            
         </div>
 
         <div class="p-3 border rounded">
@@ -59,7 +57,13 @@
 
                 {{-- manter todos os filtros já aplicados --}}
                 @foreach(request()->except('vista_id','page') as $key => $value)
-                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                    @if(is_array($value))
+                        @foreach($value as $v)
+                            <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
+                        @endforeach
+                    @else
+                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                    @endif
                 @endforeach
 
                 <div class="col-md-6">
@@ -68,9 +72,9 @@
 
                         @foreach($vistas as $vista)
                             <option
-                                value="{{ $vista->id }}"
-                                {{ request('vista_id') == $vista->id ? 'selected' : '' }}>
-                                {{ $vista->nome }}
+                                value="{{ $vista['id'] }}"
+                                {{ request('vista_id') == $vista['id'] ? 'selected' : '' }}>
+                                {{ $vista['nome'] }}
                             </option>
                         @endforeach
                     </select>
@@ -89,77 +93,53 @@
     </div>
 
     @php
-    $vistaSelecionada = null;
-    $vistaConditions = [];
+        $vistaSelecionada = null;
+        $vistaConditions = [];
 
-    if(request('vista_id')) {
-        $vistaSelecionada = $vistas->firstWhere('id', request('vista_id'));
-        $vistaConditions = $vistaSelecionada->filtros['conditions'] ?? [];
-    }
+        if(request('vista_id')) {
+            $vistaSelecionada = $vistas->firstWhere('id', request('vista_id'));
+            $vistaConditions = $vistaSelecionada['filtros'] ?? [];
+        }
+
+        $getFiltro = fn($field) =>
+            collect($vistaConditions)->firstWhere('field', $field)['value'] ?? request($field);
     @endphp
 
     {{-- Filtros Avançados --}}
-<div class="mb-4">
-    <div class="p-2 mb-2 bg-light border rounded">
-        <h5 class="mb-0">🔍 Filtros Avançados</h5>
+    <div class="mb-4">
+        <div class="p-2 mb-2 bg-light border rounded">
+            <h5 class="mb-0">🔍 Filtros Avançados</h5>
+        </div>
+
+        <div class="p-3 border rounded">
+            <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
+                {{-- manter vista_id --}}
+                @if(request('vista_id'))
+                    <input type="hidden" name="vista_id" value="{{ request('vista_id') }}">
+                @endif
+
+                <div class="col-md-2">
+                    <input type="text" name="id" class="form-control" placeholder="ID..."
+                        value="{{ $getFiltro('id') }}">
+                </div>
+
+                <div class="col-md-2">
+                    <input type="text" name="contact_client" class="form-control" placeholder="Contacto..."
+                        value="{{ $getFiltro('contact_client') }}">
+                </div>
+
+                <div class="col-md-2">
+                    <input type="text" name="plate" class="form-control" placeholder="Matrícula..."
+                        value="{{ $getFiltro('plate') }}">
+                </div>
+
+
+                <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary w-50">Filtrar</button>
+                </div>
+            </form>
+        </div>
     </div>
-
-    <div class="p-3 border rounded">
-        <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
-            {{-- manter vista_id --}}
-            @if(request('vista_id'))
-                <input type="hidden" name="vista_id" value="{{ request('vista_id') }}">
-            @endif
-
-            @php
-                $getFiltro = fn($field) => 
-                    collect($vistaConditions)->firstWhere('field', $field)['value'] ?? request($field);
-            @endphp
-
-            <div class="col-md-2">
-                <input type="text" name="id" class="form-control" placeholder="ID..."
-                    value="{{ $getFiltro('id') }}">
-            </div>
-
-            <div class="col-md-2">
-                <input type="text" name="contact_client" class="form-control" placeholder="Contacto..."
-                    value="{{ $getFiltro('contact_client') }}">
-            </div>
-
-            <div class="col-md-2">
-                <input type="text" name="plate" class="form-control" placeholder="Matrícula..."
-                    value="{{ $getFiltro('plate') }}">
-            </div>
-
-            <div class="col-md-3">
-                <select name="estado_id" class="form-select">
-                    <option value="">Todos os Estados</option>
-                    @foreach($estados as $estado)
-                        <option value="{{ $estado->id }}" {{ $estado->id == $getFiltro('estado_id') ? 'selected' : '' }}>
-                            {{ $estado->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="col-md-3">
-                <select name="tipo_formulario_id" class="form-select">
-                    <option value="">Todos os Tipos</option>
-                    @foreach($tiposFormulario as $tipo_formulario)
-                        <option value="{{ $tipo_formulario->id }}" {{ $tipo_formulario->id == $getFiltro('tipo_formulario_id') ? 'selected' : '' }}>
-                            {{ $tipo_formulario->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="col-12 d-flex gap-2">
-                <button type="submit" class="btn btn-primary w-50">Filtrar</button>
-            </div>
-        </form>
-    </div>
-</div>
-
 
     {{-- Sucesso --}}
     @if(session('success'))
@@ -191,7 +171,7 @@
                         <th>Tipo</th>
                         <th class="text-nowrap">Criado em</th>
                         @if(auth()->user()->cargo->name === 'admin')
-                        <th>Ações</th>
+                            <th>Ações</th>
                         @endif
                     </tr>
                 </thead>
@@ -256,49 +236,48 @@
                             <td class="text-nowrap">{{ $recado->created_at->format('d/m/Y H:i') }}</td>
 
                             @if(auth()->user()->cargo->name === 'admin')
-<td class="text-nowrap text-center" onclick="event.stopPropagation();">
+                                <td class="text-nowrap text-center" onclick="event.stopPropagation();">
+                                    <div class="dropdown">
+                                        <button
+                                            class="btn btn-sm btn-light border-0"
+                                            type="button"
+                                            data-bs-toggle="dropdown"
+                                            aria-expanded="false"
+                                            onclick="event.stopPropagation();"
+                                        >
+                                            <i class="bi bi-three-dots-vertical fs-5"></i>
+                                        </button>
 
-    <div class="dropdown">
-        <button
-    class="btn btn-sm btn-light border-0"
-    type="button"
-    data-bs-toggle="dropdown"
-    aria-expanded="false"
-    onclick="event.stopPropagation();"
->
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                            <li>
+                                                <a class="dropdown-item" href="{{ route('recados.edit', $recado->id) }}">
+                                                    ✏️ Editar
+                                                </a>
+                                            </li>
 
-            <i class="bi bi-three-dots-vertical fs-5"></i>
-        </button>
+                                            <li><hr class="dropdown-divider"></li>
 
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-            <li>
-                <a class="dropdown-item" href="{{ route('recados.edit', $recado->id) }}">
-                    ✏️ Editar
-                </a>
-            </li>
-
-            <li><hr class="dropdown-divider"></li>
-
-            <li>
-                <form action="{{ route('recados.destroy', $recado->id) }}" method="POST"
-                      onsubmit="return confirm('Tem a certeza que deseja eliminar este recado?')">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="dropdown-item text-danger">
-                        🗑️ Apagar
-                    </button>
-                </form>
-            </li>
-        </ul>
-    </div>
-
-</td>
-@endif
-
+                                            <li>
+                                                <form action="{{ route('recados.destroy', $recado->id) }}" method="POST"
+                                                      onsubmit="return confirm('Tem a certeza que deseja eliminar este recado?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="dropdown-item text-danger">
+                                                        🗑️ Apagar
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            @endif
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ auth()->user()->cargo->name === 'Administrador' ? '9' : '8' }}" class="text-center text-muted">Nenhum recado encontrado.</td>
+                            {{-- ✅ corrigido: usa a mesma lógica de "admin" --}}
+                            <td colspan="{{ auth()->user()->cargo->name === 'admin' ? '9' : '8' }}" class="text-center text-muted">
+                                Nenhum recado encontrado.
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>

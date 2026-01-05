@@ -26,7 +26,9 @@ public function index(Request $request)
     /* ================= DADOS BASE ================= */
     $estados = Estado::orderBy('name')->get();
     $tiposFormulario = TipoFormulario::orderBy('name')->get();
-    $vistas = Vista::visiveisPara($user)->orderBy('nome')->get();
+
+    // vistas visíveis para o user (arrays)
+    $vistas = collect(\App\Services\VistaService::visiveisPara($user));
 
     /* ================= QUERY BASE ================= */
     $recados = Recado::with([
@@ -36,41 +38,51 @@ public function index(Request $request)
 
     /* ================= APLICAR VISTA ================= */
     if ($request->filled('vista_id')) {
-        $vista = Vista::visiveisPara($user)
-            ->where('id', $request->vista_id)
-            ->firstOrFail();
+        $vista = \App\Services\VistaRepo::findOrFail($request->vista_id);
 
-        $recados = $vista->apply($recados);
+        if (!$vistas->pluck('id')->contains($vista['id'])) {
+            abort(403);
+        }
+
+        // ✅ aceita os 2 formatos: antigo e novo
+        $vistaFiltros = $vista['filtros'] ?? [];
+        if (is_array($vistaFiltros) && array_key_exists('conditions', $vistaFiltros)) {
+            $vistaFiltros = $vistaFiltros['conditions'] ?? [];
+        }
+
+        $recados = \App\Queries\RecadoQuery::applyFilters(
+            $recados,
+            $vistaFiltros,
+            $vista['logica'] ?? 'AND'
+        );
+
     }
 
-    /* ================= FILTROS TEMPORÁRIOS (JSON/Array do formulário) ================= */
+    /* ================= FILTROS TEMPORÁRIOS ================= */
     if ($request->filled('filtros')) {
-        // Espera-se que 'filtros' seja um array de arrays: [{field, operator, value}, ...]
         $filtros = $request->input('filtros', []);
         $logica = $request->input('logica', 'AND');
-
-        $recados = RecadoQuery::applyFilters($recados, $filtros, $logica);
+        $recados = \App\Queries\RecadoQuery::applyFilters($recados, $filtros, $logica);
     }
 
-    /* ================= FILTROS MANUAIS (SOBRESCREVEM A VISTA) ================= */
+    /* ================= FILTROS MANUAIS ================= */
     foreach (['id','contact_client','plate','estado_id','tipo_formulario_id'] as $field) {
         if ($request->filled($field)) {
-            $operator = in_array($field,['contact_client','plate']) ? 'like' : '=';
-            $value = in_array($field,['contact_client','plate']) ? '%'.$request->input($field).'%' : $request->input($field);
+            $operator = in_array($field,['contact_client','plate']) ? 'LIKE' : '=';
+            $value = in_array($field,['contact_client','plate'])
+                ? '%'.$request->input($field).'%'
+                : $request->input($field);
+
             $recados->where($field, $operator, $value);
         }
     }
 
-    /* ================= SEGURANÇA / VISIBILIDADE ================= */
+    /* ================= VISIBILIDADE ================= */
     if ($user->cargo?->name !== 'admin') {
         $recados->where(function ($q) use ($user) {
             $q->where('user_id', $user->id)
-              ->orWhereHas('destinatarios', fn ($d) =>
-                    $d->where('users.id', $user->id)
-              )
-              ->orWhereHas('grupos.users', fn ($g) =>
-                    $g->where('users.id', $user->id)
-              );
+              ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $user->id))
+              ->orWhereHas('grupos.users', fn ($g) => $g->where('users.id', $user->id));
         });
     }
 
@@ -83,17 +95,6 @@ public function index(Request $request)
         ->paginate(10)
         ->withQueryString();
 
-    /* ================= GUARDAR FILTROS NA SESSÃO ================= */
-    session([
-        'recados_filtros' => [
-            'estado_id' => $request->estado_id,
-            'tipo_formulario_id' => $request->tipo_formulario_id,
-            'filtros' => $request->input('filtros', []),
-            'logica' => $request->input('logica', 'AND'),
-        ]
-    ]);
-
-    /* ================= POPUP LOCAL ================= */
     $showPopup = !$request->session()->has('local_trabalho');
 
     return view('recados.index', compact(
@@ -104,6 +105,65 @@ public function index(Request $request)
         'showPopup'
     ));
 }
+
+public function create(Request $request)
+{
+    $user = auth()->user();
+
+    if ($user->grupos->contains('name', 'Telefonistas') && !$request->session()->has('local_trabalho')) {
+        return redirect()->route('recados.index');
+    }
+
+    $localTrabalho = $request->session()->get('local_trabalho'); // "Central" ou "Call Center"
+
+    $estados = Estado::orderBy('name')->get();
+    $tiposFormulario = TipoFormulario::orderBy('name')->get();
+    $users = User::orderBy('name')->get();
+    $grupos = Grupo::orderBy('name')->get();
+    $setores = Setor::orderBy('name')->get();
+    $origens = Origem::orderBy('name')->get();
+    $departamentos = Departamento::orderBy('name')->get();
+    $slas = SLA::orderBy('name')->get();
+    $tipos = Tipo::orderBy('name')->get();
+    $avisos = Aviso::orderBy('name')->get();
+    $campanhas = Campanha::orderBy('name')->get();
+
+    // ✅ descobrir o ID do tipo de formulário a partir do nome (case-insensitive)
+    $nomeTipo = strtolower(trim((string)$localTrabalho)); // "central" ou "call center"
+    $tipoFormularioId = $tiposFormulario
+        ->first(fn ($t) => strtolower(trim($t->name)) === $nomeTipo)
+        ?->id;
+
+    // fallback extra (se o local vier vazio ou diferente)
+    if (!$tipoFormularioId) {
+        $tipoFormularioId = $tiposFormulario
+            ->first(fn ($t) => strtolower(trim($t->name)) === 'central')
+            ?->id;
+    }
+
+    $view = match ($nomeTipo) {
+        'call center' => 'recados.create_callcenter',
+        'central' => 'recados.create_central',
+        default => 'recados.create_central',
+    };
+
+    return view($view, compact(
+        'estados',
+        'tiposFormulario',
+        'tipoFormularioId', // ✅ AGORA EXISTE NA VIEW
+        'users',
+        'grupos',
+        'setores',
+        'origens',
+        'departamentos',
+        'slas',
+        'tipos',
+        'avisos',
+        'campanhas',
+        'localTrabalho'
+    ));
+}
+
 
 
      // Editar

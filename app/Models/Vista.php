@@ -27,19 +27,21 @@ class Vista extends Model
 
     /* ================= MÉTODO APPLY ================= */
     public function apply($query)
-    {
-        // Garante que $filtros é array
-        $filtros = $this->filtros;
+{
+    $filtros = $this->filtros;
 
-        if (is_string($filtros)) {
-            $filtros = json_decode($filtros, true) ?? [];
-        }
-
-        // Garante lógica padrão
-        $logica = $this->logica ?? 'AND';
-
-        return RecadoQuery::applyFilters($query, $filtros, $logica);
+    if (is_string($filtros)) {
+        $filtros = json_decode($filtros, true) ?? [];
     }
+
+    $logica = $this->logica ?? 'AND';
+
+    // ✅ suporta os 2 formatos (com e sem wrapper)
+    $conditions = $filtros['conditions'] ?? $filtros ?? [];
+
+    return RecadoQuery::applyFilters($query, $conditions, $logica);
+}
+
 
     /* ================= VISIBILIDADE ================= */
     public static function visiveisPara($user)
