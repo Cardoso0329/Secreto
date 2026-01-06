@@ -91,11 +91,10 @@ public function store(Request $request)
             'cargo_id'     => 'required|exists:cargos,id',
             'departamentos' => 'nullable|array',
             'departamentos.*' => 'exists:departamentos,id',
-            'visibilidade_recados' => 'required|in:todos,campanhas,nenhum',
             'password'     => 'nullable|string|min:6|confirmed',
         ]);
 
-        $data = $request->only('name', 'email', 'cargo_id', 'visibilidade_recados');
+        $data = $request->only('name', 'email', 'cargo_id');
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);

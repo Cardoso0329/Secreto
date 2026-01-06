@@ -128,6 +128,13 @@ const fieldsConfig = {
         type: 'select',
         options: @json($departamentos->map(fn($d)=>['id'=>$d->id,'name'=>$d->name])->values())
     },
+    
+    destinatario_user_id: {
+  label: 'Destinatário (Utilizador)',
+  type: 'select',
+  options: @json($users->map(fn($u)=>['id'=>$u->id,'name'=>$u->name])->values())
+},
+
 
     abertura: { label: 'Data de Abertura', type: 'date' }
 };
@@ -193,7 +200,12 @@ function addCondition(data = null) {
     removeBtn.textContent = '🗑️';
     removeBtn.onclick = () => row.remove();
 
-    row.append(field, operator, valueDiv, removeBtn);
+    const btnCol = document.createElement('div');
+btnCol.className = 'col-auto d-flex align-items-center';
+btnCol.appendChild(removeBtn);
+
+row.append(field, operator, valueDiv, btnCol);
+
     document.getElementById('conditions').appendChild(row);
 }
 

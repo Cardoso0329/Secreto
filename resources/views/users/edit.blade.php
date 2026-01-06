@@ -89,20 +89,6 @@
                     </div>
                 </div>
 
-                {{-- Visibilidade --}}
-                <div class="mb-4">
-                    <label class="section-title">O que este utilizador pode ver?</label>
-                    <select name="visibilidade_recados" class="form-select form-select-lg">
-                        <option value="todos" {{ $user->visibilidade_recados == 'todos' ? 'selected' : '' }}>
-                            Ver TODOS os Recados
-                        </option>
-                        <option value="campanhas" {{ $user->visibilidade_recados == 'campanhas' ? 'selected' : '' }}>
-                            Ver apenas Recados de Campanhas
-                        </option>
-                        
-                    </select>
-                </div>
-
                 {{-- Password --}}
                 <div class="mb-4">
                     <label for="password" class="section-title">Nova Password</label>

@@ -24,7 +24,9 @@ class RecadoQuery
     // ✅ agrupar sempre
     $query->where(function (Builder $group) use ($filtros, $logica) {
 
-        foreach ($filtros as $i => $f) {
+        $applied = 0; // ✅ conta condições realmente aplicadas (para OR funcionar bem)
+
+        foreach ($filtros as $f) {
             $field = $f['field'] ?? null;
             $op    = strtoupper(trim((string)($f['operator'] ?? '=')));
             $value = $f['value'] ?? null;
@@ -39,24 +41,62 @@ class RecadoQuery
                 default => $op,
             };
 
+            // helper para aplicar where/orWhere
+            $applyWhere = function (callable $cb) use ($group, $logica, &$applied) {
+                if ($logica === 'OR') {
+                    if ($applied === 0) $group->where($cb);
+                    else $group->orWhere($cb);
+                } else {
+                    $group->where($cb);
+                }
+                $applied++;
+            };
+
+            /* ======================================================
+               ✅ CAMPO ESPECIAL: DESTINATÁRIO (relação)
+               field = destinatario_user_id
+               ====================================================== */
+            if ($field === 'destinatario_user_id') {
+                $userId = $value;
+
+                if ($op === '<>') {
+                    $applyWhere(function (Builder $q) use ($userId) {
+                        $q->whereDoesntHave('destinatarios', function ($d) use ($userId) {
+                            $d->where('users.id', $userId);
+                        });
+                    });
+                } else {
+                    // por defeito trata como "="
+                    $applyWhere(function (Builder $q) use ($userId) {
+                        $q->whereHas('destinatarios', function ($d) use ($userId) {
+                            $d->where('users.id', $userId);
+                        });
+                    });
+                }
+
+                continue;
+            }
+
+            /* ======================================================
+               ✅ CAMPOS NORMAIS (colunas diretas)
+               ====================================================== */
+
             // contém
             if ($op === 'LIKE') {
                 $value = (string)$value;
                 if (!str_contains($value, '%')) $value = "%{$value}%";
             }
 
-            // ✅ primeira condição usa where, as seguintes usam orWhere (se logica OR)
-            if ($logica === 'OR') {
-                if ($i === 0) $group->where($field, $op, $value);
-                else $group->orWhere($field, $op, $value);
-            } else {
-                $group->where($field, $op, $value);
-            }
+            // aplica condição normal
+            $applyWhere(function (Builder $q) use ($field, $op, $value) {
+                $q->where($field, $op, $value);
+            });
         }
     });
 
     return $query;
 }
+
 
     private static function applyOne(Builder $q, array $f, string $logica): void
     {
