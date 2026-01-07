@@ -122,28 +122,49 @@ const fieldsConfig = {
         type: 'select',
         options: @json($campanhas->map(fn($c)=>['id'=>$c->id,'name'=>$c->name])->values())
     },
-    
+
+    /* ✅ CAMPOS ADICIONADOS */
+    setor_id: {
+        label: 'Setor',
+        type: 'select',
+        options: @json($setores->map(fn($s)=>['id'=>$s->id,'name'=>$s->name])->values())
+    },
+    origem_id: {
+        label: 'Origem',
+        type: 'select',
+        options: @json($origens->map(fn($o)=>['id'=>$o->id,'name'=>$o->name])->values())
+    },
+    tipo_id: {
+        label: 'Tipo',
+        type: 'select',
+        options: @json($tipos->map(fn($t)=>['id'=>$t->id,'name'=>$t->name])->values())
+    },
+    aviso_id: {
+        label: 'Aviso',
+        type: 'select',
+        options: @json($avisos->map(fn($a)=>['id'=>$a->id,'name'=>$a->name])->values())
+    },
+
     departamento_id: {
         label: 'Departamento',
         type: 'select',
         options: @json($departamentos->map(fn($d)=>['id'=>$d->id,'name'=>$d->name])->values())
     },
-    
-    destinatario_user_id: {
-  label: 'Destinatário (Utilizador)',
-  type: 'select',
-  options: @json($users->map(fn($u)=>['id'=>$u->id,'name'=>$u->name])->values())
-},
 
+    destinatario_user_id: {
+        label: 'Destinatário (Utilizador)',
+        type: 'select',
+        options: @json($users->map(fn($u)=>['id'=>$u->id,'name'=>$u->name])->values())
+    },
 
     abertura: { label: 'Data de Abertura', type: 'date' }
 };
 
 let index = 0;
-const oldConditions = {!! json_encode(old('conditions', [])) !!}; // ✅ garante isto
+const oldConditions = {!! json_encode(old('conditions', [])) !!};
 
 function addCondition(data = null) {
-    const rowIndex = index; // ✅ fixa o índice desta linha
+    const rowIndex = index;
     index++;
 
     const row = document.createElement('div');
@@ -201,11 +222,10 @@ function addCondition(data = null) {
     removeBtn.onclick = () => row.remove();
 
     const btnCol = document.createElement('div');
-btnCol.className = 'col-auto d-flex align-items-center';
-btnCol.appendChild(removeBtn);
+    btnCol.className = 'col-auto d-flex align-items-center';
+    btnCol.appendChild(removeBtn);
 
-row.append(field, operator, valueDiv, btnCol);
-
+    row.append(field, operator, valueDiv, btnCol);
     document.getElementById('conditions').appendChild(row);
 }
 
@@ -221,7 +241,6 @@ document.addEventListener('DOMContentLoaded', () => {
     else addCondition();
 });
 </script>
-
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

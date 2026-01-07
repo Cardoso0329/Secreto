@@ -14,10 +14,10 @@ use App\Models\SLA;
 use App\Models\Aviso;
 use App\Services\VistaRepo;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class VistaController extends Controller
 {
-
     public function index()
     {
         $vistas = VistaRepo::all();
@@ -37,23 +37,52 @@ class VistaController extends Controller
             'slas'            => SLA::orderBy('name')->get(),
             'avisos'          => Aviso::orderBy('name')->get(),
             'users'           => User::orderBy('name')->get(),
-            'campanhas'      => Campanha::orderBy('name')->get(), // para compatibilidade com a view
+            'campanhas'       => Campanha::orderBy('name')->get(),
         ]);
     }
 
     public function store(Request $request)
     {
+        // ✅ fields permitidos no dropdown da view (inclui os 4 novos)
+        $allowedFields = [
+            'id',
+            'name',
+            'contact_client',
+            'plate',
+            'operator_email',
+            'mensagem',
+
+            'estado_id',
+            'tipo_formulario_id',
+            'sla_id',
+            'campanha_id',
+            'departamento_id',
+            'destinatario_user_id',
+            'abertura',
+
+            // ✅ adicionados
+            'setor_id',
+            'origem_id',
+            'tipo_id',
+            'aviso_id',
+        ];
+
         $data = $request->validate([
             'nome'        => 'required|string|max:255',
             'logica'      => 'required|in:AND,OR',
             'acesso'      => 'required|in:all,department,specific',
-            'conditions'  => 'nullable|array',
+
+            // ✅ validar bem as condições
+            'conditions'                => 'nullable|array',
+            'conditions.*.field'        => ['nullable', 'string', Rule::in($allowedFields)],
+            'conditions.*.operator'     => ['nullable', 'string', Rule::in(['=','!=','like'])],
+            'conditions.*.value'        => 'nullable',
 
             'departamentos'   => 'nullable|array',
-            'departamentos.*' => 'integer',
+            'departamentos.*' => 'integer|exists:departamentos,id',
 
             'users'   => 'nullable|array',
-            'users.*' => 'integer',
+            'users.*' => 'integer|exists:users,id',
         ]);
 
         // ✅ coerência de acesso
@@ -102,23 +131,52 @@ class VistaController extends Controller
             'slas'            => SLA::orderBy('name')->get(),
             'avisos'          => Aviso::orderBy('name')->get(),
             'users'           => User::orderBy('name')->get(),
-            'campanhas'      => Campanha::orderBy('name')->get(), // para compatibilidade com a view
+            'campanhas'       => Campanha::orderBy('name')->get(),
         ]);
     }
 
     public function update(Request $request, string $vista)
     {
+        // ✅ fields permitidos no dropdown da view (inclui os 4 novos)
+        $allowedFields = [
+            'id',
+            'name',
+            'contact_client',
+            'plate',
+            'operator_email',
+            'mensagem',
+
+            'estado_id',
+            'tipo_formulario_id',
+            'sla_id',
+            'campanha_id',
+            'departamento_id',
+            'destinatario_user_id',
+            'abertura',
+
+            // ✅ adicionados
+            'setor_id',
+            'origem_id',
+            'tipo_id',
+            'aviso_id',
+        ];
+
         $data = $request->validate([
             'nome'        => 'required|string|max:255',
             'logica'      => 'required|in:AND,OR',
             'acesso'      => 'required|in:all,department,specific',
-            'conditions'  => 'nullable|array',
+
+            // ✅ validar bem as condições
+            'conditions'                => 'nullable|array',
+            'conditions.*.field'        => ['nullable', 'string', Rule::in($allowedFields)],
+            'conditions.*.operator'     => ['nullable', 'string', Rule::in(['=','!=','like'])],
+            'conditions.*.value'        => 'nullable',
 
             'departamentos'   => 'nullable|array',
-            'departamentos.*' => 'integer',
+            'departamentos.*' => 'integer|exists:departamentos,id',
 
             'users'   => 'nullable|array',
-            'users.*' => 'integer',
+            'users.*' => 'integer|exists:users,id',
         ]);
 
         // ✅ coerência de acesso
@@ -155,6 +213,7 @@ class VistaController extends Controller
     public function destroy(string $vista)
     {
         VistaRepo::delete($vista);
+
         return redirect()->route('vistas.index')->with('success', 'Vista eliminada.');
     }
 }

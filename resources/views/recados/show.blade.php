@@ -47,24 +47,24 @@
                     <p><strong>Origem:</strong> {{ $recado->origem->name ?? '—' }}</p>
                     <p><strong>Setor:</strong> {{ $recado->setor->name ?? '—' }}</p>
                     <p><strong>Departamento:</strong> {{ $recado->departamento->name ?? '—' }}</p>
-                    {{-- Avisos em fila para envio por email --}}
-@if($avisos->count())
-    <div class="mt-4">
-        <h5 class="fw-semibold mb-2">📣 Enviar Aviso</h5>
-        <div class="d-flex flex-wrap gap-2">
-            @foreach($avisos as $aviso)
-                <form action="{{ route('recados.enviarAviso', $recado) }}" method="POST" class="m-0">
-                    @csrf
-                    <input type="hidden" name="aviso_id" value="{{ $aviso->id }}">
-                    <button type="submit" class="btn btn-outline-primary btn-sm">
-                        {{ $aviso->name }}
-                    </button>
-                </form>
-            @endforeach
-        </div>
-    </div>
-@endif
 
+                    {{-- Avisos em fila para envio por email --}}
+                    @if($avisos->count())
+                        <div class="mt-4">
+                            <h5 class="fw-semibold mb-2">📣 Enviar Aviso</h5>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach($avisos as $aviso)
+                                    <form action="{{ route('recados.enviarAviso', $recado) }}" method="POST" class="m-0">
+                                        @csrf
+                                        <input type="hidden" name="aviso_id" value="{{ $aviso->id }}">
+                                        <button type="submit" class="btn btn-outline-primary btn-sm">
+                                            {{ $aviso->name }}
+                                        </button>
+                                    </form>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
 
                     {{-- Estado editável --}}
                     <hr>
@@ -89,76 +89,76 @@
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-body">
                     <h5 class="fw-semibold mb-3">👥 Destinatários & Mensagem</h5>
+
                     <p><strong>Destinatários:</strong>
-    @forelse($recado->destinatarios as $user)
-        {{ $user->name }}{{ !$loop->last ? ',' : '' }}
-    @empty
-        <span class="text-muted">Nenhum</span>
-    @endforelse
-</p>
+                        @forelse($recado->destinatarios as $user)
+                            {{ $user->name }}{{ !$loop->last ? ',' : '' }}
+                        @empty
+                            <span class="text-muted">Nenhum</span>
+                        @endforelse
+                    </p>
 
-@if($recado->grupos?->count())
-    <p><strong>Grupos:</strong>
-        @foreach($recado->grupos as $grupo)
-            {{ $grupo->name }}{{ !$loop->last ? ',' : '' }}
-        @endforeach
-    </p>
-@endif
+                    @if($recado->grupos?->count())
+                        <p><strong>Grupos:</strong>
+                            @foreach($recado->grupos as $grupo)
+                                {{ $grupo->name }}{{ !$loop->last ? ',' : '' }}
+                            @endforeach
+                        </p>
+                    @endif
 
-@if($recado->guestTokens?->count())
-    <p><strong>Destinatários Livres:</strong></p>
-    <ul>
-        @foreach($recado->guestTokens as $token)
-            <li>{{ $token->email }}</li>
-        @endforeach
-    </ul>
-@else
-    <p><strong>Destinatários Livres:</strong> —</p>
-@endif
+                    @if($recado->guestTokens?->count())
+                        <p><strong>Destinatários Livres:</strong></p>
+                        <ul>
+                            @foreach($recado->guestTokens as $token)
+                                <li>{{ $token->email }}</li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <p><strong>Destinatários Livres:</strong> —</p>
+                    @endif
 
-{{-- 🔥 Campanhas --}}
-<p><strong>Campanha:</strong> {{ $recado->campanha->name ?? '—' }}</p>
+                    {{-- 🔥 Campanhas --}}
+                    <p><strong>Campanha:</strong> {{ $recado->campanha->name ?? '—' }}</p>
 
-
-
-                                        <p><strong>Assunto:</strong> {{ $recado->assunto ?? '—' }}</p>
+                    <p><strong>Assunto:</strong> {{ $recado->assunto ?? '—' }}</p>
 
                     <p><strong>Mensagem:</strong> {{ $recado->mensagem }}</p>
 
                     <p><strong>Ficheiro:</strong></p>
-@if ($recado->ficheiro)
-    @php
-        $ext = pathinfo($recado->ficheiro, PATHINFO_EXTENSION);
-        $fileUrl = asset('storage/recados/' . $recado->ficheiro);
-        $imageExtensions = ['jpg','jpeg','png','gif','webp'];
-    @endphp
+                    @if ($recado->ficheiro)
+                        @php
+                            $ext = pathinfo($recado->ficheiro, PATHINFO_EXTENSION);
+                            $fileUrl = asset('storage/recados/' . $recado->ficheiro);
+                            $imageExtensions = ['jpg','jpeg','png','gif','webp'];
+                        @endphp
 
-    {{-- Pré-visualização para imagens --}}
-    @if(in_array(strtolower($ext), $imageExtensions))
-        <div class="mb-2">
-            <img src="{{ $fileUrl }}" alt="Pré-visualização" class="img-fluid rounded" style="max-height: 300px;">
-        </div>
-    @elseif(strtolower($ext) === 'pdf')
-        <div class="mb-2">
-            <iframe src="{{ $fileUrl }}" class="w-100 rounded" style="height: 400px;"></iframe>
-        </div>
-    @else
-        <p class="text-muted">Pré-visualização não disponível para este tipo de ficheiro.</p>
-    @endif
+                        {{-- Pré-visualização para imagens --}}
+                        @if(in_array(strtolower($ext), $imageExtensions))
+                            <div class="mb-2">
+                                <img src="{{ $fileUrl }}" alt="Pré-visualização" class="img-fluid rounded" style="max-height: 300px;">
+                            </div>
+                        @elseif(strtolower($ext) === 'pdf')
+                            <div class="mb-2">
+                                <iframe src="{{ $fileUrl }}" class="w-100 rounded" style="height: 400px;"></iframe>
+                            </div>
+                        @else
+                            <p class="text-muted">Pré-visualização não disponível para este tipo de ficheiro.</p>
+                        @endif
 
-    {{-- Botões de Ver e Download --}}
-    <div class="d-flex gap-2">
-        <a href="{{ $fileUrl }}" target="_blank" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-eye"></i> Abrir
-        </a>
-        <a href="{{ $fileUrl }}" download class="btn btn-success btn-sm">
-            <i class="bi bi-download"></i> Download
-        </a>
-    </div>
-@else
-    <span class="text-muted">Sem ficheiro</span>
-@endif
+                        {{-- Botões de Ver e Download --}}
+                        <div class="d-flex gap-2">
+                            <a href="{{ $fileUrl }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-eye"></i> Abrir
+                            </a>
+                            <a href="{{ $fileUrl }}" download class="btn btn-success btn-sm">
+                                <i class="bi bi-download"></i> Download
+                            </a>
+                        </div>
+                    @else
+                        <span class="text-muted">Sem ficheiro</span>
+                    @endif
 
+                </div>
             </div>
         </div>
     </div>
@@ -172,14 +172,49 @@
                 {{-- Área estilo chat --}}
                 <div class="p-3 rounded bg-light mb-3" style="max-height: 350px; overflow-y: auto;">
                     @php
-                        $comentarios = array_filter(explode("\n", $recado->observacoes));
+                        $linhas = preg_split("/\r\n|\n|\r/", (string)($recado->observacoes ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+                        $meuNome = auth()->user()->name ?? '';
+
+                        $comentarios = collect($linhas)->map(function($linha) {
+                            $linha = trim($linha);
+
+                            // "dd/mm/YYYY HH:ii - Nome: mensagem"
+                            if (preg_match('/^(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2})\s+-\s+(.+?):\s*(.+)$/u', $linha, $m)) {
+                                return [
+                                    'data' => $m[1],
+                                    'autor' => trim($m[2]),
+                                    'msg' => trim($m[3]),
+                                    'raw' => $linha,
+                                ];
+                            }
+
+                            // fallback
+                            return [
+                                'data' => null,
+                                'autor' => null,
+                                'msg' => $linha,
+                                'raw' => $linha,
+                            ];
+                        });
                     @endphp
-                    @forelse($comentarios as $i => $linha)
-                        <div class="d-flex mb-2 {{ $i % 2 === 0 ? 'justify-content-start' : 'justify-content-end' }}">
-                            <div class="px-3 py-2 rounded-3 small 
-                                {{ $i % 2 === 0 ? 'bg-white border text-dark' : 'bg-primary text-white' }}"
+
+                    @forelse($comentarios as $c)
+                        @php
+                            $isMine = $c['autor'] && $meuNome && mb_strtolower($c['autor']) === mb_strtolower($meuNome);
+                        @endphp
+
+                        <div class="d-flex mb-2 {{ $isMine ? 'justify-content-end' : 'justify-content-start' }}">
+                            <div class="px-3 py-2 rounded-3 small
+                                {{ $isMine ? 'bg-primary text-white' : 'bg-white border text-dark' }}"
                                 style="max-width: 75%;">
-                                {{ trim($linha) }}
+                                @if($c['data'] && $c['autor'])
+                                    <div class="small {{ $isMine ? 'text-white-50' : 'text-muted' }}">
+                                        {{ $c['data'] }} - {{ $c['autor'] }}
+                                    </div>
+                                    <div>{{ $c['msg'] }}</div>
+                                @else
+                                    <div>{{ trim($c['raw']) }}</div>
+                                @endif
                             </div>
                         </div>
                     @empty

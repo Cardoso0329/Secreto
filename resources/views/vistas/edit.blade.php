@@ -99,6 +99,29 @@
     </form>
 </div>
 
+@php
+    /**
+     * ✅ normaliza filtros guardados:
+     * - array direto
+     * - formato antigo { conditions: [...] }
+     * - string JSON
+     */
+    $stored = $vista['filtros'] ?? [];
+
+    if (is_array($stored) && array_key_exists('conditions', $stored)) {
+        $stored = $stored['conditions'] ?? [];
+    }
+
+    if (is_string($stored)) {
+        $decoded = json_decode($stored, true);
+        if (is_array($decoded)) $stored = $decoded;
+    }
+
+    if (!is_array($stored)) $stored = [];
+
+    $existingConditionsPhp = old('conditions', $stored);
+@endphp
+
 <script>
 const fieldsConfig = {
     id: { label: 'ID', type: 'text' },
@@ -123,15 +146,54 @@ const fieldsConfig = {
         type: 'select',
         options: @json($slas->map(fn($s)=>['id'=>$s->id,'name'=>$s->name])->values())
     },
+    campanha_id: {
+        label: 'Campanha',
+        type: 'select',
+        options: @json($campanhas->map(fn($c)=>['id'=>$c->id,'name'=>$c->name])->values())
+    },
+
+    /* ✅ CAMPOS IGUAIS AO CREATE */
+    setor_id: {
+        label: 'Setor',
+        type: 'select',
+        options: @json($setores->map(fn($s)=>['id'=>$s->id,'name'=>$s->name])->values())
+    },
+    origem_id: {
+        label: 'Origem',
+        type: 'select',
+        options: @json($origens->map(fn($o)=>['id'=>$o->id,'name'=>$o->name])->values())
+    },
+    tipo_id: {
+        label: 'Tipo',
+        type: 'select',
+        options: @json($tipos->map(fn($t)=>['id'=>$t->id,'name'=>$t->name])->values())
+    },
+    aviso_id: {
+        label: 'Aviso',
+        type: 'select',
+        options: @json($avisos->map(fn($a)=>['id'=>$a->id,'name'=>$a->name])->values())
+    },
+
+    departamento_id: {
+        label: 'Departamento',
+        type: 'select',
+        options: @json($departamentos->map(fn($d)=>['id'=>$d->id,'name'=>$d->name])->values())
+    },
+
+    destinatario_user_id: {
+        label: 'Destinatário (Utilizador)',
+        type: 'select',
+        options: @json($users->map(fn($u)=>['id'=>$u->id,'name'=>$u->name])->values())
+    },
 
     abertura: { label: 'Data de Abertura', type: 'date' }
 };
 
 let conditionIndex = 0;
-const existingConditions = @json(old('conditions', $vista['filtros'] ?? []));
+const existingConditions = @json($existingConditionsPhp);
 
 function addCondition(data = {}) {
-    const rowIndex = conditionIndex; // ✅ fixa o índice desta linha
+    const rowIndex = conditionIndex;
     conditionIndex++;
 
     const row = document.createElement('div');
@@ -164,7 +226,7 @@ function addCondition(data = {}) {
         if (cfg.type === 'select') {
             const sel = document.createElement('select');
             sel.className = 'form-select';
-            sel.name = `conditions[${rowIndex}][value]`; // ✅ rowIndex
+            sel.name = `conditions[${rowIndex}][value]`;
             sel.innerHTML = `<option value="">—</option>` + cfg.options
                 .map(o => `<option value="${o.id}" ${String(o.id) === String(val) ? 'selected' : ''}>${o.name}</option>`)
                 .join('');
@@ -173,7 +235,7 @@ function addCondition(data = {}) {
             const input = document.createElement('input');
             input.type = cfg.type;
             input.className = 'form-control';
-            input.name = `conditions[${rowIndex}][value]`; // ✅ rowIndex
+            input.name = `conditions[${rowIndex}][value]`;
             input.value = val;
             valueDiv.appendChild(input);
         }
@@ -200,11 +262,14 @@ function toggleAccessBlocks() {
 
 document.addEventListener('DOMContentLoaded', () => {
     toggleAccessBlocks();
-    if (existingConditions.length) existingConditions.forEach(c => addCondition(c));
-    else addCondition();
+
+    if (Array.isArray(existingConditions) && existingConditions.length) {
+        existingConditions.forEach(c => addCondition(c));
+    } else {
+        addCondition();
+    }
 });
 </script>
-
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

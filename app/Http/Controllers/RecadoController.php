@@ -474,29 +474,78 @@ if($request->has('destinatarios_livres')){
 
     public function exportFiltered(Request $request)
 {
-    // Recuperar filtros obrigatórios da sessão
-    $filtros = session('recados_filtros', []);
+    $user = auth()->user();
 
-    $query = Recado::with(['estado','tipoFormulario','destinatarios','grupos.users','guestTokens']);
+    $query = Recado::with([
+        'setor','origem','departamento','destinatarios','estado','sla',
+        'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
+    ]);
 
-    // Aplicar filtros obrigatórios
-    if (!empty($filtros['estado_id'])) {
-        $query->where('estado_id', $filtros['estado_id']);
+    // --- vista ativa (GET ou sessão) ---
+    $vistaId = $request->filled('vista_id')
+        ? $request->input('vista_id')
+        : $request->session()->get('recados_vista_id');
+
+    // detetar filtros manuais
+    $manualFields = ['id','contact_client','plate','estado_id','tipo_formulario_id'];
+
+    $temFiltrosManuais =
+        $request->filled('filtros') ||
+        collect($manualFields)->contains(fn ($f) => $request->filled($f));
+
+    // aplicar vista só se não houver filtros manuais
+    if (!$temFiltrosManuais && !empty($vistaId)) {
+        $vistas = collect(\App\Services\VistaService::visiveisPara($user));
+        $vista = \App\Services\VistaRepo::findOrFail($vistaId);
+
+        if (!$vistas->pluck('id')->contains($vista['id'])) abort(403);
+
+        $vistaFiltros = $vista['filtros'] ?? [];
+        if (is_array($vistaFiltros) && array_key_exists('conditions', $vistaFiltros)) {
+            $vistaFiltros = $vistaFiltros['conditions'] ?? [];
+        }
+
+        $query = \App\Queries\RecadoQuery::applyFilters(
+            $query,
+            $vistaFiltros,
+            $vista['logica'] ?? 'AND'
+        );
     }
-    if (!empty($filtros['tipo_formulario_id'])) {
-        $query->where('tipo_formulario_id', $filtros['tipo_formulario_id']);
+
+    // filtros temporários
+    if ($request->filled('filtros')) {
+        $query = \App\Queries\RecadoQuery::applyFilters(
+            $query,
+            $request->input('filtros', []),
+            $request->input('logica', 'AND')
+        );
     }
 
-    // Aplicar filtros manuais vindos da query GET (se houver)
-    foreach (['id','contact_client','plate'] as $field) {
+    // filtros manuais
+    foreach ($manualFields as $field) {
         if ($request->filled($field)) {
-            $query->where(
-                $field,
-                in_array($field,['contact_client','plate']) ? 'like' : '=',
-                in_array($field,['contact_client','plate']) ? '%'.$request->input($field).'%' : $request->input($field)
-            );
+            $operator = in_array($field, ['contact_client','plate']) ? 'LIKE' : '=';
+            $value = in_array($field, ['contact_client','plate'])
+                ? '%'.$request->input($field).'%'
+                : $request->input($field);
+
+            $query->where($field, $operator, $value);
         }
     }
+
+    // visibilidade (igual ao index)
+    if ($user->cargo?->name !== 'admin') {
+        $query->where(function ($q) use ($user) {
+            $q->where('user_id', $user->id)
+              ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $user->id))
+              ->orWhereHas('grupos.users', fn ($g) => $g->where('users.id', $user->id));
+        });
+    }
+
+    // ordenação (opcional no excel, mas mantém consistente)
+    $sortBy  = $request->input('sort_by', 'id');
+    $sortDir = $request->input('sort_dir', 'desc');
+    $query->orderBy($sortBy, $sortDir);
 
     $recados = $query->get();
 
