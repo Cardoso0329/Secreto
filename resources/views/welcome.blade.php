@@ -37,9 +37,18 @@
         <div>
             <h1 class="display-4">Bem-vindo à Sociedade Comercial C. Santos</h1>
             <p class="lead mt-3">A excelência em movimento.</p>
-            @guest
-                <a href="{{ route('login') }}" class="btn btn-light btn-lg mt-4">Entrar na plataforma</a>
-            @endguest
+           @guest
+    <a href="{{ route('login') }}" class="btn btn-light btn-lg mt-4">
+        Entrar na plataforma
+    </a>
+@endguest
+
+@auth
+    <a href="{{ route('painel') }}" class="btn btn-success btn-lg mt-4">
+        Entrar na plataforma
+    </a>
+@endauth
+
         </div>
     </div>
 
