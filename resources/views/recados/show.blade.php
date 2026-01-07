@@ -172,31 +172,33 @@
                 {{-- Área estilo chat --}}
                 <div class="p-3 rounded bg-light mb-3" style="max-height: 350px; overflow-y: auto;">
                     @php
-                        $linhas = preg_split("/\r\n|\n|\r/", (string)($recado->observacoes ?? ''), -1, PREG_SPLIT_NO_EMPTY);
-                        $meuNome = auth()->user()->name ?? '';
+    $linhas = preg_split("/\r\n|\n|\r/", (string)($recado->observacoes ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+    $meuNome = auth()->user()->name ?? '';
 
-                        $comentarios = collect($linhas)->map(function($linha) {
-                            $linha = trim($linha);
+    $comentarios = collect($linhas)
+        ->reverse()
+        ->values()
+        ->map(function($linha) {
+            $linha = trim($linha);
 
-                            // "dd/mm/YYYY HH:ii - Nome: mensagem"
-                            if (preg_match('/^(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2})\s+-\s+(.+?):\s*(.+)$/u', $linha, $m)) {
-                                return [
-                                    'data' => $m[1],
-                                    'autor' => trim($m[2]),
-                                    'msg' => trim($m[3]),
-                                    'raw' => $linha,
-                                ];
-                            }
+            if (preg_match('/^(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2})\s+-\s+(.+?):\s*(.+)$/u', $linha, $m)) {
+                return [
+                    'data' => $m[1],
+                    'autor' => trim($m[2]),
+                    'msg' => trim($m[3]),
+                    'raw' => $linha,
+                ];
+            }
 
-                            // fallback
-                            return [
-                                'data' => null,
-                                'autor' => null,
-                                'msg' => $linha,
-                                'raw' => $linha,
-                            ];
-                        });
-                    @endphp
+            return [
+                'data' => null,
+                'autor' => null,
+                'msg' => $linha,
+                'raw' => $linha,
+            ];
+        });
+@endphp
+
 
                     @forelse($comentarios as $c)
                         @php
