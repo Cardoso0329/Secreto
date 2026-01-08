@@ -8,10 +8,10 @@ use Illuminate\Http\Request;
 class CargoController extends Controller
 {
     public function index()
-    {
-        $cargos = Cargo::orderBy('name', 'asc')->get()->paginate(10);
-        return view('cargos.index', compact('cargos'));
-    }
+{
+    $cargos = Cargo::orderBy('name')->paginate(10); // ou 15, como quiseres
+    return view('cargos.index', compact('cargos'));
+}
 
     public function create()
     {
