@@ -112,7 +112,7 @@
                         <div class="col-12">
                             <label class="form-label small text-muted mb-1">Selecionar vista</label>
                             <select name="vista_id" class="form-select" onchange="this.form.submit()">
-                                <option value="">— Todas as Vistas —</option>
+                                <option value="">Nenhuma</option>
 
                                 @foreach($vistas as $vista)
                                     <option
