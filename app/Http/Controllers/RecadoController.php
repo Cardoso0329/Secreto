@@ -35,6 +35,9 @@ class RecadoController extends Controller
             ->map(fn ($id) => (int) $id);
     }
 
+    /**
+     * ✅ Emails do departamento (agora com validação REAL de email)
+     */
     private function departmentEmails(?int $departamentoId)
     {
         $ids = $this->departmentUserIds($departamentoId);
@@ -42,7 +45,8 @@ class RecadoController extends Controller
 
         return User::whereIn('id', $ids->all())
             ->pluck('email')
-            ->filter()
+            ->map(fn($e) => strtolower(trim((string)$e)))
+            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
             ->unique()
             ->values();
     }
@@ -78,7 +82,6 @@ class RecadoController extends Controller
             ->merge($emailsGuests)
             ->merge($emailsCriador)
             ->map(fn($e) => strtolower(trim((string)$e)))
-            ->filter()
             ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
             ->reject(fn($e) => $blacklist->contains($e))
             ->unique()
@@ -86,9 +89,8 @@ class RecadoController extends Controller
     }
 
     /**
-     * ✅ Converte emails para formato compatível com Mail::to()
+     * ✅ Para o Mail::to() aceitar com nomes:
      * Retorna array associativo: ['email@x.com' => 'Nome']
-     * (mais compatível do que array de Address objects)
      */
     private function addressesFromEmails(Collection $emails): array
     {
@@ -100,16 +102,13 @@ class RecadoController extends Controller
 
         if ($emails->isEmpty()) return [];
 
-        // Map email -> name (users). Se não existir user, usa o próprio email como nome.
         $users = User::whereIn('email', $emails->all())
             ->get(['name', 'email'])
-            ->keyBy(fn($u) => strtolower($u->email));
+            ->keyBy(fn($u) => strtolower(trim((string)$u->email)));
 
         $to = [];
         foreach ($emails as $email) {
-            $key = strtolower($email);
-            $name = $users->get($key)?->name ?? $email;
-            $to[$email] = $name;
+            $to[$email] = $users->get($email)?->name ?? $email; // guest -> nome = email
         }
 
         return $to;
@@ -360,8 +359,11 @@ class RecadoController extends Controller
 
         if ($request->has('destinatarios_livres')) {
             foreach ($request->destinatarios_livres as $email) {
-                $email = trim($email);
-                if (!empty($email) && !$recado->guestEmails->contains('email', $email)) {
+                $email = trim((string)$email);
+                $email = strtolower($email);
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
+
+                if (!$recado->guestEmails->contains('email', $email)) {
                     $recado->guestEmails()->create(['email' => $email]);
                 }
             }
@@ -425,7 +427,7 @@ class RecadoController extends Controller
         }
         $recado->grupos()->sync($gruposSelecionados);
 
-        // 2) Destinatários MANUAIS (associados ao recado)
+        // 2) Destinatários manuais
         $userIdsSelecionados = collect($request->input('destinatarios_users', []))
             ->map(fn ($id) => (int) $id)
             ->unique()
@@ -433,35 +435,35 @@ class RecadoController extends Controller
 
         $recado->destinatariosUsers()->sync($userIdsSelecionados->all());
 
-        // 3) Users do departamento (EMAIL + VISIBILIDADE)
+        // 3) Emails do departamento
         $depId = (int) ($validated['departamento_id'] ?? 0);
         $emailsDept = $this->departmentEmails($depId);
 
-        // 4) Users dos grupos (email)
+        // 4) Emails dos grupos
         $emailsGrupos = User::whereHas('grupos', fn ($q) => $q->whereIn('grupos.id', $gruposSelecionados))
             ->pluck('email')
-            ->filter()
+            ->map(fn($e) => strtolower(trim((string)$e)))
+            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
             ->unique()
             ->values();
 
         // 5) Emails dos destinatários manuais
         $emailsSelecionados = User::whereIn('id', $userIdsSelecionados->all())
             ->pluck('email')
-            ->filter()
+            ->map(fn($e) => strtolower(trim((string)$e)))
+            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
             ->unique()
             ->values();
 
-        // ✅ União final
+        // ✅ União final: dept + destinatários + grupos
         $emailsInternos = $emailsSelecionados
             ->merge($emailsDept)
             ->merge($emailsGrupos)
-            ->map(fn($e) => strtolower(trim((string)$e)))
-            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
             ->reject(fn($e) => $e === 'callcenter.recados@soccsantos.pt')
             ->unique()
             ->values();
 
-        // ✅ 1 email único para todos (aparece lista completa no "Para")
+        // ✅ 1 email único para todos (Outlook mostra todos e Reply All funciona)
         $toList = $this->addressesFromEmails($emailsInternos);
         if (!empty($toList)) {
             Mail::to($toList)->send(new RecadoCriadoMail($recado));
@@ -553,15 +555,12 @@ class RecadoController extends Controller
 
         $recado->save();
 
-        // ✅ reply all
         $emails = $this->emailsResponderATodos($recado);
 
-        // remove quem comentou
         if ($user->email) {
             $emails = $emails->reject(fn($e) => strtolower($e) === strtolower($user->email))->values();
         }
 
-        // ⚠️ se a tua coluna não for "name", troca aqui para "nome"
         $avisoComentario = Aviso::where('name', 'Novo Comentário')->first() ?? Aviso::orderBy('id')->first();
 
         $enviados = 0;
@@ -575,7 +574,6 @@ class RecadoController extends Controller
             }
         }
 
-        // ⚠️ Isto desativa tokens guest. Se queres que convidados continuem a aceder, comenta/remova.
         RecadoGuestToken::where('recado_id', $recado->id)->where('is_active', true)->update(['is_active' => false]);
 
         $msg = $avisoComentario
@@ -720,15 +718,25 @@ class RecadoController extends Controller
         return redirect()->back()->with('success', 'Recado concluído com sucesso.');
     }
 
+    /**
+     * ✅ CORRIGIDO: agora envia 1 email único (Reply All funciona)
+     */
     public function enviarAviso(Recado $recado, Aviso $aviso)
     {
-        $emails = $recado->destinatarios->pluck('email')->toArray();
-        if ($recado->guestTokens->count()) {
-            $emails = array_merge($emails, $recado->guestTokens->pluck('email')->toArray());
-        }
+        $recado->loadMissing(['destinatarios', 'guestTokens']);
 
-        foreach (array_values(array_unique($emails)) as $email) {
-            Mail::to($email)->send(new RecadoAvisoMail($recado, $aviso));
+        $emails = collect()
+            ->merge($recado->destinatarios->pluck('email'))
+            ->merge($recado->guestTokens->pluck('email'))
+            ->map(fn($e) => strtolower(trim((string)$e)))
+            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values();
+
+        $toList = $this->addressesFromEmails($emails);
+
+        if (!empty($toList)) {
+            Mail::to($toList)->send(new RecadoAvisoMail($recado, $aviso));
         }
 
         return back()->with('success', 'Aviso enviado com sucesso!');
