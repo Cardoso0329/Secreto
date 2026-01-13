@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Mail\Mailables\Address;
-
 use App\Mail\RecadoAvisoMail;
 use App\Mail\RecadoCriadoMail;
 use App\Models\{
@@ -50,101 +48,95 @@ class RecadoController extends Controller
     }
 
     /**
-     * ✅ Lista final de emails para "Responder a todos"
-     * Inclui:
-     * - destinatários manuais (destinatarios pivot)
-     * - users dos grupos (grupos.users)
-     * - users do departamento via pivot (department_user)
-     * - guests (guestTokens)
-     * - criador do recado (user_id)
+     * ✅ Emails finais para "Responder a todos"
      */
-    private function emailsResponderATodos(Recado $recado): \Illuminate\Support\Collection
-{
-    $recado->loadMissing(['destinatarios', 'grupos.users', 'guestTokens', 'departamento']);
+    private function emailsResponderATodos(Recado $recado): Collection
+    {
+        $recado->loadMissing(['destinatarios', 'grupos.users', 'guestTokens', 'departamento']);
 
-    $blacklist = collect([
-        'callcenter.recados@soccsantos.pt',
-    ])->map(fn($e) => strtolower(trim($e)));
+        $blacklist = collect([
+            'callcenter.recados@soccsantos.pt',
+        ])->map(fn($e) => strtolower(trim($e)));
 
-    $emailsDestinatarios = $recado->destinatarios->pluck('email');
+        $emailsDestinatarios = $recado->destinatarios->pluck('email');
 
-    $emailsGrupos = $recado->grupos
-        ->pluck('users')
-        ->flatten()
-        ->pluck('email');
+        $emailsGrupos = $recado->grupos
+            ->pluck('users')
+            ->flatten()
+            ->pluck('email');
 
-    $emailsDept = $this->departmentEmails($recado->departamento_id);
+        $emailsDept = $this->departmentEmails($recado->departamento_id);
 
-    $emailsGuests = $recado->guestTokens->pluck('email');
+        $emailsGuests = $recado->guestTokens->pluck('email');
 
-    $emailsCriador = User::where('id', $recado->user_id)->pluck('email');
+        $emailsCriador = User::where('id', $recado->user_id)->pluck('email');
 
-    return collect()
-        ->merge($emailsDestinatarios)
-        ->merge($emailsGrupos)
-        ->merge($emailsDept)
-        ->merge($emailsGuests)
-        ->merge($emailsCriador)
-        ->map(fn($e) => strtolower(trim((string)$e)))
-        ->filter()
-        ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-        ->reject(fn($e) => $blacklist->contains($e))
-        ->unique()
-        ->values();
-}
+        return collect()
+            ->merge($emailsDestinatarios)
+            ->merge($emailsGrupos)
+            ->merge($emailsDept)
+            ->merge($emailsGuests)
+            ->merge($emailsCriador)
+            ->map(fn($e) => strtolower(trim((string)$e)))
+            ->filter()
+            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+            ->reject(fn($e) => $blacklist->contains($e))
+            ->unique()
+            ->values();
+    }
 
-private function addressesFromEmails(\Illuminate\Support\Collection $emails): array
-{
-    $emails = $emails
-        ->map(fn($e) => strtolower(trim((string)$e)))
-        ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-        ->unique()
-        ->values();
+    /**
+     * ✅ Converte emails para formato compatível com Mail::to()
+     * Retorna array associativo: ['email@x.com' => 'Nome']
+     * (mais compatível do que array de Address objects)
+     */
+    private function addressesFromEmails(Collection $emails): array
+    {
+        $emails = $emails
+            ->map(fn($e) => strtolower(trim((string)$e)))
+            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values();
 
-    if ($emails->isEmpty()) return [];
+        if ($emails->isEmpty()) return [];
 
-    // busca nomes de users existentes
-    $users = User::whereIn('email', $emails->all())
-        ->get(['name','email'])
-        ->keyBy(fn($u) => strtolower($u->email));
+        // Map email -> name (users). Se não existir user, usa o próprio email como nome.
+        $users = User::whereIn('email', $emails->all())
+            ->get(['name', 'email'])
+            ->keyBy(fn($u) => strtolower($u->email));
 
-    return $emails->map(function ($email) use ($users) {
-        $key = strtolower($email);
-        $name = $users->get($key)?->name ?? $email; // guest -> nome = email
-        return new Address($email, $name);
-    })->all();
-}
+        $to = [];
+        foreach ($emails as $email) {
+            $key = strtolower($email);
+            $name = $users->get($key)?->name ?? $email;
+            $to[$email] = $name;
+        }
 
-
+        return $to;
+    }
 
     public function index(Request $request)
     {
         $user = auth()->user();
 
-        /* ================= DADOS BASE ================= */
         $estados = Estado::orderBy('name')->get();
         $tiposFormulario = TipoFormulario::orderBy('name')->get();
 
-        // vistas visíveis para o user (arrays)
         $vistas = collect(\App\Services\VistaService::visiveisPara($user));
 
-        /* ================= QUERY BASE ================= */
         $recados = Recado::with([
             'setor','origem','departamento','destinatarios','estado','sla',
             'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
         ]);
 
-        /* ================= DETETAR FILTROS MANUAIS ================= */
         $manualFields = ['id','contact_client','plate','estado_id','tipo_formulario_id'];
 
         $temFiltrosManuais =
             $request->filled('filtros') ||
             collect($manualFields)->contains(fn ($f) => $request->filled($f));
 
-        /* ================= VISTA ATIVA (GET + SESSÃO) ================= */
         if ($request->has('vista_id')) {
             $vistaId = $request->input('vista_id');
-
             if ($vistaId) $request->session()->put('recados_vista_id', $vistaId);
             else $request->session()->forget('recados_vista_id');
         }
@@ -153,10 +145,8 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
             ? $request->input('vista_id')
             : $request->session()->get('recados_vista_id');
 
-        // ✅ IMPORTANTE: garantir que existe sempre (para não dar undefined)
         $vistaFiltros = [];
 
-        /* ================= APLICAR VISTA (SÓ SE NÃO HÁ FILTROS MANUAIS) ================= */
         if (!$temFiltrosManuais && !empty($vistaId)) {
 
             $vista = \App\Services\VistaRepo::findOrFail($vistaId);
@@ -165,7 +155,6 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
 
             $vistaFiltros = $vista['filtros'] ?? [];
 
-            // aceita formato antigo {conditions: []}
             if (is_array($vistaFiltros) && array_key_exists('conditions', $vistaFiltros)) {
                 $vistaFiltros = $vistaFiltros['conditions'] ?? [];
             }
@@ -177,7 +166,6 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
             );
         }
 
-        /* ================= FILTROS TEMPORÁRIOS ================= */
         if ($request->filled('filtros')) {
             $recados = \App\Queries\RecadoQuery::applyFilters(
                 $recados,
@@ -186,7 +174,6 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
             );
         }
 
-        /* ================= FILTROS MANUAIS ================= */
         foreach ($manualFields as $field) {
             if ($request->filled($field)) {
                 $operator = in_array($field, ['contact_client','plate']) ? 'LIKE' : '=';
@@ -198,12 +185,6 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
             }
         }
 
-        /* =========================================================
-           ✅ EXPANDIR VISIBILIDADE APENAS POR VISTA DE DEPARTAMENTO
-           - Só faz sentido se:
-             (1) há vista ativa
-             (2) NÃO há filtros manuais (igual ao teu comportamento da vista)
-           ========================================================= */
         $deptIdsDaVista = collect();
         $permitirVerDepartamentoDaVista = false;
 
@@ -211,7 +192,7 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
             $deptIdsDaVista = collect($vistaFiltros)
                 ->filter(fn ($f) => is_array($f))
                 ->filter(fn ($f) => ($f['field'] ?? null) === 'departamento_id')
-                ->filter(fn ($f) => ($f['operator'] ?? '=') === '=') // só "="
+                ->filter(fn ($f) => ($f['operator'] ?? '=') === '=')
                 ->pluck('value')
                 ->filter(fn ($v) => $v !== null && $v !== '')
                 ->map(fn ($v) => (int) $v)
@@ -219,24 +200,21 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
                 ->values();
 
             if ($deptIdsDaVista->isNotEmpty()) {
-                // departamentos do user via pivot department_user
                 $meusDeptIds = $user->departamentos()
                     ->pluck('departamentos.id')
                     ->map(fn ($v) => (int) $v);
 
-                // só permite se o dept da vista for um dept do user
                 $permitidos = $deptIdsDaVista->intersect($meusDeptIds);
 
                 if ($permitidos->isNotEmpty()) {
                     $permitirVerDepartamentoDaVista = true;
                     $deptIdsDaVista = $permitidos;
                 } else {
-                    $deptIdsDaVista = collect(); // segurança
+                    $deptIdsDaVista = collect();
                 }
             }
         }
 
-        /* ================= VISIBILIDADE ================= */
         if ($user->cargo?->name !== 'admin') {
             $uid = (int) $user->id;
 
@@ -244,14 +222,12 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
                 $q->where('user_id', $uid)
                   ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid));
 
-                // ✅ vista departamento -> incluir todos do dept (se for dele)
                 if ($permitirVerDepartamentoDaVista && $deptIdsDaVista->isNotEmpty()) {
                     $q->orWhereIn('departamento_id', $deptIdsDaVista->all());
                 }
             });
         }
 
-        /* ================= ORDENAÇÃO ================= */
         $sortBy  = $request->input('sort_by', 'id');
         $sortDir = $request->input('sort_dir', 'desc');
 
@@ -279,7 +255,7 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
             return redirect()->route('recados.index');
         }
 
-        $localTrabalho = $request->session()->get('local_trabalho'); // "Central" ou "Call Center"
+        $localTrabalho = $request->session()->get('local_trabalho');
 
         $estados = Estado::orderBy('name')->get();
         $tiposFormulario = TipoFormulario::orderBy('name')->get();
@@ -293,7 +269,7 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
         $avisos = Aviso::orderBy('name')->get();
         $campanhas = Campanha::orderBy('name')->get();
 
-        $nomeTipo = strtolower(trim((string)$localTrabalho)); // "central" ou "call center"
+        $nomeTipo = strtolower(trim((string)$localTrabalho));
         $tipoFormularioId = $tiposFormulario
             ->first(fn ($t) => strtolower(trim($t->name)) === $nomeTipo)
             ?->id;
@@ -379,7 +355,6 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
 
         $recado->save();
 
-        // ✅ continua a guardar apenas destinatários selecionados manualmente
         $recado->destinatariosUsers()->sync($request->input('destinatarios_users', []));
         $recado->grupos()->sync($request->input('destinatarios_grupos', []));
 
@@ -442,15 +417,6 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
 
         $recado = Recado::create($validated);
 
-        /* ==========================================================
-           ✅ EMAILS:
-           - Users selecionados manualmente
-           - Users do departamento (pivot)
-           - Users do(s) grupo(s) (no teu caso: Telefonistas)
-           MAS:
-           - NÃO adiciona users do departamento aos destinatários (para não aparecer na view)
-           ========================================================== */
-
         // 1) Telefonistas sempre incluído nos grupos
         $gruposSelecionados = $request->input('destinatarios_grupos', []);
         $telefonistasId = Grupo::where('name', 'Telefonistas')->first()?->id;
@@ -459,7 +425,7 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
         }
         $recado->grupos()->sync($gruposSelecionados);
 
-        // 2) Destinatários MANUAIS (ficam associados ao recado)
+        // 2) Destinatários MANUAIS (associados ao recado)
         $userIdsSelecionados = collect($request->input('destinatarios_users', []))
             ->map(fn ($id) => (int) $id)
             ->unique()
@@ -467,7 +433,7 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
 
         $recado->destinatariosUsers()->sync($userIdsSelecionados->all());
 
-        // 3) Users do departamento (para EMAIL + VISIBILIDADE, mas não entra nos destinatários)
+        // 3) Users do departamento (EMAIL + VISIBILIDADE)
         $depId = (int) ($validated['departamento_id'] ?? 0);
         $emailsDept = $this->departmentEmails($depId);
 
@@ -485,36 +451,39 @@ private function addressesFromEmails(\Illuminate\Support\Collection $emails): ar
             ->unique()
             ->values();
 
-        // ✅ União final sem duplicados
+        // ✅ União final
         $emailsInternos = $emailsSelecionados
             ->merge($emailsDept)
             ->merge($emailsGrupos)
+            ->map(fn($e) => strtolower(trim((string)$e)))
+            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+            ->reject(fn($e) => $e === 'callcenter.recados@soccsantos.pt')
             ->unique()
             ->values();
 
-        $toAddresses = $this->addressesFromEmails($emailsInternos);
+        // ✅ 1 email único para todos (aparece lista completa no "Para")
+        $toList = $this->addressesFromEmails($emailsInternos);
+        if (!empty($toList)) {
+            Mail::to($toList)->send(new RecadoCriadoMail($recado));
+        }
 
-if (!empty($toAddresses)) {
-    Mail::to($toAddresses)->send(new RecadoCriadoMail($recado));
-}
-
-
-        // 6) Destinatários livres (igual ao teu)
+        // 6) Destinatários livres (1 a 1 por causa do token/link)
         if ($request->filled('destinatarios_livres')) {
             foreach ($request->destinatarios_livres as $email) {
-                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $token = Str::random(60);
+                $email = strtolower(trim((string)$email));
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
 
-                    RecadoGuestToken::create([
-                        'recado_id' => $recado->id,
-                        'email' => $email,
-                        'token' => $token,
-                        'expires_at' => now()->addMonth(),
-                        'is_active' => true
-                    ]);
+                $token = Str::random(60);
 
-                    Mail::to($email)->send(new RecadoCriadoMail($recado, route('recados.guest', $token)));
-                }
+                RecadoGuestToken::create([
+                    'recado_id' => $recado->id,
+                    'email' => $email,
+                    'token' => $token,
+                    'expires_at' => now()->addMonth(),
+                    'is_active' => true
+                ]);
+
+                Mail::to($email)->send(new RecadoCriadoMail($recado, route('recados.guest', $token)));
             }
         }
 
@@ -537,7 +506,6 @@ if (!empty($toAddresses)) {
             $isDestinatario = $recado->destinatarios->contains($uid);
             $isGrupo = $recado->grupos->pluck('users')->flatten()->pluck('id')->contains($uid);
 
-            // ✅ Departamento (pivot) também dá acesso
             $isDepartamento = false;
             if ($recado->departamento_id) {
                 $isDepartamento = $recado->departamento
@@ -567,13 +535,6 @@ if (!empty($toAddresses)) {
         return redirect()->route('recados.index')->with('success', 'Recado apagado com sucesso!');
     }
 
-    /**
-     * ✅ AQUI ESTÁ O "RESPONDER A TODOS"
-     * Ao adicionar comentário:
-     * - grava observação
-     * - muda estado para Pendente se estava em Novo
-     * - envia email para TODOS os envolvidos (menos o autor)
-     */
     public function adicionarComentario(Request $request, Recado $recado)
     {
         $request->validate(['comentario' => 'required|string']);
@@ -592,26 +553,27 @@ if (!empty($toAddresses)) {
 
         $recado->save();
 
-        // ✅ emails de todos os envolvidos
+        // ✅ reply all
         $emails = $this->emailsResponderATodos($recado);
 
-        // ✅ remove o próprio (quem comentou)
-        $emails = $emails->reject(fn ($email) => $user->email && strtolower($email) === strtolower($user->email));
+        // remove quem comentou
+        if ($user->email) {
+            $emails = $emails->reject(fn($e) => strtolower($e) === strtolower($user->email))->values();
+        }
 
-        // ✅ escolhe um Aviso para usar no RecadoAvisoMail
+        // ⚠️ se a tua coluna não for "name", troca aqui para "nome"
         $avisoComentario = Aviso::where('name', 'Novo Comentário')->first() ?? Aviso::orderBy('id')->first();
 
         $enviados = 0;
 
         if ($avisoComentario) {
-    $toAddresses = $this->addressesFromEmails($emails);
+            $toList = $this->addressesFromEmails($emails);
 
-    if (!empty($toAddresses)) {
-        Mail::to($toAddresses)->send(new RecadoAvisoMail($recado, $avisoComentario));
-        $enviados = count($toAddresses);
-    }
-}
-
+            if (!empty($toList)) {
+                Mail::to($toList)->send(new RecadoAvisoMail($recado, $avisoComentario));
+                $enviados = count($toList);
+            }
+        }
 
         // ⚠️ Isto desativa tokens guest. Se queres que convidados continuem a aceder, comenta/remova.
         RecadoGuestToken::where('recado_id', $recado->id)->where('is_active', true)->update(['is_active' => false]);
@@ -719,7 +681,6 @@ if (!empty($toAddresses)) {
             }
         }
 
-        // ✅ visibilidade com departamento (pivot)
         if ($user->cargo?->name !== 'admin') {
             $uid = (int) $user->id;
 
