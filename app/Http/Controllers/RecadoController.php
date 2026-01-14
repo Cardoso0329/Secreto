@@ -23,7 +23,7 @@ class RecadoController extends Controller
      * ✅ Users do departamento (via pivot department_user)
      * Nota: requer User::departamentos() e Departamento::users()
      */
-    private function departmentUserIds(?int $departamentoId)
+    private function departmentUserIds(?int $departamentoId): Collection
     {
         $departamentoId = (int) ($departamentoId ?? 0);
         if ($departamentoId <= 0) return collect();
@@ -38,7 +38,7 @@ class RecadoController extends Controller
     /**
      * ✅ Emails do departamento (com validação real)
      */
-    private function departmentEmails(?int $departamentoId)
+    private function departmentEmails(?int $departamentoId): Collection
     {
         $ids = $this->departmentUserIds($departamentoId);
         if ($ids->isEmpty()) return collect();
@@ -61,7 +61,7 @@ class RecadoController extends Controller
 
         $blacklist = collect([
             'callcenter.recados@soccsantos.pt',
-        ])->map(fn($e) => strtolower(trim($e)));
+        ])->map(fn($e) => strtolower(trim((string)$e)));
 
         $emailsDestinatarios = $recado->destinatarios->pluck('email');
 
@@ -91,6 +91,7 @@ class RecadoController extends Controller
 
     /**
      * ✅ Sanitiza e devolve array simples de emails
+     * (sem nomes, para evitar RFC 2822 e afins)
      */
     private function cleanEmails(Collection $emails): array
     {
@@ -472,6 +473,11 @@ class RecadoController extends Controller
             ->values();
 
         $toEmails = $this->cleanEmails($emailsTodosNoHeader);
+
+        // ✅ se não tiver emails válidos, pelo menos tenta mandar ao criador (debug/segurança)
+        if (empty($toEmails)) {
+            $toEmails = $this->cleanEmails($emailsCriador);
+        }
 
         if (!empty($toEmails)) {
             Mail::to($toEmails)->send(new RecadoCriadoMail($recado));
