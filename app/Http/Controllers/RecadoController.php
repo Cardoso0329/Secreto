@@ -15,7 +15,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 
 class RecadoController extends Controller
 {
@@ -23,8 +22,9 @@ class RecadoController extends Controller
      * ✅ Users do departamento (via pivot department_user)
      * Nota: requer User::departamentos() e Departamento::users()
      */
-    private function departmentUserIds(?int $departamentoId): Collection
+    private function departmentUserIds(?int $departamentoId)
     {
+        
         $departamentoId = (int) ($departamentoId ?? 0);
         if ($departamentoId <= 0) return collect();
 
@@ -35,207 +35,172 @@ class RecadoController extends Controller
             ->map(fn ($id) => (int) $id);
     }
 
-    /**
-     * ✅ Emails do departamento (com validação real)
-     */
-    private function departmentEmails(?int $departamentoId): Collection
+    private function departmentEmails(?int $departamentoId)
     {
         $ids = $this->departmentUserIds($departamentoId);
         if ($ids->isEmpty()) return collect();
 
         return User::whereIn('id', $ids->all())
             ->pluck('email')
-            ->map(fn($e) => strtolower(trim((string)$e)))
-            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+            ->filter()
             ->unique()
             ->values();
     }
-
-    /**
-     * ✅ Emails finais para "Responder a todos"
-     * Inclui: destinatários diretos + grupos + dept + guests + criador
-     */
-    private function emailsResponderATodos(Recado $recado): Collection
-    {
-        $recado->loadMissing(['destinatarios', 'grupos.users', 'guestTokens', 'departamento']);
-
-        $blacklist = collect([
-            'callcenter.recados@soccsantos.pt',
-        ])->map(fn($e) => strtolower(trim((string)$e)));
-
-        $emailsDestinatarios = $recado->destinatarios->pluck('email');
-
-        $emailsGrupos = $recado->grupos
-            ->pluck('users')
-            ->flatten()
-            ->pluck('email');
-
-        $emailsDept = $this->departmentEmails($recado->departamento_id);
-
-        $emailsGuests = $recado->guestTokens->pluck('email');
-
-        $emailsCriador = User::where('id', $recado->user_id)->pluck('email');
-
-        return collect()
-            ->merge($emailsDestinatarios)
-            ->merge($emailsGrupos)
-            ->merge($emailsDept)
-            ->merge($emailsGuests)
-            ->merge($emailsCriador)
-            ->map(fn($e) => strtolower(trim((string)$e)))
-            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-            ->reject(fn($e) => $blacklist->contains($e))
-            ->unique()
-            ->values();
-    }
-
-    /**
-     * ✅ Sanitiza e devolve array simples de emails
-     * (sem nomes, para evitar RFC 2822 e afins)
-     */
-    private function cleanEmails(Collection $emails): array
-    {
-        return $emails
-            ->map(fn($e) => strtolower(trim((string)$e)))
-            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-            ->unique()
-            ->values()
-            ->toArray();
-    }
-
-    /* ================= LISTAGEM ================= */
+    
 
     public function index(Request $request)
-    {
-        $user = auth()->user();
+{
+    $user = auth()->user();
 
-        $estados = Estado::orderBy('name')->get();
-        $tiposFormulario = TipoFormulario::orderBy('name')->get();
+    /* ================= DADOS BASE ================= */
+    $estados = Estado::orderBy('name')->get();
+    $tiposFormulario = TipoFormulario::orderBy('name')->get();
 
-        $vistas = collect(\App\Services\VistaService::visiveisPara($user));
+    // vistas visíveis para o user (arrays)
+    $vistas = collect(\App\Services\VistaService::visiveisPara($user));
 
-        $recados = Recado::with([
-            'setor','origem','departamento','destinatarios','estado','sla',
-            'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
-        ]);
+    /* ================= QUERY BASE ================= */
+    $recados = Recado::with([
+        'setor','origem','departamento','destinatarios','estado','sla',
+        'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
+    ]);
 
-        $manualFields = ['id','contact_client','plate','estado_id','tipo_formulario_id'];
+    /* ================= DETETAR FILTROS MANUAIS ================= */
+    $manualFields = ['id','contact_client','plate','estado_id','tipo_formulario_id'];
 
-        $temFiltrosManuais =
-            $request->filled('filtros') ||
-            collect($manualFields)->contains(fn ($f) => $request->filled($f));
+    $temFiltrosManuais =
+        $request->filled('filtros') ||
+        collect($manualFields)->contains(fn ($f) => $request->filled($f));
 
-        if ($request->has('vista_id')) {
-            $vistaId = $request->input('vista_id');
-            if ($vistaId) $request->session()->put('recados_vista_id', $vistaId);
-            else $request->session()->forget('recados_vista_id');
-        }
+    /* ================= VISTA ATIVA (GET + SESSÃO) ================= */
+    if ($request->has('vista_id')) {
+        $vistaId = $request->input('vista_id');
 
-        $vistaId = $request->filled('vista_id')
-            ? $request->input('vista_id')
-            : $request->session()->get('recados_vista_id');
-
-        $vistaFiltros = [];
-
-        if (!$temFiltrosManuais && !empty($vistaId)) {
-
-            $vista = \App\Services\VistaRepo::findOrFail($vistaId);
-
-            if (!$vistas->pluck('id')->contains($vista['id'])) abort(403);
-
-            $vistaFiltros = $vista['filtros'] ?? [];
-
-            if (is_array($vistaFiltros) && array_key_exists('conditions', $vistaFiltros)) {
-                $vistaFiltros = $vistaFiltros['conditions'] ?? [];
-            }
-
-            $recados = \App\Queries\RecadoQuery::applyFilters(
-                $recados,
-                $vistaFiltros,
-                $vista['logica'] ?? 'AND'
-            );
-        }
-
-        if ($request->filled('filtros')) {
-            $recados = \App\Queries\RecadoQuery::applyFilters(
-                $recados,
-                $request->input('filtros', []),
-                $request->input('logica', 'AND')
-            );
-        }
-
-        foreach ($manualFields as $field) {
-            if ($request->filled($field)) {
-                $operator = in_array($field, ['contact_client','plate']) ? 'LIKE' : '=';
-                $value = in_array($field, ['contact_client','plate'])
-                    ? '%'.$request->input($field).'%'
-                    : $request->input($field);
-
-                $recados->where($field, $operator, $value);
-            }
-        }
-
-        $deptIdsDaVista = collect();
-        $permitirVerDepartamentoDaVista = false;
-
-        if (!$temFiltrosManuais && !empty($vistaId)) {
-            $deptIdsDaVista = collect($vistaFiltros)
-                ->filter(fn ($f) => is_array($f))
-                ->filter(fn ($f) => ($f['field'] ?? null) === 'departamento_id')
-                ->filter(fn ($f) => ($f['operator'] ?? '=') === '=')
-                ->pluck('value')
-                ->filter(fn ($v) => $v !== null && $v !== '')
-                ->map(fn ($v) => (int) $v)
-                ->unique()
-                ->values();
-
-            if ($deptIdsDaVista->isNotEmpty()) {
-                $meusDeptIds = $user->departamentos()
-                    ->pluck('departamentos.id')
-                    ->map(fn ($v) => (int) $v);
-
-                $permitidos = $deptIdsDaVista->intersect($meusDeptIds);
-
-                if ($permitidos->isNotEmpty()) {
-                    $permitirVerDepartamentoDaVista = true;
-                    $deptIdsDaVista = $permitidos;
-                } else {
-                    $deptIdsDaVista = collect();
-                }
-            }
-        }
-
-        if ($user->cargo?->name !== 'admin') {
-            $uid = (int) $user->id;
-
-            $recados->where(function ($q) use ($uid, $permitirVerDepartamentoDaVista, $deptIdsDaVista) {
-                $q->where('user_id', $uid)
-                  ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid));
-
-                if ($permitirVerDepartamentoDaVista && $deptIdsDaVista->isNotEmpty()) {
-                    $q->orWhereIn('departamento_id', $deptIdsDaVista->all());
-                }
-            });
-        }
-
-        $sortBy  = $request->input('sort_by', 'id');
-        $sortDir = $request->input('sort_dir', 'desc');
-
-        $recados = $recados
-            ->orderBy($sortBy, $sortDir)
-            ->paginate(10)
-            ->withQueryString();
-
-        $showPopup = !$request->session()->has('local_trabalho');
-
-        return view('recados.index', compact(
-            'recados',
-            'estados',
-            'tiposFormulario',
-            'vistas',
-            'showPopup'
-        ));
+        if ($vistaId) $request->session()->put('recados_vista_id', $vistaId);
+        else $request->session()->forget('recados_vista_id');
     }
+
+    $vistaId = $request->filled('vista_id')
+        ? $request->input('vista_id')
+        : $request->session()->get('recados_vista_id');
+
+    
+    $vistaFiltros = [];
+
+    /* ================= APLICAR VISTA (SÓ SE NÃO HÁ FILTROS MANUAIS) ================= */
+    if (!$temFiltrosManuais && !empty($vistaId)) {
+
+        $vista = \App\Services\VistaRepo::findOrFail($vistaId);
+
+        if (!$vistas->pluck('id')->contains($vista['id'])) abort(403);
+
+        $vistaFiltros = $vista['filtros'] ?? [];
+
+        // aceita formato antigo {conditions: []}
+        if (is_array($vistaFiltros) && array_key_exists('conditions', $vistaFiltros)) {
+            $vistaFiltros = $vistaFiltros['conditions'] ?? [];
+        }
+
+        $recados = \App\Queries\RecadoQuery::applyFilters(
+            $recados,
+            $vistaFiltros,
+            $vista['logica'] ?? 'AND'
+        );
+    }
+
+    /* ================= FILTROS TEMPORÁRIOS ================= */
+    if ($request->filled('filtros')) {
+        $recados = \App\Queries\RecadoQuery::applyFilters(
+            $recados,
+            $request->input('filtros', []),
+            $request->input('logica', 'AND')
+        );
+    }
+
+    /* ================= FILTROS MANUAIS ================= */
+    foreach ($manualFields as $field) {
+        if ($request->filled($field)) {
+            $operator = in_array($field, ['contact_client','plate']) ? 'LIKE' : '=';
+            $value = in_array($field, ['contact_client','plate'])
+                ? '%'.$request->input($field).'%'
+                : $request->input($field);
+
+            $recados->where($field, $operator, $value);
+        }
+    }
+
+    /* =========================================================
+       ✅ EXPANDIR VISIBILIDADE APENAS POR VISTA DE DEPARTAMENTO
+       - Só faz sentido se:
+         (1) há vista ativa
+         (2) NÃO há filtros manuais (igual ao teu comportamento da vista)
+       ========================================================= */
+    $deptIdsDaVista = collect();
+    $permitirVerDepartamentoDaVista = false;
+
+    if (!$temFiltrosManuais && !empty($vistaId)) {
+        $deptIdsDaVista = collect($vistaFiltros)
+            ->filter(fn ($f) => is_array($f))
+            ->filter(fn ($f) => ($f['field'] ?? null) === 'departamento_id')
+            ->filter(fn ($f) => ($f['operator'] ?? '=') === '=') // só "="
+            ->pluck('value')
+            ->filter(fn ($v) => $v !== null && $v !== '')
+            ->map(fn ($v) => (int) $v)
+            ->unique()
+            ->values();
+
+        if ($deptIdsDaVista->isNotEmpty()) {
+            // departamentos do user via pivot department_user
+            $meusDeptIds = $user->departamentos()
+                ->pluck('departamentos.id')
+                ->map(fn ($v) => (int) $v);
+
+            // só permite se o dept da vista for um dept do user
+            $permitidos = $deptIdsDaVista->intersect($meusDeptIds);
+
+            if ($permitidos->isNotEmpty()) {
+                $permitirVerDepartamentoDaVista = true;
+                $deptIdsDaVista = $permitidos;
+            } else {
+                $deptIdsDaVista = collect(); // segurança
+            }
+        }
+    }
+
+    /* ================= VISIBILIDADE ================= */
+    if ($user->cargo?->name !== 'admin') {
+        $uid = (int) $user->id;
+
+        $recados->where(function ($q) use ($uid, $permitirVerDepartamentoDaVista, $deptIdsDaVista) {
+            $q->where('user_id', $uid)
+              ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid));
+
+            // ✅ vista departamento -> incluir todos do dept (se for dele)
+            if ($permitirVerDepartamentoDaVista && $deptIdsDaVista->isNotEmpty()) {
+                $q->orWhereIn('departamento_id', $deptIdsDaVista->all());
+            }
+        });
+    }
+
+    /* ================= ORDENAÇÃO ================= */
+    $sortBy  = $request->input('sort_by', 'id');
+    $sortDir = $request->input('sort_dir', 'desc');
+
+    $recados = $recados
+        ->orderBy($sortBy, $sortDir)
+        ->paginate(10)
+        ->withQueryString();
+
+    $showPopup = !$request->session()->has('local_trabalho');
+
+    return view('recados.index', compact(
+        'recados',
+        'estados',
+        'tiposFormulario',
+        'vistas',
+        'showPopup'
+    ));
+}
 
     public function create(Request $request)
     {
@@ -245,7 +210,7 @@ class RecadoController extends Controller
             return redirect()->route('recados.index');
         }
 
-        $localTrabalho = $request->session()->get('local_trabalho');
+        $localTrabalho = $request->session()->get('local_trabalho'); // "Central" ou "Call Center"
 
         $estados = Estado::orderBy('name')->get();
         $tiposFormulario = TipoFormulario::orderBy('name')->get();
@@ -259,7 +224,7 @@ class RecadoController extends Controller
         $avisos = Aviso::orderBy('name')->get();
         $campanhas = Campanha::orderBy('name')->get();
 
-        $nomeTipo = strtolower(trim((string)$localTrabalho));
+        $nomeTipo = strtolower(trim((string)$localTrabalho)); // "central" ou "call center"
         $tipoFormularioId = $tiposFormulario
             ->first(fn ($t) => strtolower(trim($t->name)) === $nomeTipo)
             ?->id;
@@ -345,15 +310,14 @@ class RecadoController extends Controller
 
         $recado->save();
 
+        // ✅ continua a guardar apenas destinatários selecionados manualmente
         $recado->destinatariosUsers()->sync($request->input('destinatarios_users', []));
         $recado->grupos()->sync($request->input('destinatarios_grupos', []));
 
         if ($request->has('destinatarios_livres')) {
             foreach ($request->destinatarios_livres as $email) {
-                $email = strtolower(trim((string)$email));
-                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
-
-                if (!$recado->guestEmails->contains('email', $email)) {
+                $email = trim($email);
+                if (!empty($email) && !$recado->guestEmails->contains('email', $email)) {
                     $recado->guestEmails()->create(['email' => $email]);
                 }
             }
@@ -361,8 +325,6 @@ class RecadoController extends Controller
 
         return redirect()->route('recados.index')->with('success', 'Recado atualizado com sucesso!');
     }
-
-    /* ================= CREATE (ENVIO EMAIL) ================= */
 
     public function store(Request $request)
     {
@@ -411,6 +373,15 @@ class RecadoController extends Controller
 
         $recado = Recado::create($validated);
 
+        /* ==========================================================
+           ✅ EMAILS:
+           - Users selecionados manualmente
+           - Users do departamento (pivot)
+           - Users do(s) grupo(s) (no teu caso: Telefonistas)
+           MAS:
+           - NÃO adiciona users do departamento aos destinatários (para não aparecer na view)
+           ========================================================== */
+
         // 1) Telefonistas sempre incluído nos grupos
         $gruposSelecionados = $request->input('destinatarios_grupos', []);
         $telefonistasId = Grupo::where('name', 'Telefonistas')->first()?->id;
@@ -419,7 +390,7 @@ class RecadoController extends Controller
         }
         $recado->grupos()->sync($gruposSelecionados);
 
-        // 2) Destinatários manuais
+        // 2) Destinatários MANUAIS (ficam associados ao recado)
         $userIdsSelecionados = collect($request->input('destinatarios_users', []))
             ->map(fn ($id) => (int) $id)
             ->unique()
@@ -427,83 +398,57 @@ class RecadoController extends Controller
 
         $recado->destinatariosUsers()->sync($userIdsSelecionados->all());
 
-        // 3) Emails do departamento
+        // 3) Users do departamento (para EMAIL + VISIBILIDADE, mas não entra nos destinatários)
         $depId = (int) ($validated['departamento_id'] ?? 0);
         $emailsDept = $this->departmentEmails($depId);
-
-        // 4) Emails dos grupos (inclui telefonistas)
+           
+        // 4) Users dos grupos (email)
         $emailsGrupos = User::whereHas('grupos', fn ($q) => $q->whereIn('grupos.id', $gruposSelecionados))
             ->pluck('email')
-            ->map(fn($e) => strtolower(trim((string)$e)))
-            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+            ->filter()
             ->unique()
             ->values();
 
         // 5) Emails dos destinatários manuais
         $emailsSelecionados = User::whereIn('id', $userIdsSelecionados->all())
             ->pluck('email')
-            ->map(fn($e) => strtolower(trim((string)$e)))
-            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+            ->filter()
             ->unique()
             ->values();
 
-        // 6) Email do criador (entra no Reply All)
-        $emailsCriador = User::where('id', $recado->user_id)
-            ->pluck('email')
-            ->map(fn($e) => strtolower(trim((string)$e)))
-            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-            ->values();
-
-        // 7) Guests do request (para aparecerem no header do email geral)
-        $emailsGuestsRequest = collect($request->input('destinatarios_livres', []))
-            ->map(fn($e) => strtolower(trim((string)$e)))
-            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-            ->unique()
-            ->values();
-
-        // ✅ Email geral: TUDO no header => Reply All vai para TODOS
-        $emailsTodosNoHeader = collect()
-            ->merge($emailsSelecionados)
+        // ✅ União final sem duplicados
+        $emailsInternos = $emailsSelecionados
             ->merge($emailsDept)
             ->merge($emailsGrupos)
-            ->merge($emailsGuestsRequest)
-            ->merge($emailsCriador)
-            ->reject(fn($e) => $e === 'callcenter.recados@soccsantos.pt')
             ->unique()
             ->values();
+        
 
-        $toEmails = $this->cleanEmails($emailsTodosNoHeader);
-
-        // ✅ se não tiver emails válidos, pelo menos tenta mandar ao criador (debug/segurança)
-        if (empty($toEmails)) {
-            $toEmails = $this->cleanEmails($emailsCriador);
+        foreach ($emailsInternos as $email) {
+            Mail::to($email)->send(new RecadoCriadoMail($recado, null, $emailsInternos));
         }
 
-        if (!empty($toEmails)) {
-            Mail::to($toEmails)->send(new RecadoCriadoMail($recado));
-        }
+        // 6) Destinatários livres (igual ao teu)
+        if ($request->filled('destinatarios_livres')) {
+            foreach ($request->destinatarios_livres as $email) {
+                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $token = Str::random(60);
 
-        // ✅ Token individual só para guests (email separado)
-        foreach ($emailsGuestsRequest as $email) {
-            $token = Str::random(60);
+                    RecadoGuestToken::create([
+                        'recado_id' => $recado->id,
+                        'email' => $email,
+                        'token' => $token,
+                        'expires_at' => now()->addMonth(),
+                        'is_active' => true
+                    ]);
 
-            RecadoGuestToken::create([
-                'recado_id' => $recado->id,
-                'email' => $email,
-                'token' => $token,
-                'expires_at' => now()->addMonth(),
-                'is_active' => true
-            ]);
-
-            Mail::to($email)->send(
-                new RecadoCriadoMail($recado, route('recados.guest', $token))
-            );
+                    Mail::to($email)->send(new RecadoCriadoMail($recado, route('recados.guest', $token)));
+                }
+            }
         }
 
         return redirect()->route('recados.index')->with('success', 'Recado criado e emails enviados.');
     }
-
-    /* ================= SHOW ================= */
 
     public function show($id)
     {
@@ -521,6 +466,7 @@ class RecadoController extends Controller
             $isDestinatario = $recado->destinatarios->contains($uid);
             $isGrupo = $recado->grupos->pluck('users')->flatten()->pluck('id')->contains($uid);
 
+            // ✅ Departamento (pivot) também dá acesso
             $isDepartamento = false;
             if ($recado->departamento_id) {
                 $isDepartamento = $recado->departamento
@@ -550,54 +496,24 @@ class RecadoController extends Controller
         return redirect()->route('recados.index')->with('success', 'Recado apagado com sucesso!');
     }
 
-    /* ================= COMENTÁRIO (EMAIL PARA TODOS) ================= */
-
     public function adicionarComentario(Request $request, Recado $recado)
     {
         $request->validate(['comentario' => 'required|string']);
-
-        $user = auth()->user();
-        $novaLinha = now()->format('d/m/Y H:i').' - '.$user->name.': '.$request->comentario;
+        $novaLinha = now()->format('d/m/Y H:i').' - '.auth()->user()->name.': '.$request->comentario;
 
         $recado->observacoes = $recado->observacoes
             ? $recado->observacoes."\n".$novaLinha
             : $novaLinha;
 
         $estadoPendente = Estado::where('name','Pendente')->first();
-        if ($estadoPendente && $recado->estado && strtolower($recado->estado->name) === 'novo') {
+        if ($estadoPendente && strtolower($recado->estado->name) == 'novo') {
             $recado->estado_id = $estadoPendente->id;
         }
 
         $recado->save();
-
-        // ✅ lista completa para Reply All
-        $emails = $this->emailsResponderATodos($recado);
-
-        // opcional: quem comentou não recebe
-        if ($user->email) {
-            $emails = $emails->reject(fn($e) => strtolower($e) === strtolower($user->email))->values();
-        }
-
-        $avisoComentario = Aviso::where('name', 'Novo Comentário')->first() ?? Aviso::orderBy('id')->first();
-
-        $enviados = 0;
-
-        if ($avisoComentario) {
-            $toEmails = $this->cleanEmails($emails);
-
-            if (!empty($toEmails)) {
-                Mail::to($toEmails)->send(new RecadoAvisoMail($recado, $avisoComentario));
-                $enviados = count($toEmails);
-            }
-        }
-
         RecadoGuestToken::where('recado_id', $recado->id)->where('is_active', true)->update(['is_active' => false]);
 
-        $msg = $avisoComentario
-            ? "Comentário adicionado e enviado a todos ($enviados)."
-            : "Comentário adicionado. (Sem email: não existe nenhum Aviso para enviar)";
-
-        return redirect()->back()->with('success', $msg);
+        return redirect()->back()->with('success', 'Comentário adicionado.');
     }
 
     public function updateEstado(Request $request, Recado $recado)
@@ -696,6 +612,7 @@ class RecadoController extends Controller
             }
         }
 
+        // ✅ visibilidade com departamento (pivot)
         if ($user->cargo?->name !== 'admin') {
             $uid = (int) $user->id;
 
@@ -735,17 +652,15 @@ class RecadoController extends Controller
         return redirect()->back()->with('success', 'Recado concluído com sucesso.');
     }
 
-    /**
-     * ✅ Aviso: usa emailsResponderATodos() (inclui grupos + dept + guests + criador)
-     */
     public function enviarAviso(Recado $recado, Aviso $aviso)
     {
-        $emails = $this->emailsResponderATodos($recado);
+        $emails = $recado->destinatarios->pluck('email')->toArray();
+        if ($recado->guestTokens->count()) {
+            $emails = array_merge($emails, $recado->guestTokens->pluck('email')->toArray());
+        }
 
-        $toEmails = $this->cleanEmails($emails);
-
-        if (!empty($toEmails)) {
-            Mail::to($toEmails)->send(new RecadoAvisoMail($recado, $aviso));
+        foreach (array_values(array_unique($emails)) as $email) {
+            Mail::to($email)->send(new RecadoAvisoMail($recado, $aviso));
         }
 
         return back()->with('success', 'Aviso enviado com sucesso!');

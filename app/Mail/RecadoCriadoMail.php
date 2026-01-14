@@ -15,11 +15,14 @@ class RecadoCriadoMail extends Mailable
 
     public Recado $recado;
     public ?string $guestUrl;
+    public $emailsInternos;
 
-    public function __construct(Recado $recado, ?string $guestUrl = null)
+
+    public function __construct(Recado $recado, ?string $guestUrl = null, $emailsInternos)
     {
         $this->recado = $recado;
-        $this->guestUrl = $guestUrl;
+        $this->emailsInternos = $emailsInternos;
+        $this->guestUrl = $guestUrl;    
     }
 
     public function envelope(): Envelope
@@ -32,6 +35,7 @@ class RecadoCriadoMail extends Mailable
 
         return new Envelope(
             subject: $subject,
+            replyTo: $this->emailsInternos,
         );
     }
 
