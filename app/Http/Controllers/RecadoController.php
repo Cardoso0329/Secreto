@@ -89,31 +89,17 @@ class RecadoController extends Controller
             ->values();
     }
 
-    /**
-     * ✅ Para o Mail::to() aceitar com nomes:
-     * Retorna array: ['email@x.com' => 'Nome']
-     */
-    private function addressesFromEmails(Collection $emails): array
-    {
-        $emails = $emails
-            ->map(fn($e) => strtolower(trim((string)$e)))
-            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-            ->unique()
-            ->values();
 
-        if ($emails->isEmpty()) return [];
+    private function cleanEmails(Collection $emails): array
+{
+    return $emails
+        ->map(fn($e) => strtolower(trim((string)$e)))
+        ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+        ->unique()
+        ->values()
+        ->toArray();
+}
 
-        $users = User::whereIn('email', $emails->all())
-            ->get(['name', 'email'])
-            ->keyBy(fn($u) => strtolower(trim((string)$u->email)));
-
-        $to = [];
-        foreach ($emails as $email) {
-            $to[$email] = $users->get($email)?->name ?? $email; // guest -> nome = email
-        }
-
-        return $to;
-    }
 
     /* ================= LISTAGEM ================= */
 
@@ -484,10 +470,12 @@ class RecadoController extends Controller
             ->values();
 
         // ✅ 1 email único para todos (Outlook mostra todos e Reply All inclui todos)
-        $toList = $this->addressesFromEmails($emailsTodosNoHeader);
-        if (!empty($toList)) {
-            Mail::to($toList)->send(new RecadoCriadoMail($recado));
-        }
+       $toEmails = $this->cleanEmails($emailsTodosNoHeader);
+
+if (!empty($toEmails)) {
+    Mail::to($toEmails)->send(new RecadoCriadoMail($recado));
+}
+
 
         /**
          * ✅ Mantém o email com token (individual) só para guests.
@@ -594,12 +582,13 @@ class RecadoController extends Controller
         $enviados = 0;
 
         if ($avisoComentario) {
-            $toList = $this->addressesFromEmails($emails);
+           $toEmails = $this->cleanEmails($emails);
 
-            if (!empty($toList)) {
-                Mail::to($toList)->send(new RecadoAvisoMail($recado, $avisoComentario));
-                $enviados = count($toList);
-            }
+if (!empty($toEmails)) {
+    Mail::to($toEmails)->send(new RecadoAvisoMail($recado, $avisoComentario));
+    $enviados = count($toEmails);
+}
+
         }
 
         RecadoGuestToken::where('recado_id', $recado->id)->where('is_active', true)->update(['is_active' => false]);
@@ -754,11 +743,10 @@ class RecadoController extends Controller
     {
         $emails = $this->emailsResponderATodos($recado);
 
-        $toList = $this->addressesFromEmails($emails);
-
-        if (!empty($toList)) {
-            Mail::to($toList)->send(new RecadoAvisoMail($recado, $aviso));
-        }
+        $toEmails = $this->cleanEmails($emails);
+if (!empty($toEmails)) {
+    Mail::to($toEmails)->send(new RecadoAvisoMail($recado, $aviso));
+}
 
         return back()->with('success', 'Aviso enviado com sucesso!');
     }
