@@ -425,79 +425,75 @@ class RecadoController extends Controller
 
         $recado->destinatariosUsers()->sync($userIdsSelecionados->all());
 
-        // 3) Emails do departamento
-        $depId = (int) ($validated['departamento_id'] ?? 0);
-        $emailsDept = $this->departmentEmails($depId);
+       // 3) Emails do departamento
+$depId = (int) ($validated['departamento_id'] ?? 0);
+$emailsDept = $this->departmentEmails($depId);
 
-        // 4) Emails dos grupos
-        $emailsGrupos = User::whereHas('grupos', fn ($q) => $q->whereIn('grupos.id', $gruposSelecionados))
-            ->pluck('email')
-            ->map(fn($e) => strtolower(trim((string)$e)))
-            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-            ->unique()
-            ->values();
+// 4) Emails dos grupos (inclui telefonistas porque está em $gruposSelecionados)
+$emailsGrupos = User::whereHas('grupos', fn ($q) => $q->whereIn('grupos.id', $gruposSelecionados))
+    ->pluck('email')
+    ->map(fn($e) => strtolower(trim((string)$e)))
+    ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+    ->unique()
+    ->values();
 
-        // 5) Emails dos destinatários manuais
-        $emailsSelecionados = User::whereIn('id', $userIdsSelecionados->all())
-            ->pluck('email')
-            ->map(fn($e) => strtolower(trim((string)$e)))
-            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-            ->unique()
-            ->values();
+// 5) Emails dos destinatários manuais
+$emailsSelecionados = User::whereIn('id', $userIdsSelecionados->all())
+    ->pluck('email')
+    ->map(fn($e) => strtolower(trim((string)$e)))
+    ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+    ->unique()
+    ->values();
 
-        // ✅ internos
-        $emailsInternos = $emailsSelecionados
-            ->merge($emailsDept)
-            ->merge($emailsGrupos)
-            ->reject(fn($e) => $e === 'callcenter.recados@soccsantos.pt')
-            ->unique()
-            ->values();
+// 6) Email do criador (para ele também entrar no Reply All)
+$emailCriador = User::where('id', $recado->user_id)
+    ->pluck('email')
+    ->map(fn($e) => strtolower(trim((string)$e)))
+    ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+    ->values();
 
-        /**
-         * ✅ CORREÇÃO PRINCIPAL:
-         * Se queres que "Responder a todos" vá para TODOS (incluindo guests),
-         * então tens de os meter no mesmo email (To/Cc) do recado criado.
-         */
-        $emailsGuestsRequest = collect($request->input('destinatarios_livres', []))
-            ->map(fn($e) => strtolower(trim((string)$e)))
-            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-            ->unique()
-            ->values();
+// 7) Guests do request
+$emailsGuestsRequest = collect($request->input('destinatarios_livres', []))
+    ->map(fn($e) => strtolower(trim((string)$e)))
+    ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+    ->unique()
+    ->values();
 
-        $emailsTodosNoHeader = $emailsInternos
-            ->merge($emailsGuestsRequest)
-            ->unique()
-            ->values();
+// ✅ Lista FINAL para aparecer no header do email geral (Reply All)
+$emailsTodosNoHeader = collect()
+    ->merge($emailsSelecionados)
+    ->merge($emailsDept)
+    ->merge($emailsGrupos)
+    ->merge($emailsGuestsRequest)
+    ->merge($emailCriador)
+    ->reject(fn($e) => $e === 'callcenter.recados@soccsantos.pt')
+    ->unique()
+    ->values();
 
-        // ✅ 1 email único para todos (Outlook mostra todos e Reply All inclui todos)
-       $toEmails = $this->cleanEmails($emailsTodosNoHeader);
+// ✅ Envio do email geral (1 único email para todos)
+$toEmails = $this->cleanEmails($emailsTodosNoHeader);
 
 if (!empty($toEmails)) {
     Mail::to($toEmails)->send(new RecadoCriadoMail($recado));
 }
 
+// ✅ Emails com token só para guests (individual)
+foreach ($emailsGuestsRequest as $email) {
+    $token = Str::random(60);
 
-        /**
-         * ✅ Mantém o email com token (individual) só para guests.
-         * Isto NÃO atrapalha o Reply All do email geral.
-         */
-        if ($emailsGuestsRequest->isNotEmpty()) {
-            foreach ($emailsGuestsRequest as $email) {
-                $token = Str::random(60);
+    RecadoGuestToken::create([
+        'recado_id' => $recado->id,
+        'email' => $email,
+        'token' => $token,
+        'expires_at' => now()->addMonth(),
+        'is_active' => true
+    ]);
 
-                RecadoGuestToken::create([
-                    'recado_id' => $recado->id,
-                    'email' => $email,
-                    'token' => $token,
-                    'expires_at' => now()->addMonth(),
-                    'is_active' => true
-                ]);
+    Mail::to($email)->send(
+        new RecadoCriadoMail($recado, route('recados.guest', $token))
+    );
+}
 
-                Mail::to($email)->send(
-                    new RecadoCriadoMail($recado, route('recados.guest', $token))
-                );
-            }
-        }
 
         return redirect()->route('recados.index')->with('success', 'Recado criado e emails enviados.');
     }
