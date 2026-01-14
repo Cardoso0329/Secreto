@@ -89,17 +89,18 @@ class RecadoController extends Controller
             ->values();
     }
 
-
+    /**
+     * ✅ Sanitiza e devolve array simples de emails
+     */
     private function cleanEmails(Collection $emails): array
-{
-    return $emails
-        ->map(fn($e) => strtolower(trim((string)$e)))
-        ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-        ->unique()
-        ->values()
-        ->toArray();
-}
-
+    {
+        return $emails
+            ->map(fn($e) => strtolower(trim((string)$e)))
+            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values()
+            ->toArray();
+    }
 
     /* ================= LISTAGEM ================= */
 
@@ -425,75 +426,73 @@ class RecadoController extends Controller
 
         $recado->destinatariosUsers()->sync($userIdsSelecionados->all());
 
-       // 3) Emails do departamento
-$depId = (int) ($validated['departamento_id'] ?? 0);
-$emailsDept = $this->departmentEmails($depId);
+        // 3) Emails do departamento
+        $depId = (int) ($validated['departamento_id'] ?? 0);
+        $emailsDept = $this->departmentEmails($depId);
 
-// 4) Emails dos grupos (inclui telefonistas porque está em $gruposSelecionados)
-$emailsGrupos = User::whereHas('grupos', fn ($q) => $q->whereIn('grupos.id', $gruposSelecionados))
-    ->pluck('email')
-    ->map(fn($e) => strtolower(trim((string)$e)))
-    ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-    ->unique()
-    ->values();
+        // 4) Emails dos grupos (inclui telefonistas)
+        $emailsGrupos = User::whereHas('grupos', fn ($q) => $q->whereIn('grupos.id', $gruposSelecionados))
+            ->pluck('email')
+            ->map(fn($e) => strtolower(trim((string)$e)))
+            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values();
 
-// 5) Emails dos destinatários manuais
-$emailsSelecionados = User::whereIn('id', $userIdsSelecionados->all())
-    ->pluck('email')
-    ->map(fn($e) => strtolower(trim((string)$e)))
-    ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-    ->unique()
-    ->values();
+        // 5) Emails dos destinatários manuais
+        $emailsSelecionados = User::whereIn('id', $userIdsSelecionados->all())
+            ->pluck('email')
+            ->map(fn($e) => strtolower(trim((string)$e)))
+            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values();
 
-// 6) Email do criador (para ele também entrar no Reply All)
-$emailCriador = User::where('id', $recado->user_id)
-    ->pluck('email')
-    ->map(fn($e) => strtolower(trim((string)$e)))
-    ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-    ->values();
+        // 6) Email do criador (entra no Reply All)
+        $emailsCriador = User::where('id', $recado->user_id)
+            ->pluck('email')
+            ->map(fn($e) => strtolower(trim((string)$e)))
+            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+            ->values();
 
-// 7) Guests do request
-$emailsGuestsRequest = collect($request->input('destinatarios_livres', []))
-    ->map(fn($e) => strtolower(trim((string)$e)))
-    ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-    ->unique()
-    ->values();
+        // 7) Guests do request (para aparecerem no header do email geral)
+        $emailsGuestsRequest = collect($request->input('destinatarios_livres', []))
+            ->map(fn($e) => strtolower(trim((string)$e)))
+            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values();
 
-// ✅ Lista FINAL para aparecer no header do email geral (Reply All)
-$emailsTodosNoHeader = collect()
-    ->merge($emailsSelecionados)
-    ->merge($emailsDept)
-    ->merge($emailsGrupos)
-    ->merge($emailsGuestsRequest)
-    ->merge($emailCriador)
-    ->reject(fn($e) => $e === 'callcenter.recados@soccsantos.pt')
-    ->unique()
-    ->values();
+        // ✅ Email geral: TUDO no header => Reply All vai para TODOS
+        $emailsTodosNoHeader = collect()
+            ->merge($emailsSelecionados)
+            ->merge($emailsDept)
+            ->merge($emailsGrupos)
+            ->merge($emailsGuestsRequest)
+            ->merge($emailsCriador)
+            ->reject(fn($e) => $e === 'callcenter.recados@soccsantos.pt')
+            ->unique()
+            ->values();
 
-// ✅ Envio do email geral (1 único email para todos)
-$toEmails = $this->cleanEmails($emailsTodosNoHeader);
+        $toEmails = $this->cleanEmails($emailsTodosNoHeader);
 
-if (!empty($toEmails)) {
-    Mail::to($toEmails)->send(new RecadoCriadoMail($recado));
-}
+        if (!empty($toEmails)) {
+            Mail::to($toEmails)->send(new RecadoCriadoMail($recado));
+        }
 
-// ✅ Emails com token só para guests (individual)
-foreach ($emailsGuestsRequest as $email) {
-    $token = Str::random(60);
+        // ✅ Token individual só para guests (email separado)
+        foreach ($emailsGuestsRequest as $email) {
+            $token = Str::random(60);
 
-    RecadoGuestToken::create([
-        'recado_id' => $recado->id,
-        'email' => $email,
-        'token' => $token,
-        'expires_at' => now()->addMonth(),
-        'is_active' => true
-    ]);
+            RecadoGuestToken::create([
+                'recado_id' => $recado->id,
+                'email' => $email,
+                'token' => $token,
+                'expires_at' => now()->addMonth(),
+                'is_active' => true
+            ]);
 
-    Mail::to($email)->send(
-        new RecadoCriadoMail($recado, route('recados.guest', $token))
-    );
-}
-
+            Mail::to($email)->send(
+                new RecadoCriadoMail($recado, route('recados.guest', $token))
+            );
+        }
 
         return redirect()->route('recados.index')->with('success', 'Recado criado e emails enviados.');
     }
@@ -565,7 +564,7 @@ foreach ($emailsGuestsRequest as $email) {
 
         $recado->save();
 
-        // ✅ Aqui já estava perfeito (todos: destinatários + grupos + dept + guests + criador)
+        // ✅ lista completa para Reply All
         $emails = $this->emailsResponderATodos($recado);
 
         // opcional: quem comentou não recebe
@@ -578,13 +577,12 @@ foreach ($emailsGuestsRequest as $email) {
         $enviados = 0;
 
         if ($avisoComentario) {
-           $toEmails = $this->cleanEmails($emails);
+            $toEmails = $this->cleanEmails($emails);
 
-if (!empty($toEmails)) {
-    Mail::to($toEmails)->send(new RecadoAvisoMail($recado, $avisoComentario));
-    $enviados = count($toEmails);
-}
-
+            if (!empty($toEmails)) {
+                Mail::to($toEmails)->send(new RecadoAvisoMail($recado, $avisoComentario));
+                $enviados = count($toEmails);
+            }
         }
 
         RecadoGuestToken::where('recado_id', $recado->id)->where('is_active', true)->update(['is_active' => false]);
@@ -732,17 +730,17 @@ if (!empty($toEmails)) {
     }
 
     /**
-     * ✅ CORREÇÃO: usar emailsResponderATodos() para avisos
-     * Assim "Responder a todos" mantém sempre o grupo correto.
+     * ✅ Aviso: usa emailsResponderATodos() (inclui grupos + dept + guests + criador)
      */
     public function enviarAviso(Recado $recado, Aviso $aviso)
     {
         $emails = $this->emailsResponderATodos($recado);
 
         $toEmails = $this->cleanEmails($emails);
-if (!empty($toEmails)) {
-    Mail::to($toEmails)->send(new RecadoAvisoMail($recado, $aviso));
-}
+
+        if (!empty($toEmails)) {
+            Mail::to($toEmails)->send(new RecadoAvisoMail($recado, $aviso));
+        }
 
         return back()->with('success', 'Aviso enviado com sucesso!');
     }
