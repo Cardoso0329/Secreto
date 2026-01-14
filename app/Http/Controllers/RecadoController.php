@@ -36,7 +36,7 @@ class RecadoController extends Controller
     }
 
     /**
-     * ✅ Emails do departamento (agora com validação REAL de email)
+     * ✅ Emails do departamento (com validação real)
      */
     private function departmentEmails(?int $departamentoId)
     {
@@ -53,6 +53,7 @@ class RecadoController extends Controller
 
     /**
      * ✅ Emails finais para "Responder a todos"
+     * Inclui: destinatários diretos + grupos + dept + guests + criador
      */
     private function emailsResponderATodos(Recado $recado): Collection
     {
@@ -90,7 +91,7 @@ class RecadoController extends Controller
 
     /**
      * ✅ Para o Mail::to() aceitar com nomes:
-     * Retorna array associativo: ['email@x.com' => 'Nome']
+     * Retorna array: ['email@x.com' => 'Nome']
      */
     private function addressesFromEmails(Collection $emails): array
     {
@@ -113,6 +114,8 @@ class RecadoController extends Controller
 
         return $to;
     }
+
+    /* ================= LISTAGEM ================= */
 
     public function index(Request $request)
     {
@@ -359,8 +362,7 @@ class RecadoController extends Controller
 
         if ($request->has('destinatarios_livres')) {
             foreach ($request->destinatarios_livres as $email) {
-                $email = trim((string)$email);
-                $email = strtolower($email);
+                $email = strtolower(trim((string)$email));
                 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
 
                 if (!$recado->guestEmails->contains('email', $email)) {
@@ -371,6 +373,8 @@ class RecadoController extends Controller
 
         return redirect()->route('recados.index')->with('success', 'Recado atualizado com sucesso!');
     }
+
+    /* ================= CREATE (ENVIO EMAIL) ================= */
 
     public function store(Request $request)
     {
@@ -455,7 +459,7 @@ class RecadoController extends Controller
             ->unique()
             ->values();
 
-        // ✅ União final: dept + destinatários + grupos
+        // ✅ internos
         $emailsInternos = $emailsSelecionados
             ->merge($emailsDept)
             ->merge($emailsGrupos)
@@ -463,18 +467,34 @@ class RecadoController extends Controller
             ->unique()
             ->values();
 
-        // ✅ 1 email único para todos (Outlook mostra todos e Reply All funciona)
-        $toList = $this->addressesFromEmails($emailsInternos);
+        /**
+         * ✅ CORREÇÃO PRINCIPAL:
+         * Se queres que "Responder a todos" vá para TODOS (incluindo guests),
+         * então tens de os meter no mesmo email (To/Cc) do recado criado.
+         */
+        $emailsGuestsRequest = collect($request->input('destinatarios_livres', []))
+            ->map(fn($e) => strtolower(trim((string)$e)))
+            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values();
+
+        $emailsTodosNoHeader = $emailsInternos
+            ->merge($emailsGuestsRequest)
+            ->unique()
+            ->values();
+
+        // ✅ 1 email único para todos (Outlook mostra todos e Reply All inclui todos)
+        $toList = $this->addressesFromEmails($emailsTodosNoHeader);
         if (!empty($toList)) {
             Mail::to($toList)->send(new RecadoCriadoMail($recado));
         }
 
-        // 6) Destinatários livres (1 a 1 por causa do token/link)
-        if ($request->filled('destinatarios_livres')) {
-            foreach ($request->destinatarios_livres as $email) {
-                $email = strtolower(trim((string)$email));
-                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
-
+        /**
+         * ✅ Mantém o email com token (individual) só para guests.
+         * Isto NÃO atrapalha o Reply All do email geral.
+         */
+        if ($emailsGuestsRequest->isNotEmpty()) {
+            foreach ($emailsGuestsRequest as $email) {
                 $token = Str::random(60);
 
                 RecadoGuestToken::create([
@@ -485,12 +505,16 @@ class RecadoController extends Controller
                     'is_active' => true
                 ]);
 
-                Mail::to($email)->send(new RecadoCriadoMail($recado, route('recados.guest', $token)));
+                Mail::to($email)->send(
+                    new RecadoCriadoMail($recado, route('recados.guest', $token))
+                );
             }
         }
 
         return redirect()->route('recados.index')->with('success', 'Recado criado e emails enviados.');
     }
+
+    /* ================= SHOW ================= */
 
     public function show($id)
     {
@@ -537,6 +561,8 @@ class RecadoController extends Controller
         return redirect()->route('recados.index')->with('success', 'Recado apagado com sucesso!');
     }
 
+    /* ================= COMENTÁRIO (EMAIL PARA TODOS) ================= */
+
     public function adicionarComentario(Request $request, Recado $recado)
     {
         $request->validate(['comentario' => 'required|string']);
@@ -555,8 +581,10 @@ class RecadoController extends Controller
 
         $recado->save();
 
+        // ✅ Aqui já estava perfeito (todos: destinatários + grupos + dept + guests + criador)
         $emails = $this->emailsResponderATodos($recado);
 
+        // opcional: quem comentou não recebe
         if ($user->email) {
             $emails = $emails->reject(fn($e) => strtolower($e) === strtolower($user->email))->values();
         }
@@ -719,19 +747,12 @@ class RecadoController extends Controller
     }
 
     /**
-     * ✅ CORRIGIDO: agora envia 1 email único (Reply All funciona)
+     * ✅ CORREÇÃO: usar emailsResponderATodos() para avisos
+     * Assim "Responder a todos" mantém sempre o grupo correto.
      */
     public function enviarAviso(Recado $recado, Aviso $aviso)
     {
-        $recado->loadMissing(['destinatarios', 'guestTokens']);
-
-        $emails = collect()
-            ->merge($recado->destinatarios->pluck('email'))
-            ->merge($recado->guestTokens->pluck('email'))
-            ->map(fn($e) => strtolower(trim((string)$e)))
-            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-            ->unique()
-            ->values();
+        $emails = $this->emailsResponderATodos($recado);
 
         $toList = $this->addressesFromEmails($emails);
 

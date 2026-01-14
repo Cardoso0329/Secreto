@@ -26,7 +26,7 @@ class RecadoCriadoMail extends Mailable
     /**
      * Build the message.
      */
-    public function build()
+   public function build()
 {
     $subject = 'Recado #' . $this->recado->id;
 
@@ -35,11 +35,12 @@ class RecadoCriadoMail extends Mailable
     }
 
     return $this->subject($subject)
-                ->view('emails.recados.create')
-                ->with([
-                    'recado' => $this->recado,
-                    'guestUrl' => $this->guestUrl,
-                ]);
+        ->view('emails.recados.create')
+        ->with([
+            'recado'   => $this->recado,
+            'guestUrl' => $this->guestUrl,
+        ]);
 }
+
 
 }
