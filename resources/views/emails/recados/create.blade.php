@@ -84,6 +84,12 @@
             <span class="value">{{ $recado->assunto }}</span>
         </p>
 
+        <p>
+            <span class="label">Tipo:</span><br>
+            <span class="value">{{ $recado->tipo }}</span>
+        </p>
+
+
         @if(isset($recado->sla))
             <p>
                 <span class="label">SLA:</span>

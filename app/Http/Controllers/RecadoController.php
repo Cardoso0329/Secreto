@@ -339,7 +339,7 @@ class RecadoController extends Controller
             'tipo_id' => 'required|exists:tipos,id',
             'origem_id' => 'required|exists:origens,id',
             'setor_id' => 'required|exists:setores,id',
-            'departamento_id' => 'required|exists:departamentos,id',
+            'departamento_id' => 'nullable|exists:departamentos,id',
             'mensagem' => 'required|string',
             'ficheiro' => 'nullable|file',
             'aviso_id' => 'nullable|exists:avisos,id',
