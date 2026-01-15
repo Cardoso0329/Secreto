@@ -120,7 +120,7 @@ $setoresPermitidos = [
     {{-- Departamento --}}
     <div class="mb-4">
         <label class="form-label fw-semibold">Departamento </label>
-        <select name="departamento_id" id="departamento_id" class="form-select rounded-3" required>
+        <select name="departamento_id" id="departamento_id" class="form-select rounded-3">
             <option value="">-- Selecione --</option>
             @foreach ($departamentos as $item)
                 <option value="{{ $item->id }}">{{ $item->name }}</option>
