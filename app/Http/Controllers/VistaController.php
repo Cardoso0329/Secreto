@@ -21,7 +21,6 @@ class VistaController extends Controller
     public function index()
     {
         $vistas = VistaRepo::all();
-
         return view('vistas.index', compact('vistas'));
     }
 
@@ -43,7 +42,6 @@ class VistaController extends Controller
 
     public function store(Request $request)
     {
-        // ✅ fields permitidos no dropdown da view (inclui os 4 novos)
         $allowedFields = [
             'id',
             'name',
@@ -60,7 +58,6 @@ class VistaController extends Controller
             'destinatario_user_id',
             'abertura',
 
-            // ✅ adicionados
             'setor_id',
             'origem_id',
             'tipo_id',
@@ -68,15 +65,14 @@ class VistaController extends Controller
         ];
 
         $data = $request->validate([
-            'nome'        => 'required|string|max:255',
-            'logica'      => 'required|in:AND,OR',
-            'acesso'      => 'required|in:all,department,specific',
+            'nome'   => 'required|string|max:255',
+            'logica' => 'required|in:AND,OR',
+            'acesso' => 'required|in:all,department,specific',
 
-            // ✅ validar bem as condições
-            'conditions'                => 'nullable|array',
-            'conditions.*.field'        => ['nullable', 'string', Rule::in($allowedFields)],
-            'conditions.*.operator'     => ['nullable', 'string', Rule::in(['=','!=','like'])],
-            'conditions.*.value'        => 'nullable',
+            'conditions'            => 'nullable|array',
+            'conditions.*.field'    => ['nullable', 'string', Rule::in($allowedFields)],
+            'conditions.*.operator' => ['nullable', 'string', Rule::in(['=','!=','like','in','not in'])],
+            'conditions.*.value'    => 'nullable', // pode ser string ou array (para IN)
 
             'departamentos'   => 'nullable|array',
             'departamentos.*' => 'integer|exists:departamentos,id',
@@ -85,7 +81,7 @@ class VistaController extends Controller
             'users.*' => 'integer|exists:users,id',
         ]);
 
-        // ✅ coerência de acesso
+        // coerência de acesso
         if ($data['acesso'] === 'department' && empty($request->input('departamentos', []))) {
             return back()->withErrors(['departamentos' => 'Seleciona pelo menos 1 departamento.'])->withInput();
         }
@@ -93,16 +89,7 @@ class VistaController extends Controller
             return back()->withErrors(['users' => 'Seleciona pelo menos 1 utilizador.'])->withInput();
         }
 
-        $conditions = [];
-        foreach ($request->input('conditions', []) as $cond) {
-            if (!empty($cond['field']) && !empty($cond['operator']) && isset($cond['value']) && $cond['value'] !== '') {
-                $conditions[] = [
-                    'field'    => $cond['field'],
-                    'operator' => $cond['operator'],
-                    'value'    => $cond['value'],
-                ];
-            }
-        }
+        $conditions = $this->normalizeConditions($request->input('conditions', []));
 
         VistaRepo::create([
             'nome'          => $data['nome'],
@@ -137,7 +124,6 @@ class VistaController extends Controller
 
     public function update(Request $request, string $vista)
     {
-        // ✅ fields permitidos no dropdown da view (inclui os 4 novos)
         $allowedFields = [
             'id',
             'name',
@@ -154,7 +140,6 @@ class VistaController extends Controller
             'destinatario_user_id',
             'abertura',
 
-            // ✅ adicionados
             'setor_id',
             'origem_id',
             'tipo_id',
@@ -162,15 +147,14 @@ class VistaController extends Controller
         ];
 
         $data = $request->validate([
-            'nome'        => 'required|string|max:255',
-            'logica'      => 'required|in:AND,OR',
-            'acesso'      => 'required|in:all,department,specific',
+            'nome'   => 'required|string|max:255',
+            'logica' => 'required|in:AND,OR',
+            'acesso' => 'required|in:all,department,specific',
 
-            // ✅ validar bem as condições
-            'conditions'                => 'nullable|array',
-            'conditions.*.field'        => ['nullable', 'string', Rule::in($allowedFields)],
-            'conditions.*.operator'     => ['nullable', 'string', Rule::in(['=','!=','like'])],
-            'conditions.*.value'        => 'nullable',
+            'conditions'            => 'nullable|array',
+            'conditions.*.field'    => ['nullable', 'string', Rule::in($allowedFields)],
+            'conditions.*.operator' => ['nullable', 'string', Rule::in(['=','!=','like','in','not in'])],
+            'conditions.*.value'    => 'nullable',
 
             'departamentos'   => 'nullable|array',
             'departamentos.*' => 'integer|exists:departamentos,id',
@@ -179,7 +163,7 @@ class VistaController extends Controller
             'users.*' => 'integer|exists:users,id',
         ]);
 
-        // ✅ coerência de acesso
+        // coerência de acesso
         if ($data['acesso'] === 'department' && empty($request->input('departamentos', []))) {
             return back()->withErrors(['departamentos' => 'Seleciona pelo menos 1 departamento.'])->withInput();
         }
@@ -187,16 +171,7 @@ class VistaController extends Controller
             return back()->withErrors(['users' => 'Seleciona pelo menos 1 utilizador.'])->withInput();
         }
 
-        $conditions = [];
-        foreach ($request->input('conditions', []) as $cond) {
-            if (!empty($cond['field']) && !empty($cond['operator']) && isset($cond['value']) && $cond['value'] !== '') {
-                $conditions[] = [
-                    'field'    => $cond['field'],
-                    'operator' => $cond['operator'],
-                    'value'    => $cond['value'],
-                ];
-            }
-        }
+        $conditions = $this->normalizeConditions($request->input('conditions', []));
 
         VistaRepo::update($vista, [
             'nome'          => $data['nome'],
@@ -213,7 +188,50 @@ class VistaController extends Controller
     public function destroy(string $vista)
     {
         VistaRepo::delete($vista);
-
         return redirect()->route('vistas.index')->with('success', 'Vista eliminada.');
+    }
+
+    /**
+     * Normaliza e filtra conditions:
+     * - suporta in / not in com value array
+     * - ignora linhas incompletas
+     */
+    private function normalizeConditions(array $raw): array
+    {
+        $conditions = [];
+
+        foreach ($raw as $cond) {
+            $field = $cond['field'] ?? null;
+            $op    = strtolower(trim((string)($cond['operator'] ?? '')));
+            $value = $cond['value'] ?? null;
+
+            if (!$field || !$op) continue;
+
+            // IN / NOT IN -> value deve ser array com pelo menos 1 item
+            if ($op === 'in' || $op === 'not in') {
+                if (!is_array($value)) continue;
+
+                $arr = array_values(array_filter($value, fn($v) => $v !== '' && $v !== null));
+                if (!$arr) continue;
+
+                $conditions[] = [
+                    'field'    => $field,
+                    'operator' => $op,
+                    'value'    => $arr,
+                ];
+                continue;
+            }
+
+            // restantes -> value tem de existir e não ser vazio
+            if (!isset($value) || $value === '') continue;
+
+            $conditions[] = [
+                'field'    => $field,
+                'operator' => $op,
+                'value'    => $value,
+            ];
+        }
+
+        return $conditions;
     }
 }

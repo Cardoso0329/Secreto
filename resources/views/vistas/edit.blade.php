@@ -42,6 +42,9 @@
                 <option value="AND" {{ old('logica', $vista['logica'] ?? 'AND')=='AND'?'selected':'' }}>AND</option>
                 <option value="OR"  {{ old('logica', $vista['logica'] ?? 'AND')=='OR'?'selected':'' }}>OR</option>
             </select>
+            <div class="form-text">
+                Dica: se precisares de "Departamento = APV" E "Tipo IN (A,B)", usa AND e mete o Tipo com IN.
+            </div>
         </div>
 
         {{-- Acesso --}}
@@ -152,7 +155,6 @@ const fieldsConfig = {
         options: @json($campanhas->map(fn($c)=>['id'=>$c->id,'name'=>$c->name])->values())
     },
 
-    /* ✅ CAMPOS IGUAIS AO CREATE */
     setor_id: {
         label: 'Setor',
         type: 'select',
@@ -192,6 +194,29 @@ const fieldsConfig = {
 let conditionIndex = 0;
 const existingConditions = @json($existingConditionsPhp);
 
+function toggleAccessBlocks() {
+    const acesso = document.getElementById('acesso').value;
+    document.getElementById('block_departamentos').style.display = acesso === 'department' ? 'block' : 'none';
+    document.getElementById('block_users').style.display = acesso === 'specific' ? 'block' : 'none';
+}
+
+function operatorOptionsHTML(isSelect, selectedOp) {
+    const sel = (v) => (String(selectedOp).toLowerCase() === String(v).toLowerCase()) ? 'selected' : '';
+    let html = `
+        <option value="=" ${sel('=')}>=</option>
+        <option value="!=" ${sel('!=')}>≠</option>
+        <option value="like" ${sel('like')}>Contém</option>
+    `;
+
+    if (isSelect) {
+        html += `
+            <option value="in" ${sel('in')}>IN (um destes)</option>
+            <option value="not in" ${sel('not in')}>NOT IN</option>
+        `;
+    }
+    return html;
+}
+
 function addCondition(data = {}) {
     const rowIndex = conditionIndex;
     conditionIndex++;
@@ -209,40 +234,78 @@ function addCondition(data = {}) {
     const operator = document.createElement('select');
     operator.className = 'form-select col';
     operator.name = `conditions[${rowIndex}][operator]`;
-    operator.innerHTML = `
-        <option value="=" ${data.operator === '=' ? 'selected' : ''}>=</option>
-        <option value="!=" ${data.operator === '!=' ? 'selected' : ''}>≠</option>
-        <option value="like" ${data.operator === 'like' ? 'selected' : ''}>Contém</option>
-    `;
 
     const valueDiv = document.createElement('div');
     valueDiv.className = 'col';
 
+    function renderOperatorAndValue() {
+        const cfg = fieldsConfig[field.value];
+        const isSelect = cfg.type === 'select';
+
+        let currentOp = (operator.value || data.operator || '=');
+        operator.innerHTML = operatorOptionsHTML(isSelect, currentOp);
+
+        // se veio um operador IN mas o campo não é select -> reset
+        if (!isSelect && (String(currentOp).toLowerCase() === 'in' || String(currentOp).toLowerCase() === 'not in')) {
+            operator.value = '=';
+        } else {
+            const lower = String(currentOp).toLowerCase();
+            operator.value = (lower === 'not in') ? 'not in' : (lower === 'in' ? 'in' : currentOp);
+        }
+
+        renderValue();
+    }
+
     function renderValue() {
         valueDiv.innerHTML = '';
         const cfg = fieldsConfig[field.value];
+        const op  = String(operator.value || '').toLowerCase();
         const val = data.value ?? '';
 
         if (cfg.type === 'select') {
-            const sel = document.createElement('select');
-            sel.className = 'form-select';
-            sel.name = `conditions[${rowIndex}][value]`;
-            sel.innerHTML = `<option value="">—</option>` + cfg.options
-                .map(o => `<option value="${o.id}" ${String(o.id) === String(val) ? 'selected' : ''}>${o.name}</option>`)
-                .join('');
-            valueDiv.appendChild(sel);
+            if (op === 'in' || op === 'not in') {
+                const selectedArr = Array.isArray(val) ? val.map(String) : (val ? [String(val)] : []);
+
+                const sel = document.createElement('select');
+                sel.className = 'form-select';
+                sel.name = `conditions[${rowIndex}][value][]`;
+                sel.multiple = true;
+
+                sel.innerHTML = cfg.options
+                    .map(o => `<option value="${o.id}" ${selectedArr.includes(String(o.id)) ? 'selected' : ''}>${o.name}</option>`)
+                    .join('');
+
+                valueDiv.appendChild(sel);
+
+                const hint = document.createElement('div');
+                hint.className = 'form-text';
+                hint.textContent = 'Seleciona 1+ valores.';
+                valueDiv.appendChild(hint);
+            } else {
+                const sel = document.createElement('select');
+                sel.className = 'form-select';
+                sel.name = `conditions[${rowIndex}][value]`;
+
+                sel.innerHTML = `<option value="">—</option>` + cfg.options
+                    .map(o => `<option value="${o.id}" ${String(o.id) === String(val) ? 'selected' : ''}>${o.name}</option>`)
+                    .join('');
+
+                valueDiv.appendChild(sel);
+            }
         } else {
             const input = document.createElement('input');
             input.type = cfg.type;
             input.className = 'form-control';
             input.name = `conditions[${rowIndex}][value]`;
-            input.value = val;
+            input.value = Array.isArray(val) ? (val[0] ?? '') : val;
             valueDiv.appendChild(input);
         }
     }
 
-    field.onchange = renderValue;
-    renderValue();
+    field.onchange = renderOperatorAndValue;
+    operator.onchange = renderValue;
+
+    renderOperatorAndValue();
 
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
@@ -250,14 +313,12 @@ function addCondition(data = {}) {
     removeBtn.textContent = '🗑️';
     removeBtn.onclick = () => row.remove();
 
-    row.append(field, operator, valueDiv, removeBtn);
-    document.getElementById('conditions').appendChild(row);
-}
+    const btnCol = document.createElement('div');
+    btnCol.className = 'col-auto d-flex align-items-center';
+    btnCol.appendChild(removeBtn);
 
-function toggleAccessBlocks() {
-    const acesso = document.getElementById('acesso').value;
-    document.getElementById('block_departamentos').style.display = acesso === 'department' ? 'block' : 'none';
-    document.getElementById('block_users').style.display = acesso === 'specific' ? 'block' : 'none';
+    row.append(field, operator, valueDiv, btnCol);
+    document.getElementById('conditions').appendChild(row);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

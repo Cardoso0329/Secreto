@@ -42,6 +42,9 @@
                 <option value="AND" {{ old('logica','AND')=='AND'?'selected':'' }}>AND</option>
                 <option value="OR"  {{ old('logica')=='OR'?'selected':'' }}>OR</option>
             </select>
+            <div class="form-text">
+                Dica: se precisares de "Departamento = APV" E "Tipo IN (A,B)", usa AND e mete o Tipo com IN.
+            </div>
         </div>
 
         {{-- Acesso --}}
@@ -123,7 +126,6 @@ const fieldsConfig = {
         options: @json($campanhas->map(fn($c)=>['id'=>$c->id,'name'=>$c->name])->values())
     },
 
-    /* ✅ CAMPOS ADICIONADOS */
     setor_id: {
         label: 'Setor',
         type: 'select',
@@ -163,6 +165,33 @@ const fieldsConfig = {
 let index = 0;
 const oldConditions = {!! json_encode(old('conditions', [])) !!};
 
+function toggleAccessBlocks() {
+    const acesso = document.getElementById('acesso').value;
+    document.getElementById('block_departamentos').style.display = acesso === 'department' ? 'block' : 'none';
+    document.getElementById('block_users').style.display = acesso === 'specific' ? 'block' : 'none';
+}
+
+function operatorOptionsHTML(isSelect, selectedOp) {
+    const sel = (v) => (String(selectedOp).toLowerCase() === String(v).toLowerCase()) ? 'selected' : '';
+    let html = `
+        <option value="=" ${sel('=')}>=</option>
+        <option value="!=" ${sel('!=')}>≠</option>
+    `;
+
+    // LIKE só faz sentido para text/date também pode, mas normalmente é para texto
+    html += `<option value="like" ${sel('like')}>Contém</option>`;
+
+    // IN só faz sentido em selects (ids)
+    if (isSelect) {
+        html += `
+            <option value="in" ${sel('in')}>IN (um destes)</option>
+            <option value="not in" ${sel('not in')}>NOT IN</option>
+        `;
+    }
+
+    return html;
+}
+
 function addCondition(data = null) {
     const rowIndex = index;
     index++;
@@ -180,40 +209,86 @@ function addCondition(data = null) {
     const operator = document.createElement('select');
     operator.name = `conditions[${rowIndex}][operator]`;
     operator.className = 'form-select col';
-    operator.innerHTML = `
-        <option value="=" ${data?.operator==='='?'selected':''}>=</option>
-        <option value="!=" ${data?.operator==='!='?'selected':''}>≠</option>
-        <option value="like" ${data?.operator==='like'?'selected':''}>Contém</option>
-    `;
 
     const valueDiv = document.createElement('div');
     valueDiv.className = 'col';
 
+    function renderOperatorAndValue() {
+        const cfg = fieldsConfig[field.value];
+        const isSelect = cfg.type === 'select';
+
+        // manter operador atual se existir, senão usar o do old, senão "="
+        let currentOp = (operator.value || data?.operator || '=');
+        operator.innerHTML = operatorOptionsHTML(isSelect, currentOp);
+
+        // se o operador antigo era IN mas agora o campo não é select -> reset para "="
+        if (!isSelect && (String(currentOp).toLowerCase() === 'in' || String(currentOp).toLowerCase() === 'not in')) {
+            operator.value = '=';
+        } else {
+            operator.value = String(currentOp).toLowerCase() === 'not in' ? 'not in' : String(currentOp).toLowerCase();
+            // para =, !=, like mantém
+            if (currentOp === '=' || currentOp === '!=' || String(currentOp).toLowerCase() === 'like') operator.value = currentOp;
+        }
+
+        renderValue();
+    }
+
     function renderValue() {
         valueDiv.innerHTML = '';
         const cfg = fieldsConfig[field.value];
+        const op  = String(operator.value || '').toLowerCase();
+
+        // val pode ser string ou array (para IN)
         const val = data?.value ?? '';
 
         if (cfg.type === 'select') {
-            const sel = document.createElement('select');
-            sel.name = `conditions[${rowIndex}][value]`;
-            sel.className = 'form-select';
-            sel.innerHTML = `<option value="">—</option>` + cfg.options
-                .map(o => `<option value="${o.id}" ${String(o.id) === String(val) ? 'selected' : ''}>${o.name}</option>`)
-                .join('');
-            valueDiv.appendChild(sel);
+            // IN / NOT IN -> multi-select
+            if (op === 'in' || op === 'not in') {
+                const selectedArr = Array.isArray(val) ? val.map(String) : (val ? [String(val)] : []);
+
+                const sel = document.createElement('select');
+                sel.name = `conditions[${rowIndex}][value][]`;
+                sel.className = 'form-select';
+                sel.multiple = true;
+
+                sel.innerHTML = cfg.options
+                    .map(o => `<option value="${o.id}" ${selectedArr.includes(String(o.id)) ? 'selected' : ''}>${o.name}</option>`)
+                    .join('');
+
+                valueDiv.appendChild(sel);
+
+                const hint = document.createElement('div');
+                hint.className = 'form-text';
+                hint.textContent = 'Seleciona 1+ valores.';
+                valueDiv.appendChild(hint);
+
+            } else {
+                const sel = document.createElement('select');
+                sel.name = `conditions[${rowIndex}][value]`;
+                sel.className = 'form-select';
+
+                sel.innerHTML = `<option value="">—</option>` + cfg.options
+                    .map(o => `<option value="${o.id}" ${String(o.id) === String(val) ? 'selected' : ''}>${o.name}</option>`)
+                    .join('');
+
+                valueDiv.appendChild(sel);
+            }
+
         } else {
             const input = document.createElement('input');
             input.type = cfg.type;
             input.name = `conditions[${rowIndex}][value]`;
             input.className = 'form-control';
-            input.value = val;
+            input.value = Array.isArray(val) ? (val[0] ?? '') : val;
             valueDiv.appendChild(input);
         }
     }
 
-    field.onchange = renderValue;
-    renderValue();
+    field.onchange = renderOperatorAndValue;
+    operator.onchange = renderValue;
+
+    // primeira renderização
+    renderOperatorAndValue();
 
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
@@ -227,12 +302,6 @@ function addCondition(data = null) {
 
     row.append(field, operator, valueDiv, btnCol);
     document.getElementById('conditions').appendChild(row);
-}
-
-function toggleAccessBlocks() {
-    const acesso = document.getElementById('acesso').value;
-    document.getElementById('block_departamentos').style.display = acesso === 'department' ? 'block' : 'none';
-    document.getElementById('block_users').style.display = acesso === 'specific' ? 'block' : 'none';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
