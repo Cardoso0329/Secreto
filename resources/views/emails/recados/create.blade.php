@@ -84,10 +84,12 @@
             <span class="value">{{ $recado->assunto }}</span>
         </p>
 
-        <p>
-            <span class="label">Tipo:</span><br>
-            <span class="value">{{ $recado->tipo }}</span>
-        </p>
+         @if(isset($recado->tipo))
+            <p>
+                <span class="label">Tipo:</span>
+                <span class="value">{{ $recado->tipo->name }}</span>
+            </p>
+        @endif
 
 
         @if(isset($recado->sla))

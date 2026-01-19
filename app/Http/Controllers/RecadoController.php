@@ -511,6 +511,7 @@ class RecadoController extends Controller
             }
         }
     }
+    
 
     return redirect()->route('recados.index')->with('success', 'Recado criado e emails enviados.');
 }
