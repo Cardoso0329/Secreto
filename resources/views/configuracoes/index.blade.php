@@ -47,7 +47,11 @@
 </li>
 
 <li class="nav-item" role="presentation">
-    <button class="nav-link" id="campanhas-tab" data-bs-toggle="tab" data-bs-target="#vistas" type="button" role="tab"> Vistas</button>
+    <button class="nav-link" id="vistas-tab" data-bs-toggle="tab" data-bs-target="#vistas" type="button" role="tab"> Vistas</button>
+</li>
+
+<li class="nav-item" role="presentation">
+    <button class="nav-link" id="chefias-tab" data-bs-toggle="tab" data-bs-target="#chefias" type="button" role="tab">👔 Chefias</button>
 </li>
 
 
@@ -270,6 +274,10 @@
 
 <div class="tab-pane fade" id="vistas" role="tabpanel">
     <iframe src="{{ route('vistas.index') }}" width="100%" height="600" frameborder="0"></iframe>
+</div>
+
+<div class="tab-pane fade" id="chefias" role="tabpanel">
+    <iframe src="{{ route('chefias.index') }}" width="100%" height="600" frameborder="0"></iframe>
 </div>
 
 

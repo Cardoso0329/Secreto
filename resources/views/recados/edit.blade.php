@@ -4,7 +4,32 @@
 <div class="container py-5" style="max-width: 1000px;">
     <div class="card shadow-sm border-0 rounded-4">
         <div class="card-body p-4">
-            <h2 class="fw-bold mb-4">✏️ Editar Recado #{{ $recado->id }}</h2>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                <h2 class="fw-bold mb-0">✏️ Editar Recado #{{ $recado->id }}</h2>
+                <a href="{{ route('recados.index') }}" class="btn btn-light border">
+                    ← Voltar
+                </a>
+            </div>
+
+            {{-- Alerts --}}
+            @if (session('success'))
+                <div class="alert alert-success">{{ session('success') }}</div>
+            @endif
+
+            @if (session('error'))
+                <div class="alert alert-danger">{{ session('error') }}</div>
+            @endif
+
+            @if ($errors->any())
+                <div class="alert alert-danger">
+                    <strong>Há erros no formulário:</strong>
+                    <ul class="mb-0">
+                        @foreach ($errors->all() as $e)
+                            <li>{{ $e }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
             <form action="{{ route('recados.update', $recado->id) }}" method="POST" enctype="multipart/form-data">
                 @csrf
@@ -13,51 +38,77 @@
                 {{-- Nav tabs --}}
                 <ul class="nav nav-tabs mb-4" id="recadoTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="geral-tab" data-bs-toggle="tab" data-bs-target="#geral" type="button" role="tab">Informações Gerais</button>
+                        <button class="nav-link active" id="geral-tab" data-bs-toggle="tab" data-bs-target="#geral" type="button" role="tab">
+                            Informações Gerais
+                        </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="relacoes-tab" data-bs-toggle="tab" data-bs-target="#relacoes" type="button" role="tab">Relações & Datas</button>
+                        <button class="nav-link" id="relacoes-tab" data-bs-toggle="tab" data-bs-target="#relacoes" type="button" role="tab">
+                            Relações & Datas
+                        </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="destinatarios-tab" data-bs-toggle="tab" data-bs-target="#destinatarios" type="button" role="tab">Destinatários</button>
+                        <button class="nav-link" id="destinatarios-tab" data-bs-toggle="tab" data-bs-target="#destinatarios" type="button" role="tab">
+                            Destinatários
+                        </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="ficheiro-tab" data-bs-toggle="tab" data-bs-target="#ficheiro" type="button" role="tab">Ficheiro</button>
+                        <button class="nav-link" id="ficheiro-tab" data-bs-toggle="tab" data-bs-target="#ficheiro" type="button" role="tab">
+                            Ficheiro
+                        </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="observacoes-tab" data-bs-toggle="tab" data-bs-target="#observacoes" type="button" role="tab">Observações</button>
+                        <button class="nav-link" id="observacoes-tab" data-bs-toggle="tab" data-bs-target="#observacoes" type="button" role="tab">
+                            Observações
+                        </button>
                     </li>
                 </ul>
 
                 <div class="tab-content">
                     {{-- Aba Geral --}}
-                    <div class="tab-pane fade show active" id="geral" role="tabpanel">
+                    <div class="tab-pane fade show active" id="geral" role="tabpanel" aria-labelledby="geral-tab">
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Nome</label>
-                                <input type="text" name="name" class="form-control" value="{{ old('name', $recado->name) }}" >
+                                <input type="text" name="name" class="form-control" value="{{ old('name', $recado->name) }}">
                             </div>
+
                             <div class="col-md-6">
                                 <label class="form-label">Contacto Cliente</label>
                                 <input type="text" name="contact_client" class="form-control" value="{{ old('contact_client', $recado->contact_client) }}">
                             </div>
+
                             <div class="col-md-6">
                                 <label class="form-label">Matrícula</label>
                                 <input type="text" name="plate" class="form-control" value="{{ old('plate', $recado->plate) }}">
                             </div>
+
                             <div class="col-md-6">
                                 <label class="form-label">Mensagem</label>
-                                <textarea name="mensagem" class="form-control">{{ old('mensagem', $recado->mensagem) }}</textarea>
+                                <textarea name="mensagem" class="form-control" rows="3">{{ old('mensagem', $recado->mensagem) }}</textarea>
                             </div>
+
+                            {{-- Se quiseres editar WIP/Assunto aqui também, descomenta:
+                            <div class="col-md-6">
+                                <label class="form-label">WIP</label>
+                                <input type="text" name="wip" class="form-control" value="{{ old('wip', $recado->wip) }}">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Assunto</label>
+                                <input type="text" name="assunto" class="form-control" value="{{ old('assunto', $recado->assunto) }}">
+                            </div>
+                            --}}
                         </div>
                     </div>
 
                     {{-- Aba Relações & Datas --}}
-                    <div class="tab-pane fade" id="relacoes" role="tabpanel">
+                    <div class="tab-pane fade" id="relacoes" role="tabpanel" aria-labelledby="relacoes-tab">
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label">Estado</label>
-                                <select name="estado_id" class="form-select" >
+                                <select name="estado_id" class="form-select">
+                                    <option value="">-- Nenhum --</option>
                                     @foreach($estados as $estado)
                                         <option value="{{ $estado->id }}" {{ old('estado_id', $recado->estado_id) == $estado->id ? 'selected' : '' }}>
                                             {{ $estado->name }}
@@ -65,9 +116,11 @@
                                     @endforeach
                                 </select>
                             </div>
+
                             <div class="col-md-4">
                                 <label class="form-label">Tipo de Formulário</label>
-                                <select name="tipo_formulario_id" class="form-select" >
+                                <select name="tipo_formulario_id" class="form-select">
+                                    <option value="">-- Nenhum --</option>
                                     @foreach($tiposFormulario as $tipo)
                                         <option value="{{ $tipo->id }}" {{ old('tipo_formulario_id', $recado->tipo_formulario_id) == $tipo->id ? 'selected' : '' }}>
                                             {{ $tipo->name }}
@@ -75,6 +128,7 @@
                                     @endforeach
                                 </select>
                             </div>
+
                             <div class="col-md-4">
                                 <label class="form-label">SLA</label>
                                 <select name="sla_id" class="form-select">
@@ -135,6 +189,20 @@
                                 </select>
                             </div>
 
+                            {{-- ✅ NOVO: Chefia --}}
+                            <div class="col-md-4">
+                                <label class="form-label">Chefia</label>
+                                <select name="chefia_id" class="form-select">
+                                    <option value="">-- Nenhuma --</option>
+                                    @foreach($chefias as $chefia)
+                                        <option value="{{ $chefia->id }}" {{ old('chefia_id', $recado->chefia_id) == $chefia->id ? 'selected' : '' }}>
+                                            {{ $chefia->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">Só faz sentido no Call Center.</small>
+                            </div>
+
                             <div class="col-md-4">
                                 <label class="form-label">Aviso</label>
                                 <select name="aviso_id" class="form-select">
@@ -150,7 +218,7 @@
                             <div class="col-md-4">
                                 <label class="form-label">Campanha</label>
                                 <select name="campanha_id" class="form-select">
-                                    <option value="">-- Nenhum --</option>
+                                    <option value="">-- Nenhuma --</option>
                                     @foreach($campanhas as $campanha)
                                         <option value="{{ $campanha->id }}" {{ old('campanha_id', $recado->campanha_id) == $campanha->id ? 'selected' : '' }}>
                                             {{ $campanha->name }}
@@ -162,17 +230,20 @@
                             {{-- Datas --}}
                             <div class="col-md-6">
                                 <label class="form-label">Abertura</label>
-                                <input type="datetime-local" name="abertura" class="form-control" value="{{ old('abertura', $recado->abertura?->format('Y-m-d\TH:i')) }}">
+                                <input type="datetime-local" name="abertura" class="form-control"
+                                       value="{{ old('abertura', $recado->abertura?->format('Y-m-d\TH:i')) }}">
                             </div>
+
                             <div class="col-md-6">
                                 <label class="form-label">Término</label>
-                                <input type="datetime-local" name="termino" class="form-control" value="{{ old('termino', $recado->termino?->format('Y-m-d\TH:i')) }}">
+                                <input type="datetime-local" name="termino" class="form-control"
+                                       value="{{ old('termino', $recado->termino?->format('Y-m-d\TH:i')) }}">
                             </div>
                         </div>
                     </div>
 
                     {{-- Aba Destinatários --}}
-                    <div class="tab-pane fade" id="destinatarios" role="tabpanel">
+                    <div class="tab-pane fade" id="destinatarios" role="tabpanel" aria-labelledby="destinatarios-tab">
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Destinatários (Users)</label>
@@ -183,6 +254,7 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                <small class="text-muted">Segure Ctrl (Windows) / Cmd (Mac) para selecionar vários.</small>
                             </div>
 
                             <div class="col-md-6">
@@ -194,6 +266,7 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                <small class="text-muted">Segure Ctrl (Windows) / Cmd (Mac) para selecionar vários.</small>
                             </div>
 
                             <div class="col-12">
@@ -207,22 +280,32 @@
                                         <input type="email" name="destinatarios_livres[]" class="form-control mb-1" placeholder="email@example.com">
                                     @endif
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addEmailField()">+ Adicionar Email</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addEmailField()">
+                                    + Adicionar Email
+                                </button>
                             </div>
                         </div>
                     </div>
 
                     {{-- Aba Ficheiro --}}
-                    <div class="tab-pane fade" id="ficheiro" role="tabpanel">
-                        <label class="form-label">Ficheiro</label>
-                        <input type="file" name="ficheiro" class="form-control">
+                    <div class="tab-pane fade" id="ficheiro" role="tabpanel" aria-labelledby="ficheiro-tab">
+                        <div class="mb-3">
+                            <label class="form-label">Ficheiro</label>
+                            <input type="file" name="ficheiro" class="form-control">
+                        </div>
+
                         @if($recado->ficheiro)
-                            <small>Ficheiro atual: <a href="{{ asset('storage/recados/'.$recado->ficheiro) }}" target="_blank">{{ $recado->ficheiro }}</a></small>
+                            <div class="small">
+                                Ficheiro atual:
+                                <a href="{{ asset('storage/recados/'.$recado->ficheiro) }}" target="_blank">
+                                    {{ $recado->ficheiro }}
+                                </a>
+                            </div>
                         @endif
                     </div>
 
                     {{-- Aba Observações --}}
-                    <div class="tab-pane fade" id="observacoes" role="tabpanel">
+                    <div class="tab-pane fade" id="observacoes" role="tabpanel" aria-labelledby="observacoes-tab">
                         <label class="form-label">Observações</label>
                         <textarea name="observacoes" class="form-control" rows="8">{{ old('observacoes', $recado->observacoes) }}</textarea>
                     </div>
@@ -250,5 +333,4 @@ function addEmailField() {
     container.appendChild(input);
 }
 </script>
-
 @endsection

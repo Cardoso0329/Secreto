@@ -30,6 +30,7 @@
                     <p><strong>Email Operador:</strong> {{ $recado->operator_email ?? '—' }}</p>
                     <p><strong>Abertura:</strong> {{ $recado->abertura ? $recado->abertura->format('d/m/Y H:i') : '—' }}</p>
                     <p><strong>Término:</strong> {{ $recado->termino ? $recado->termino->format('d/m/Y H:i') : '—' }}</p>
+
                     @if (!empty($recado->wip))
                         <p><strong>WIP:</strong> {{ $recado->wip }}</p>
                     @endif
@@ -47,6 +48,11 @@
                     <p><strong>Origem:</strong> {{ $recado->origem->name ?? '—' }}</p>
                     <p><strong>Setor:</strong> {{ $recado->setor->name ?? '—' }}</p>
                     <p><strong>Departamento:</strong> {{ $recado->departamento->name ?? '—' }}</p>
+
+                    {{-- ✅ Chefia (só mostra se existir) --}}
+                    @if($recado->chefia)
+                        <p><strong>Chefia:</strong> {{ $recado->chefia->name }}</p>
+                    @endif
 
                     {{-- Avisos em fila para envio por email --}}
                     @if($avisos->count())
@@ -108,7 +114,7 @@
 
                     @if($recado->guestTokens?->count())
                         <p><strong>Destinatários Livres:</strong></p>
-                        <ul>
+                        <ul class="mb-2">
                             @foreach($recado->guestTokens as $token)
                                 <li>{{ $token->email }}</li>
                             @endforeach
@@ -117,7 +123,7 @@
                         <p><strong>Destinatários Livres:</strong> —</p>
                     @endif
 
-                    {{-- 🔥 Campanhas --}}
+                    {{-- Campanhas --}}
                     <p><strong>Campanha:</strong> {{ $recado->campanha->name ?? '—' }}</p>
 
                     <p><strong>Assunto:</strong> {{ $recado->assunto ?? '—' }}</p>
@@ -172,33 +178,32 @@
                 {{-- Área estilo chat --}}
                 <div class="p-3 rounded bg-light mb-3" style="max-height: 350px; overflow-y: auto;">
                     @php
-    $linhas = preg_split("/\r\n|\n|\r/", (string)($recado->observacoes ?? ''), -1, PREG_SPLIT_NO_EMPTY);
-    $meuNome = auth()->user()->name ?? '';
+                        $linhas = preg_split("/\r\n|\n|\r/", (string)($recado->observacoes ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+                        $meuNome = auth()->user()->name ?? '';
 
-    $comentarios = collect($linhas)
-        ->reverse()
-        ->values()
-        ->map(function($linha) {
-            $linha = trim($linha);
+                        $comentarios = collect($linhas)
+                            ->reverse()
+                            ->values()
+                            ->map(function($linha) {
+                                $linha = trim($linha);
 
-            if (preg_match('/^(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2})\s+-\s+(.+?):\s*(.+)$/u', $linha, $m)) {
-                return [
-                    'data' => $m[1],
-                    'autor' => trim($m[2]),
-                    'msg' => trim($m[3]),
-                    'raw' => $linha,
-                ];
-            }
+                                if (preg_match('/^(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2})\s+-\s+(.+?):\s*(.+)$/u', $linha, $m)) {
+                                    return [
+                                        'data' => $m[1],
+                                        'autor' => trim($m[2]),
+                                        'msg' => trim($m[3]),
+                                        'raw' => $linha,
+                                    ];
+                                }
 
-            return [
-                'data' => null,
-                'autor' => null,
-                'msg' => $linha,
-                'raw' => $linha,
-            ];
-        });
-@endphp
-
+                                return [
+                                    'data' => null,
+                                    'autor' => null,
+                                    'msg' => $linha,
+                                    'raw' => $linha,
+                                ];
+                            });
+                    @endphp
 
                     @forelse($comentarios as $c)
                         @php

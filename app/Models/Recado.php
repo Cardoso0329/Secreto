@@ -90,6 +90,10 @@ public function campanha()
     return $this->belongsTo(Campanha::class, 'campanha_id');
 }
 
+public function chefia()
+{
+    return $this->belongsTo(\App\Models\Chefia::class, 'chefia_id');
+}
 
 
 

@@ -8,7 +8,8 @@ use App\Http\Controllers\{
     AvisoController, EstadoController, TipoController,
     RecadoController, UserController, PainelController,
     ProfileController, CargoController, GrupoController,
-    CampanhaController, RecadosCampanhaController, VistaController
+    CampanhaController, RecadosCampanhaController, VistaController,
+    ChefiaController
 };
 
 // Página inicial
@@ -50,6 +51,7 @@ Route::resource('recados', RecadoController::class);
         Route::put('/recados/{recado}/observacoes', [RecadoController::class, 'adicionarComentario'])->name('recados.observacoes.update');
         Route::resource('campanhas', CampanhaController::class)->except(['show']);
          Route::resource('vistas', VistaController::class)->except(['show']);
+         Route::resource('chefias', ChefiaController::class);
 
 
 // Atualiza estado pelo select
