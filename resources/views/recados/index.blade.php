@@ -229,9 +229,7 @@
                                 <th>Estado</th>
                                 <th>Tipo</th>
                                 <th class="text-nowrap">Criado em</th>
-                                @if(auth()->user()->cargo->name === 'admin')
-                                    <th class="text-center" style="width: 90px;">Ações</th>
-                                @endif
+                                <th class="text-center" style="width: 90px;">Ações</th>
                             </tr>
                         </thead>
 
@@ -296,42 +294,45 @@
                                         {{ $recado->created_at->format('d/m/Y H:i') }}
                                     </td>
 
-                                    @if(auth()->user()->cargo->name === 'admin')
-                                        <td class="text-center" onclick="event.stopPropagation();">
-                                            <div class="dropdown">
-                                                <button
-                                                    class="btn btn-sm btn-light border"
-                                                    type="button"
-                                                    data-bs-toggle="dropdown"
-                                                    aria-expanded="false"
-                                                    onclick="event.stopPropagation();"
-                                                >
-                                                    <i class="bi bi-three-dots-vertical"></i>
-                                                </button>
+                                    <td class="text-center" onclick="event.stopPropagation();">
+    <div class="dropdown">
+        <button
+            class="btn btn-sm btn-light border"
+            type="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            onclick="event.stopPropagation();"
+        >
+            <i class="bi bi-three-dots-vertical"></i>
+        </button>
 
-                                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('recados.edit', $recado->id) }}">
-                                                            ✏️ Editar
-                                                        </a>
-                                                    </li>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+            {{-- ✅ Editar: todos podem (ou quem tu quiseres) --}}
+            <li>
+                <a class="dropdown-item" href="{{ route('recados.edit', $recado->id) }}">
+                    ✏️ Editar
+                </a>
+            </li>
 
-                                                    <li><hr class="dropdown-divider"></li>
+            {{-- ✅ Apagar: só admin --}}
+            @if(optional(auth()->user()->cargo)->name === 'admin')
+                <li><hr class="dropdown-divider"></li>
 
-                                                    <li>
-                                                        <form action="{{ route('recados.destroy', $recado->id) }}" method="POST"
-                                                              onsubmit="return confirm('Tem a certeza que deseja eliminar este recado?')">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="dropdown-item text-danger">
-                                                                🗑️ Apagar
-                                                            </button>
-                                                        </form>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </td>
-                                    @endif
+                <li>
+                    <form action="{{ route('recados.destroy', $recado->id) }}" method="POST"
+                          onsubmit="return confirm('Tem a certeza que deseja eliminar este recado?')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="dropdown-item text-danger">
+                            🗑️ Apagar
+                        </button>
+                    </form>
+                </li>
+            @endif
+        </ul>
+    </div>
+</td>
+
                                 </tr>
                             @empty
                                 <tr>

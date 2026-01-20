@@ -122,7 +122,7 @@
                     <div class="input-group">
                         <select id="novoDestinatario" class="form-select rounded-start">
                             <option value="">Selecione um destinatário</option>
-                            @foreach (\App\Models\User::all() as $user)
+                            @foreach (\App\Models\User::orderBy('name')->get() as $user)
                                 <option value="{{ $user->id }}" data-name="{{ $user->name }}">{{ $user->name }}</option>
                             @endforeach
                         </select>
