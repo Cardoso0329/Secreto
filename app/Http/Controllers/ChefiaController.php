@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Chefia;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class ChefiaController extends Controller
@@ -23,45 +24,63 @@ class ChefiaController extends Controller
     }
 
     public function create()
-    {
-        return view('chefias.create');
-    }
+{
+    $users = User::orderBy('name')->get();
+    return view('chefias.create', compact('users'));
+}
+
 
     public function store(Request $request)
-    {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-        ]);
+{
+    $data = $request->validate([
+        'name' => ['required','string','max:255'],
+        'users' => ['array'],
+        'users.*' => ['exists:users,id'],
+    ]);
 
-        Chefia::create($data);
+    $chefia = Chefia::create([
+        'name' => $data['name'],
+    ]);
 
-        return redirect()
-            ->route('chefias.index')
-            ->with('success', 'Chefia criada com sucesso.');
-    }
+    $chefia->users()->sync($data['users'] ?? []);
 
-    public function show(Chefia $chefia)
-    {
-        return view('chefias.show', compact('chefia'));
-    }
+    return redirect()->route('chefias.index')->with('success', 'Chefia criada com sucesso.');
+}
 
-    public function edit(Chefia $chefia)
-    {
-        return view('chefias.edit', compact('chefia'));
-    }
 
-    public function update(Request $request, Chefia $chefia)
-    {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-        ]);
+   public function show(Chefia $chefia)
+{
+    $chefia->load('users');
+    return view('chefias.show', compact('chefia'));
+}
 
-        $chefia->update($data);
 
-        return redirect()
-            ->route('chefias.index')
-            ->with('success', 'Chefia atualizada com sucesso.');
-    }
+   public function edit(Chefia $chefia)
+{
+    $users = User::orderBy('name')->get();
+    $selectedUsers = $chefia->users()->pluck('users.id')->toArray();
+
+    return view('chefias.edit', compact('chefia','users','selectedUsers'));
+}
+
+
+   public function update(Request $request, Chefia $chefia)
+{
+    $data = $request->validate([
+        'name' => ['required','string','max:255'],
+        'users' => ['array'],
+        'users.*' => ['exists:users,id'],
+    ]);
+
+    $chefia->update([
+        'name' => $data['name'],
+    ]);
+
+    $chefia->users()->sync($data['users'] ?? []);
+
+    return redirect()->route('chefias.index')->with('success', 'Chefia atualizada com sucesso.');
+}
+
 
     public function destroy(Chefia $chefia)
     {

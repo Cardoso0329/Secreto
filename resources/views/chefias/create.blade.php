@@ -55,6 +55,19 @@
                     >
                 </div>
 
+                <div class="mb-3">
+    <label class="form-label fw-semibold">Utilizadores</label>
+    <select name="users[]" class="form-select" multiple>
+        @foreach($users as $user)
+            <option value="{{ $user->id }}" {{ in_array($user->id, old('users', [])) ? 'selected' : '' }}>
+                {{ $user->name }}
+            </option>
+        @endforeach
+    </select>
+    <small class="text-muted">Segure Ctrl (Windows)</small>
+</div>
+
+
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-success">
                         <i class="bi bi-check-lg me-1"></i> Guardar

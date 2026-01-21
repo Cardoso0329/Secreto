@@ -17,4 +17,10 @@ class Chefia extends Model
     {
         return $this->hasMany(Recado::class, 'chefia_id');
     }
+
+    public function users()
+{
+    return $this->belongsToMany(\App\Models\User::class)->withTimestamps();
+}
+
 }

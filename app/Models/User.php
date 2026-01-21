@@ -80,6 +80,11 @@ public function departamentos()
     return $this->belongsToMany(Departamento::class, 'departamento_user');
 }
 
+public function chefias()
+{
+    return $this->belongsToMany(\App\Models\Chefia::class)->withTimestamps();
+}
+
 
 
 

@@ -32,6 +32,19 @@
                 <div class="text-muted small">Nome</div>
                 <div class="fs-5 fw-semibold">{{ $chefia->name }}</div>
             </div>
+            <div class="mb-3">
+    <div class="text-muted small">Utilizadores</div>
+    @if($chefia->users->count())
+        <div class="d-flex flex-wrap gap-2 mt-1">
+            @foreach($chefia->users as $u)
+                <span class="badge bg-primary">{{ $u->name }}</span>
+            @endforeach
+        </div>
+    @else
+        <div class="text-muted">—</div>
+    @endif
+</div>
+
 
             <hr>
 
