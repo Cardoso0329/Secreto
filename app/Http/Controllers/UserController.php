@@ -14,14 +14,23 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
-    public function index()
-    {
-        // Ordenar utilizadores por nome
-        $users = User::with(['cargo', 'departamentos'])
-            ->orderBy('name', 'asc')
-            ->get();
-        return view('users.index', compact('users'));
-    }
+    public function index(Request $request)
+{
+    $q = trim((string) $request->get('q', ''));
+
+    $users = User::with(['cargo', 'departamentos', 'grupos'])
+        ->when($q !== '', function ($query) use ($q) {
+            $query->where(function ($w) use ($q) {
+                $w->where('name', 'like', "%{$q}%")
+                  ->orWhere('email', 'like', "%{$q}%");
+            });
+        })
+        ->orderBy('id', 'asc') // ✅ por criação (ID crescente)
+        ->paginate(10)
+        ->withQueryString();
+
+    return view('users.index', compact('users', 'q'));
+}
 
     public function create()
     {
@@ -136,14 +145,20 @@ public function store(Request $request)
     }
 
     public function search(Request $request)
-    {
-        $query = $request->input('q', '');
+{
+    $query = trim((string) $request->input('q', ''));
 
-        $users = User::with(['cargo', 'departamentos'])
-            ->where('name', 'like', "%{$query}%")
-            ->orWhere('email', 'like', "%{$query}%")
-            ->get();
+    $users = User::with(['cargo', 'grupos'])
+        ->when($query !== '', function ($q) use ($query) {
+            $q->where(function ($w) use ($query) {
+                $w->where('name', 'like', "%{$query}%")
+                  ->orWhere('email', 'like', "%{$query}%");
+            });
+        })
+        ->orderBy('id', 'asc') // ✅ por criação
+        ->limit(50)
+        ->get();
 
-        return response()->json($users);
-    }
+    return response()->json($users);
+}
 }
