@@ -46,6 +46,34 @@ class RecadoController extends Controller
             ->values();
     }
 
+    /**
+     * ✅ Users da chefia (via pivot chefia_user)
+     * Nota: requer User::chefias() e Chefia::users()
+     */
+    private function chefiaUserIds(?int $chefiaId)
+    {
+        $chefiaId = (int) ($chefiaId ?? 0);
+        if ($chefiaId <= 0) return collect();
+
+        return User::whereHas('chefias', function ($q) use ($chefiaId) {
+                $q->where('chefias.id', $chefiaId);
+            })
+            ->pluck('users.id')
+            ->map(fn ($id) => (int) $id);
+    }
+
+    private function chefiaEmails(?int $chefiaId)
+    {
+        $ids = $this->chefiaUserIds($chefiaId);
+        if ($ids->isEmpty()) return collect();
+
+        return User::whereIn('id', $ids->all())
+            ->pluck('email')
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
     public function index(Request $request)
     {
         $user = auth()->user();
@@ -59,7 +87,7 @@ class RecadoController extends Controller
 
         /* ================= QUERY BASE ================= */
         $recados = Recado::with([
-            'setor','origem','departamento','destinatarios','estado','sla',
+            'setor','origem','departamento','chefia','destinatarios','estado','sla',
             'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
         ]);
 
@@ -127,11 +155,13 @@ class RecadoController extends Controller
         }
 
         /* =========================================================
-           ✅ EXPANDIR VISIBILIDADE APENAS POR VISTA DE DEPARTAMENTO
+           ✅ EXPANDIR VISIBILIDADE APENAS POR VISTA DE DEPARTAMENTO/CHEFIA
            - Só faz sentido se:
              (1) há vista ativa
-             (2) NÃO há filtros manuais (igual ao teu comportamento da vista)
+             (2) NÃO há filtros manuais
            ========================================================= */
+
+        // ===== Departamento (vista)
         $deptIdsDaVista = collect();
         $permitirVerDepartamentoDaVista = false;
 
@@ -147,12 +177,10 @@ class RecadoController extends Controller
                 ->values();
 
             if ($deptIdsDaVista->isNotEmpty()) {
-                // departamentos do user via pivot department_user
                 $meusDeptIds = $user->departamentos()
                     ->pluck('departamentos.id')
                     ->map(fn ($v) => (int) $v);
 
-                // só permite se o dept da vista for um dept do user
                 $permitidos = $deptIdsDaVista->intersect($meusDeptIds);
 
                 if ($permitidos->isNotEmpty()) {
@@ -164,19 +192,68 @@ class RecadoController extends Controller
             }
         }
 
+        // ===== Chefia (vista)
+        $chefiaIdsDaVista = collect();
+        $permitirVerChefiaDaVista = false;
+
+        if (!$temFiltrosManuais && !empty($vistaId)) {
+            $chefiaIdsDaVista = collect($vistaFiltros)
+                ->filter(fn ($f) => is_array($f))
+                ->filter(fn ($f) => ($f['field'] ?? null) === 'chefia_id')
+                ->filter(fn ($f) => ($f['operator'] ?? '=') === '=') // só "="
+                ->pluck('value')
+                ->filter(fn ($v) => $v !== null && $v !== '')
+                ->map(fn ($v) => (int) $v)
+                ->unique()
+                ->values();
+
+            if ($chefiaIdsDaVista->isNotEmpty()) {
+                $minhasChefiasIds = $user->chefias()
+                    ->pluck('chefias.id')
+                    ->map(fn ($v) => (int) $v);
+
+                $permitidos = $chefiaIdsDaVista->intersect($minhasChefiasIds);
+
+                if ($permitidos->isNotEmpty()) {
+                    $permitirVerChefiaDaVista = true;
+                    $chefiaIdsDaVista = $permitidos;
+                } else {
+                    $chefiaIdsDaVista = collect(); // segurança
+                }
+            }
+        }
+
         /* ================= VISIBILIDADE ================= */
         if ($user->cargo?->name !== 'admin') {
+
             $uid = (int) $user->id;
 
-            $recados->where(function ($q) use ($uid, $permitirVerDepartamentoDaVista, $deptIdsDaVista) {
-                $q->where('user_id', $uid)
-                  ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid));
+            // ✅ Se há VISTA ativa (e não há filtros manuais), não aplicamos "só meus"
+            // para não estragar as vistas.
+            $haVistaAtiva = (!$temFiltrosManuais && !empty($vistaId));
 
-                // ✅ vista departamento -> incluir todos do dept (se for dele)
-                if ($permitirVerDepartamentoDaVista && $deptIdsDaVista->isNotEmpty()) {
-                    $q->orWhereIn('departamento_id', $deptIdsDaVista->all());
-                }
-            });
+            if (!$haVistaAtiva) {
+                $recados->where(function ($q) use ($uid) {
+                    $q->where('user_id', $uid)
+                      ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid));
+                });
+            } else {
+                // ✅ Quando há vista, podes expandir por departamento/chefia apenas se pertencer ao user
+                $recados->where(function ($q) use ($uid, $permitirVerDepartamentoDaVista, $deptIdsDaVista, $permitirVerChefiaDaVista, $chefiaIdsDaVista) {
+
+                    // mantém acesso normal também (opcional, mas bom)
+                    $q->where('user_id', $uid)
+                      ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid));
+
+                    if ($permitirVerDepartamentoDaVista && $deptIdsDaVista->isNotEmpty()) {
+                        $q->orWhereIn('departamento_id', $deptIdsDaVista->all());
+                    }
+
+                    if ($permitirVerChefiaDaVista && $chefiaIdsDaVista->isNotEmpty()) {
+                        $q->orWhereIn('chefia_id', $chefiaIdsDaVista->all());
+                    }
+                });
+            }
         }
 
         /* ================= ORDENAÇÃO ================= */
@@ -221,7 +298,7 @@ class RecadoController extends Controller
         $avisos = Aviso::orderBy('name')->get();
         $campanhas = Campanha::orderBy('name')->get();
 
-        // ✅ NOVO: Chefias
+        // ✅ Chefias
         $chefias = Chefia::orderBy('name')->get();
 
         $nomeTipo = strtolower(trim((string)$localTrabalho)); // "central" ou "call center"
@@ -255,7 +332,7 @@ class RecadoController extends Controller
             'avisos',
             'campanhas',
             'localTrabalho',
-            'chefias' // ✅
+            'chefias'
         ));
     }
 
@@ -273,7 +350,6 @@ class RecadoController extends Controller
         $avisos = Aviso::all();
         $campanhas = Campanha::all();
 
-        // ✅ NOVO: Chefias
         $chefias = Chefia::orderBy('name')->get();
 
         $guestEmails = $recado->guestTokens->pluck('email')->toArray();
@@ -303,7 +379,7 @@ class RecadoController extends Controller
         $recado->aviso_id = $request->input('aviso_id') ?: null;
         $recado->campanha_id = $request->input('campanha_id') ?: null;
 
-        // ✅ NOVO: Chefia (nullable)
+        // ✅ Chefia
         $recado->chefia_id = $request->input('chefia_id') ?: null;
 
         $recado->abertura = $request->input('abertura') ?: null;
@@ -318,7 +394,6 @@ class RecadoController extends Controller
 
         $recado->save();
 
-        // ✅ continua a guardar apenas destinatários selecionados manualmente
         $recado->destinatariosUsers()->sync($request->input('destinatarios_users', []));
         $recado->grupos()->sync($request->input('destinatarios_grupos', []));
 
@@ -364,14 +439,12 @@ class RecadoController extends Controller
             'tipo_formulario_id' => 'exists:tipo_formularios,id',
             'wip' => 'nullable|string|max:255',
 
-            // ✅ NOVO: Chefia (callcenter vai obrigar em baixo)
+            // ✅ Chefia
             'chefia_id' => 'nullable|exists:chefias,id',
         ];
 
         if ($tipoFormulario && strtolower(trim($tipoFormulario->name)) === 'call center') {
             $rules['assunto'] = 'required|string|max:255';
-
-            // ✅ obriga Chefia no Call Center
             $rules['chefia_id'] = 'exists:chefias,id';
         }
 
@@ -393,6 +466,7 @@ class RecadoController extends Controller
            ✅ EMAILS:
            - Users selecionados manualmente
            - Users do departamento (pivot)
+           - Users da chefia (pivot) ✅ NOVO
            - Users do(s) grupo(s)
            ========================================================== */
 
@@ -421,9 +495,13 @@ class RecadoController extends Controller
 
         $recado->destinatariosUsers()->sync($userIdsSelecionados->all());
 
-        // 3) Users do departamento (para EMAIL + VISIBILIDADE, mas não entra nos destinatários)
+        // 3) Users do departamento (email)
         $depId = (int) ($validated['departamento_id'] ?? 0);
         $emailsDept = $this->departmentEmails($depId);
+
+        // 3.1) Users da chefia (email) ✅ NOVO
+        $chefiaId = (int) ($validated['chefia_id'] ?? 0);
+        $emailsChefia = $this->chefiaEmails($chefiaId);
 
         // 4) Users dos grupos (email)
         $emailsGrupos = User::whereHas('grupos', fn ($q) => $q->whereIn('grupos.id', $gruposSelecionados))
@@ -443,23 +521,22 @@ class RecadoController extends Controller
         $emailsInternos = collect()
             ->merge($emailsSelecionados)
             ->merge($emailsDept)
+            ->merge($emailsChefia) // ✅
             ->merge($emailsGrupos);
 
-        // ✅ LIMPAR + VALIDAR (isto resolve: espaços, nulls, mails mal formatados)
         $emailsInternos = $emailsInternos
             ->map(fn ($e) => trim(mb_strtolower((string) $e)))
             ->filter(fn ($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
             ->unique()
             ->values();
 
-        // ✅ LOG para veres sempre os destinatários finais
         \Log::info('Recado email list (internos)', [
             'recado_id' => $recado->id,
             'departamento_id' => $depId,
+            'chefia_id' => $chefiaId,
             'emails' => $emailsInternos->all(),
         ]);
 
-        // ✅ ENVIO 1 a 1 com try/catch (mostra qual email falha)
         foreach ($emailsInternos as $email) {
             try {
                 Mail::to($email)->send(new RecadoCriadoMail($recado, null, $emailsInternos));
@@ -469,20 +546,17 @@ class RecadoController extends Controller
                     'email' => $email,
                     'error' => $e->getMessage(),
                 ]);
-
                 continue;
             }
         }
 
-        // 6) Destinatários livres (igual ao teu mas com limpeza)
+        // 6) Destinatários livres
         if ($request->filled('destinatarios_livres')) {
             foreach ((array) $request->destinatarios_livres as $emailLivre) {
 
                 $emailLivre = trim(mb_strtolower((string) $emailLivre));
 
-                if (!filter_var($emailLivre, FILTER_VALIDATE_EMAIL)) {
-                    continue;
-                }
+                if (!filter_var($emailLivre, FILTER_VALIDATE_EMAIL)) continue;
 
                 $token = Str::random(60);
 
@@ -514,7 +588,7 @@ class RecadoController extends Controller
     public function show($id)
     {
         $recado = Recado::with([
-            'sla','tipo','origem','setor','departamento',
+            'sla','tipo','origem','setor','departamento','chefia',
             'destinatarios','aviso','estado','tipoFormulario',
             'guestTokens','grupos.users','campanha'
         ])->findOrFail($id);
@@ -527,7 +601,7 @@ class RecadoController extends Controller
             $isDestinatario = $recado->destinatarios->contains($uid);
             $isGrupo = $recado->grupos->pluck('users')->flatten()->pluck('id')->contains($uid);
 
-            // ✅ Departamento (pivot) também dá acesso
+            // ✅ Departamento (pivot)
             $isDepartamento = false;
             if ($recado->departamento_id) {
                 $isDepartamento = $recado->departamento
@@ -535,7 +609,15 @@ class RecadoController extends Controller
                     : false;
             }
 
-            if (!$isDestinatario && !$isGrupo && !$isDepartamento) {
+            // ✅ Chefia (pivot) ✅ NOVO
+            $isChefia = false;
+            if ($recado->chefia_id) {
+                $isChefia = $recado->chefia
+                    ? $recado->chefia->users()->where('users.id', $uid)->exists()
+                    : false;
+            }
+
+            if (!$isDestinatario && !$isGrupo && !$isDepartamento && !$isChefia) {
                 abort(403, 'Acesso negado. Este recado não é seu.');
             }
         }
@@ -622,7 +704,7 @@ class RecadoController extends Controller
         $user = auth()->user();
 
         $query = Recado::with([
-            'setor','origem','departamento','destinatarios','estado','sla',
+            'setor','origem','departamento','chefia','destinatarios','estado','sla',
             'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
         ]);
 
@@ -673,15 +755,18 @@ class RecadoController extends Controller
             }
         }
 
-        // ✅ visibilidade com departamento (pivot)
-        if ($user->cargo?->name !== 'admin') {
+        // ✅ Visibilidade só quando NÃO há vista ativa (para não estragar vistas)
+        $haVistaAtiva = (!$temFiltrosManuais && !empty($vistaId));
+
+        if ($user->cargo?->name !== 'admin' && !$haVistaAtiva) {
             $uid = (int) $user->id;
 
             $query->where(function ($q) use ($uid) {
                 $q->where('user_id', $uid)
                   ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid))
                   ->orWhereHas('grupos.users', fn ($g) => $g->where('users.id', $uid))
-                  ->orWhereHas('departamento.users', fn ($u) => $u->where('users.id', $uid));
+                  ->orWhereHas('departamento.users', fn ($u) => $u->where('users.id', $uid))
+                  ->orWhereHas('chefia.users', fn ($u) => $u->where('users.id', $uid)); // ✅ chefia
             });
         }
 

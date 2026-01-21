@@ -6,7 +6,7 @@
         <div class="card-body p-5">
 
 <div class="d-flex justify-content-between align-items-center mb-5">
-    <h2 class="fw-bold m-0">📨 Criar Novo Recado</h2>
+    <h2 class="fw-bold m-0">📨 Criar Novo Recado - Central</h2>
     <a href="{{ route('recados.index') }}" class="btn btn-light btn-sm rounded-circle border" title="Voltar">
         <i class="bi bi-x-lg"></i>
     </a>

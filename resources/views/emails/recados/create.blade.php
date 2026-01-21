@@ -24,16 +24,9 @@
             margin-bottom: 25px;
             text-align: center;
         }
-        p {
-            margin: 8px 0;
-        }
-        .label {
-            font-weight: bold;
-            color: #374151;
-        }
-        .value {
-            color: #111827;
-        }
+        p { margin: 8px 0; }
+        .label { font-weight: bold; color: #374151; }
+        .value { color: #111827; }
         .button {
             display: inline-block;
             margin-top: 25px;
@@ -72,27 +65,39 @@
             <span class="value">{{ $recado->contact_client }}</span>
         </p>
 
-        @if(!empty($recado->matricula))
+        {{-- ✅ Matrícula correta (no teu modelo é "plate") --}}
+        @if(!empty($recado->plate))
             <p>
                 <span class="label">Matrícula:</span>
-                <span class="value">{{ $recado->matricula }}</span>
+                <span class="value">{{ $recado->plate }}</span>
             </p>
         @endif
 
-        <p>
-            <span class="label">Assunto:</span><br>
-            <span class="value">{{ $recado->assunto }}</span>
-        </p>
+        {{-- ✅ Email do Operador --}}
+        @if(!empty($recado->operator_email))
+            <p>
+                <span class="label">Email do Operador:</span>
+                <span class="value">{{ $recado->operator_email }}</span>
+            </p>
+        @endif
 
-         @if(isset($recado->tipo))
+        {{-- Assunto --}}
+        @if(!empty($recado->assunto))
+            <p>
+                <span class="label">Assunto:</span><br>
+                <span class="value">{{ $recado->assunto }}</span>
+            </p>
+        @endif
+
+        {{-- ✅ Tipo corrigido/seguro --}}
+        @if($recado->tipo)
             <p>
                 <span class="label">Tipo:</span>
                 <span class="value">{{ $recado->tipo->name }}</span>
             </p>
         @endif
 
-
-        @if(isset($recado->sla))
+        @if($recado->sla)
             <p>
                 <span class="label">SLA:</span>
                 <span class="value">{{ $recado->sla->name }}</span>
@@ -101,20 +106,16 @@
 
         <p>
             <span class="label">Data:</span>
-            <span class="value">{{ $recado->created_at->format('d/m/Y H:i') }}</span>
+            <span class="value">{{ optional($recado->created_at)->format('d/m/Y H:i') }}</span>
         </p>
 
-        @if($guestUrl)
+        @if(!empty($guestUrl))
             <div style="text-align:center;">
-                <a href="{{ $guestUrl }}" class="button">
-                    🔍 Ver Recado
-                </a>
+                <a href="{{ $guestUrl }}" class="button">🔍 Ver Recado</a>
             </div>
         @else
             <div style="text-align:center;">
-                <a href="{{ route('recados.show', $recado->id) }}" class="button">
-                    🔍 Ver Recado
-                </a>
+                <a href="{{ route('recados.show', $recado->id) }}" class="button">🔍 Ver Recado</a>
             </div>
         @endif
 

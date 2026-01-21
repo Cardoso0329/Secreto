@@ -39,8 +39,9 @@
         <div class="mb-3">
             <label class="form-label">Lógica</label>
             <select name="logica" class="form-select" required>
-                <option value="AND" {{ old('logica', $vista['logica'] ?? 'AND')=='AND'?'selected':'' }}>AND</option>
-                <option value="OR"  {{ old('logica', $vista['logica'] ?? 'AND')=='OR'?'selected':'' }}>OR</option>
+                @php $logicaOld = old('logica', $vista['logica'] ?? 'AND'); @endphp
+                <option value="AND" {{ $logicaOld === 'AND' ? 'selected' : '' }}>AND</option>
+                <option value="OR"  {{ $logicaOld === 'OR'  ? 'selected' : '' }}>OR</option>
             </select>
             <div class="form-text">
                 Dica: se precisares de "Departamento = APV" E "Tipo IN (A,B)", usa AND e mete o Tipo com IN.
@@ -62,7 +63,8 @@
         <div class="mb-3" id="block_departamentos" style="display:none;">
             <label class="form-label">Departamentos com acesso</label>
             @php
-                $selectedDeps = collect(old('departamentos', $vista['departamentos'] ?? []))->map(fn($x)=>(int)$x)->all();
+                $selectedDeps = collect(old('departamentos', $vista['departamentos'] ?? []))
+                    ->map(fn($x)=>(int)$x)->all();
             @endphp
             <select name="departamentos[]" class="form-select" multiple>
                 @foreach($departamentos as $d)
@@ -77,7 +79,8 @@
         <div class="mb-3" id="block_users" style="display:none;">
             <label class="form-label">Utilizadores com acesso</label>
             @php
-                $selectedUsers = collect(old('users', $vista['users'] ?? []))->map(fn($x)=>(int)$x)->all();
+                $selectedUsers = collect(old('users', $vista['users'] ?? []))
+                    ->map(fn($x)=>(int)$x)->all();
             @endphp
             <select name="users[]" class="form-select" multiple>
                 @foreach($users as $u)
@@ -188,6 +191,13 @@ const fieldsConfig = {
         options: @json($users->map(fn($u)=>['id'=>$u->id,'name'=>$u->name])->values())
     },
 
+    // ✅ NOVO: Grupo nas condições
+    grupo_id: {
+        label: 'Grupo',
+        type: 'select',
+        options: @json(($grupos ?? collect())->map(fn($g)=>['id'=>$g->id,'name'=>$g->name])->values())
+    },
+
     abertura: { label: 'Data de Abertura', type: 'date' }
 };
 
@@ -201,7 +211,9 @@ function toggleAccessBlocks() {
 }
 
 function operatorOptionsHTML(isSelect, selectedOp) {
-    const sel = (v) => (String(selectedOp).toLowerCase() === String(v).toLowerCase()) ? 'selected' : '';
+    const norm = (v) => String(v ?? '').trim().toLowerCase();
+    const sel = (v) => norm(selectedOp) === norm(v) ? 'selected' : '';
+
     let html = `
         <option value="=" ${sel('=')}>=</option>
         <option value="!=" ${sel('!=')}>≠</option>
@@ -214,6 +226,7 @@ function operatorOptionsHTML(isSelect, selectedOp) {
             <option value="not in" ${sel('not in')}>NOT IN</option>
         `;
     }
+
     return html;
 }
 
@@ -228,7 +241,7 @@ function addCondition(data = {}) {
     field.className = 'form-select col';
     field.name = `conditions[${rowIndex}][field]`;
     field.innerHTML = Object.entries(fieldsConfig)
-        .map(([key, cfg]) => `<option value="${key}" ${data.field === key ? 'selected' : ''}>${cfg.label}</option>`)
+        .map(([key, cfg]) => `<option value="${key}" ${String(data.field) === String(key) ? 'selected' : ''}>${cfg.label}</option>`)
         .join('');
 
     const operator = document.createElement('select');
@@ -245,12 +258,17 @@ function addCondition(data = {}) {
         let currentOp = (operator.value || data.operator || '=');
         operator.innerHTML = operatorOptionsHTML(isSelect, currentOp);
 
-        // se veio um operador IN mas o campo não é select -> reset
-        if (!isSelect && (String(currentOp).toLowerCase() === 'in' || String(currentOp).toLowerCase() === 'not in')) {
+        const normOp = String(currentOp ?? '').trim().toLowerCase();
+
+        // se veio IN mas o campo não é select -> reset
+        if (!isSelect && (normOp === 'in' || normOp === 'not in')) {
             operator.value = '=';
         } else {
-            const lower = String(currentOp).toLowerCase();
-            operator.value = (lower === 'not in') ? 'not in' : (lower === 'in' ? 'in' : currentOp);
+            if (normOp === 'not in') operator.value = 'not in';
+            else if (normOp === 'in') operator.value = 'in';
+            else if (normOp === 'like') operator.value = 'like';
+            else if (normOp === '!=') operator.value = '!=';
+            else operator.value = '=';
         }
 
         renderValue();
@@ -259,7 +277,7 @@ function addCondition(data = {}) {
     function renderValue() {
         valueDiv.innerHTML = '';
         const cfg = fieldsConfig[field.value];
-        const op  = String(operator.value || '').toLowerCase();
+        const op  = String(operator.value || '').trim().toLowerCase();
         const val = data.value ?? '';
 
         if (cfg.type === 'select') {
@@ -271,7 +289,7 @@ function addCondition(data = {}) {
                 sel.name = `conditions[${rowIndex}][value][]`;
                 sel.multiple = true;
 
-                sel.innerHTML = cfg.options
+                sel.innerHTML = (cfg.options || [])
                     .map(o => `<option value="${o.id}" ${selectedArr.includes(String(o.id)) ? 'selected' : ''}>${o.name}</option>`)
                     .join('');
 
@@ -286,7 +304,7 @@ function addCondition(data = {}) {
                 sel.className = 'form-select';
                 sel.name = `conditions[${rowIndex}][value]`;
 
-                sel.innerHTML = `<option value="">—</option>` + cfg.options
+                sel.innerHTML = `<option value="">—</option>` + (cfg.options || [])
                     .map(o => `<option value="${o.id}" ${String(o.id) === String(val) ? 'selected' : ''}>${o.name}</option>`)
                     .join('');
 

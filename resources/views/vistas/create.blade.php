@@ -4,18 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Criar Vista</title>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body class="bg-light">
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0">➕ Criar Vista</h3>
+<div class="container mt-4" style="max-width: 1050px;">
+
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div>
+            <h3 class="mb-0">➕ Criar Vista</h3>
+            <small class="text-muted">Define filtros e regras de acesso</small>
+        </div>
         <button type="button" class="btn btn-secondary" onclick="history.back()">← Voltar</button>
     </div>
 
     @if ($errors->any())
         <div class="alert alert-danger">
+            <strong>Há erros no formulário:</strong>
             <ul class="mb-0">
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
@@ -24,76 +31,84 @@
         </div>
     @endif
 
-    <form action="{{ route('vistas.store') }}" method="POST">
-        @csrf
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
 
-        {{-- Nome --}}
-        <div class="mb-3">
-            <label class="form-label">Nome da Vista</label>
-            <input type="text" name="nome" class="form-control"
-                   placeholder="Ex: Recados Abertos"
-                   value="{{ old('nome', '') }}" required>
+            <form action="{{ route('vistas.store') }}" method="POST">
+                @csrf
+
+                {{-- Nome --}}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Nome da Vista</label>
+                    <input type="text" name="nome" class="form-control"
+                           placeholder="Ex: Recados Abertos"
+                           value="{{ old('nome', '') }}" required>
+                </div>
+
+                {{-- Lógica --}}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Lógica</label>
+                    <select name="logica" class="form-select" required>
+                        <option value="AND" {{ old('logica','AND')=='AND'?'selected':'' }}>AND</option>
+                        <option value="OR"  {{ old('logica')=='OR'?'selected':'' }}>OR</option>
+                    </select>
+                    <div class="form-text">
+                        Dica: se precisares de "Departamento = APV" E "Tipo IN (A,B)", usa AND e mete o Tipo com IN.
+                    </div>
+                </div>
+
+                {{-- Acesso --}}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Acesso</label>
+                    <select name="acesso" class="form-select" id="acesso" required onchange="toggleAccessBlocks()">
+                        <option value="all" {{ old('acesso','all')=='all'?'selected':'' }}>Todos</option>
+                        <option value="department" {{ old('acesso')=='department'?'selected':'' }}>Departamento</option>
+                        <option value="specific" {{ old('acesso')=='specific'?'selected':'' }}>Utilizadores específicos</option>
+                    </select>
+                </div>
+
+                {{-- Departamentos (se department) --}}
+                <div class="mb-3" id="block_departamentos" style="display:none;">
+                    <label class="form-label fw-semibold">Departamentos com acesso</label>
+                    <select name="departamentos[]" class="form-select" multiple>
+                        @foreach($departamentos as $d)
+                            <option value="{{ $d->id }}" {{ collect(old('departamentos', []))->contains($d->id) ? 'selected' : '' }}>
+                                {{ $d->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <div class="form-text">Seleciona 1+ departamentos.</div>
+                </div>
+
+                {{-- Users (se specific) --}}
+                <div class="mb-3" id="block_users" style="display:none;">
+                    <label class="form-label fw-semibold">Utilizadores com acesso</label>
+                    <select name="users[]" class="form-select" multiple>
+                        @foreach($users as $u)
+                            <option value="{{ $u->id }}" {{ collect(old('users', []))->contains($u->id) ? 'selected' : '' }}>
+                                {{ $u->name }} ({{ $u->email }})
+                            </option>
+                        @endforeach
+                    </select>
+                    <div class="form-text">Seleciona 1+ utilizadores.</div>
+                </div>
+
+                {{-- Condições --}}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Condições</label>
+                    <div id="conditions"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="addCondition()">
+                        <i class="bi bi-plus-lg me-1"></i> Adicionar condição
+                    </button>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save2 me-1"></i> Guardar Vista
+                </button>
+            </form>
+
         </div>
-
-        {{-- Lógica --}}
-        <div class="mb-3">
-            <label class="form-label">Lógica</label>
-            <select name="logica" class="form-select" required>
-                <option value="AND" {{ old('logica','AND')=='AND'?'selected':'' }}>AND</option>
-                <option value="OR"  {{ old('logica')=='OR'?'selected':'' }}>OR</option>
-            </select>
-            <div class="form-text">
-                Dica: se precisares de "Departamento = APV" E "Tipo IN (A,B)", usa AND e mete o Tipo com IN.
-            </div>
-        </div>
-
-        {{-- Acesso --}}
-        <div class="mb-3">
-            <label class="form-label">Acesso</label>
-            <select name="acesso" class="form-select" id="acesso" required onchange="toggleAccessBlocks()">
-                <option value="all" {{ old('acesso','all')=='all'?'selected':'' }}>Todos</option>
-                <option value="department" {{ old('acesso')=='department'?'selected':'' }}>Departamento</option>
-                <option value="specific" {{ old('acesso')=='specific'?'selected':'' }}>Utilizadores específicos</option>
-            </select>
-        </div>
-
-        {{-- Departamentos (se department) --}}
-        <div class="mb-3" id="block_departamentos" style="display:none;">
-            <label class="form-label">Departamentos com acesso</label>
-            <select name="departamentos[]" class="form-select" multiple>
-                @foreach($departamentos as $d)
-                    <option value="{{ $d->id }}" {{ collect(old('departamentos', []))->contains($d->id) ? 'selected' : '' }}>
-                        {{ $d->name }}
-                    </option>
-                @endforeach
-            </select>
-            <div class="form-text">Seleciona 1+ departamentos.</div>
-        </div>
-
-        {{-- Users (se specific) --}}
-        <div class="mb-3" id="block_users" style="display:none;">
-            <label class="form-label">Utilizadores com acesso</label>
-            <select name="users[]" class="form-select" multiple>
-                @foreach($users as $u)
-                    <option value="{{ $u->id }}" {{ collect(old('users', []))->contains($u->id) ? 'selected' : '' }}>
-                        {{ $u->name }} ({{ $u->email }})
-                    </option>
-                @endforeach
-            </select>
-            <div class="form-text">Seleciona 1+ utilizadores.</div>
-        </div>
-
-        {{-- Condições --}}
-        <div class="mb-3">
-            <label class="form-label">Condições</label>
-            <div id="conditions"></div>
-            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="addCondition()">
-                ➕ Adicionar condição
-            </button>
-        </div>
-
-        <button type="submit" class="btn btn-primary">💾 Guardar Vista</button>
-    </form>
+    </div>
 </div>
 
 <script>
@@ -159,6 +174,13 @@ const fieldsConfig = {
         options: @json($users->map(fn($u)=>['id'=>$u->id,'name'=>$u->name])->values())
     },
 
+    // ✅ NOVO: Grupo nas condições
+    grupo_id: {
+        label: 'Grupo (Destinatários)',
+        type: 'select',
+        options: @json($grupos->map(fn($g)=>['id'=>$g->id,'name'=>$g->name])->values())
+    },
+
     abertura: { label: 'Data de Abertura', type: 'date' }
 };
 
@@ -176,12 +198,9 @@ function operatorOptionsHTML(isSelect, selectedOp) {
     let html = `
         <option value="=" ${sel('=')}>=</option>
         <option value="!=" ${sel('!=')}>≠</option>
+        <option value="like" ${sel('like')}>Contém</option>
     `;
 
-    // LIKE só faz sentido para text/date também pode, mas normalmente é para texto
-    html += `<option value="like" ${sel('like')}>Contém</option>`;
-
-    // IN só faz sentido em selects (ids)
     if (isSelect) {
         html += `
             <option value="in" ${sel('in')}>IN (um destes)</option>
@@ -217,16 +236,13 @@ function addCondition(data = null) {
         const cfg = fieldsConfig[field.value];
         const isSelect = cfg.type === 'select';
 
-        // manter operador atual se existir, senão usar o do old, senão "="
         let currentOp = (operator.value || data?.operator || '=');
         operator.innerHTML = operatorOptionsHTML(isSelect, currentOp);
 
-        // se o operador antigo era IN mas agora o campo não é select -> reset para "="
         if (!isSelect && (String(currentOp).toLowerCase() === 'in' || String(currentOp).toLowerCase() === 'not in')) {
             operator.value = '=';
         } else {
             operator.value = String(currentOp).toLowerCase() === 'not in' ? 'not in' : String(currentOp).toLowerCase();
-            // para =, !=, like mantém
             if (currentOp === '=' || currentOp === '!=' || String(currentOp).toLowerCase() === 'like') operator.value = currentOp;
         }
 
@@ -238,11 +254,9 @@ function addCondition(data = null) {
         const cfg = fieldsConfig[field.value];
         const op  = String(operator.value || '').toLowerCase();
 
-        // val pode ser string ou array (para IN)
         const val = data?.value ?? '';
 
         if (cfg.type === 'select') {
-            // IN / NOT IN -> multi-select
             if (op === 'in' || op === 'not in') {
                 const selectedArr = Array.isArray(val) ? val.map(String) : (val ? [String(val)] : []);
 
@@ -261,7 +275,6 @@ function addCondition(data = null) {
                 hint.className = 'form-text';
                 hint.textContent = 'Seleciona 1+ valores.';
                 valueDiv.appendChild(hint);
-
             } else {
                 const sel = document.createElement('select');
                 sel.name = `conditions[${rowIndex}][value]`;
@@ -273,7 +286,6 @@ function addCondition(data = null) {
 
                 valueDiv.appendChild(sel);
             }
-
         } else {
             const input = document.createElement('input');
             input.type = cfg.type;
@@ -287,13 +299,12 @@ function addCondition(data = null) {
     field.onchange = renderOperatorAndValue;
     operator.onchange = renderValue;
 
-    // primeira renderização
     renderOperatorAndValue();
 
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'btn btn-outline-danger btn-sm';
-    removeBtn.textContent = '🗑️';
+    removeBtn.innerHTML = '<i class="bi bi-trash"></i>';
     removeBtn.onclick = () => row.remove();
 
     const btnCol = document.createElement('div');

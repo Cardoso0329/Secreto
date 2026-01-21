@@ -51,13 +51,15 @@ class RecadoQuery
                     default => $op,
                 };
 
-                // IN / NOT IN: value tem de ser array com pelo menos 1
+                /* ===========================
+                   IN / NOT IN (value array)
+                   =========================== */
                 if ($op === 'in' || $op === 'not in') {
                     if (!is_array($value)) continue;
                     $arr = array_values(array_filter($value, fn($v) => $v !== '' && $v !== null));
                     if (!$arr) continue;
 
-                    // destinatário (relação)
+                    // ✅ destinatário (relação)
                     if ($field === 'destinatario_user_id') {
                         if ($op === 'not in') {
                             $applyWhere(function (Builder $q) use ($arr) {
@@ -69,6 +71,24 @@ class RecadoQuery
                             $applyWhere(function (Builder $q) use ($arr) {
                                 $q->whereHas('destinatarios', function ($d) use ($arr) {
                                     $d->whereIn('users.id', $arr);
+                                });
+                            });
+                        }
+                        continue;
+                    }
+
+                    // ✅ grupo (relação)
+                    if ($field === 'grupo_id') {
+                        if ($op === 'not in') {
+                            $applyWhere(function (Builder $q) use ($arr) {
+                                $q->whereDoesntHave('grupos', function ($g) use ($arr) {
+                                    $g->whereIn('grupos.id', $arr);
+                                });
+                            });
+                        } else {
+                            $applyWhere(function (Builder $q) use ($arr) {
+                                $q->whereHas('grupos', function ($g) use ($arr) {
+                                    $g->whereIn('grupos.id', $arr);
                                 });
                             });
                         }
@@ -92,9 +112,13 @@ class RecadoQuery
                 // vazios para operadores normais
                 if ($value === '' || $value === null) continue;
 
-                // DESTINATÁRIO (relação): suporta "=" e "<>"
+                /* ===========================
+                   DESTINATÁRIO (relação)
+                   "=" / "<>"
+                   =========================== */
                 if ($field === 'destinatario_user_id') {
-                    $userId = $value;
+                    $userId = (int) $value;
+                    if ($userId <= 0) continue;
 
                     if ($op === '<>') {
                         $applyWhere(function (Builder $q) use ($userId) {
@@ -113,9 +137,36 @@ class RecadoQuery
                     continue;
                 }
 
-                // LIKE
+                /* ===========================
+                   ✅ GRUPO (relação)
+                   "=" / "<>"
+                   =========================== */
+                if ($field === 'grupo_id') {
+                    $grupoId = (int) $value;
+                    if ($grupoId <= 0) continue;
+
+                    if ($op === '<>') {
+                        $applyWhere(function (Builder $q) use ($grupoId) {
+                            $q->whereDoesntHave('grupos', function ($g) use ($grupoId) {
+                                $g->where('grupos.id', $grupoId);
+                            });
+                        });
+                    } else {
+                        $applyWhere(function (Builder $q) use ($grupoId) {
+                            $q->whereHas('grupos', function ($g) use ($grupoId) {
+                                $g->where('grupos.id', $grupoId);
+                            });
+                        });
+                    }
+
+                    continue;
+                }
+
+                /* ===========================
+                   LIKE
+                   =========================== */
                 if ($op === 'like') {
-                    $v = (string)$value;
+                    $v = (string) $value;
                     if (!str_contains($v, '%')) $v = "%{$v}%";
 
                     $applyWhere(function (Builder $q) use ($field, $v) {
@@ -125,7 +176,9 @@ class RecadoQuery
                     continue;
                 }
 
-                // operadores simples
+                /* ===========================
+                   operadores simples
+                   =========================== */
                 $applyWhere(function (Builder $q) use ($field, $op, $value) {
                     $q->where($field, $op, $value);
                 });

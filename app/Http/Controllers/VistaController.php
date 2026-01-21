@@ -11,6 +11,7 @@ use App\Models\Origem;
 use App\Models\Tipo;
 use App\Models\Campanha;
 use App\Models\SLA;
+use App\Models\Grupo;
 use App\Models\Aviso;
 use App\Services\VistaRepo;
 use Illuminate\Http\Request;
@@ -25,44 +26,53 @@ class VistaController extends Controller
     }
 
     public function create()
-    {
-        return view('vistas.create', [
-            'estados'         => Estado::orderBy('name')->get(),
-            'setores'         => Setor::orderBy('name')->get(),
-            'tiposFormulario' => TipoFormulario::orderBy('name')->get(),
-            'departamentos'   => Departamento::orderBy('name')->get(),
-            'origens'         => Origem::orderBy('name')->get(),
-            'tipos'           => Tipo::orderBy('name')->get(),
-            'slas'            => SLA::orderBy('name')->get(),
-            'avisos'          => Aviso::orderBy('name')->get(),
-            'users'           => User::orderBy('name')->get(),
-            'campanhas'       => Campanha::orderBy('name')->get(),
-        ]);
-    }
+{
+    return view('vistas.create', [
+        'estados'         => Estado::orderBy('name')->get(),
+        'setores'         => Setor::orderBy('name')->get(),
+        'tiposFormulario' => TipoFormulario::orderBy('name')->get(),
+        'departamentos'   => Departamento::orderBy('name')->get(),
+        'origens'         => Origem::orderBy('name')->get(),
+        'tipos'           => Tipo::orderBy('name')->get(),
+        'slas'            => SLA::orderBy('name')->get(),
+        'avisos'          => Aviso::orderBy('name')->get(),
+        'users'           => User::orderBy('name')->get(),
+        'campanhas'       => Campanha::orderBy('name')->get(),
+
+        // ✅ NOVO
+        'grupos'          => Grupo::orderBy('name')->get(),
+    ]);
+}
+
 
     public function store(Request $request)
     {
         $allowedFields = [
-            'id',
-            'name',
-            'contact_client',
-            'plate',
-            'operator_email',
-            'mensagem',
+    'id',
+    'name',
+    'contact_client',
+    'plate',
+    'operator_email',
+    'mensagem',
 
-            'estado_id',
-            'tipo_formulario_id',
-            'sla_id',
-            'campanha_id',
-            'departamento_id',
-            'destinatario_user_id',
-            'abertura',
+    'estado_id',
+    'tipo_formulario_id',
+    'sla_id',
+    'campanha_id',
+    'departamento_id',
+    'destinatario_user_id',
 
-            'setor_id',
-            'origem_id',
-            'tipo_id',
-            'aviso_id',
-        ];
+    // ✅ NOVO
+    'grupo_id',
+
+    'abertura',
+
+    'setor_id',
+    'origem_id',
+    'tipo_id',
+    'aviso_id',
+];
+
 
         $data = $request->validate([
             'nome'   => 'required|string|max:255',
@@ -103,48 +113,57 @@ class VistaController extends Controller
         return redirect()->route('vistas.index')->with('success', 'Vista criada com sucesso.');
     }
 
-    public function edit(string $vista)
-    {
-        $vistaData = VistaRepo::findOrFail($vista);
+   public function edit(string $vista)
+{
+    $vistaData = VistaRepo::findOrFail($vista);
 
-        return view('vistas.edit', [
-            'vista'           => $vistaData,
-            'estados'         => Estado::orderBy('name')->get(),
-            'tiposFormulario' => TipoFormulario::orderBy('name')->get(),
-            'setores'         => Setor::orderBy('name')->get(),
-            'departamentos'   => Departamento::orderBy('name')->get(),
-            'origens'         => Origem::orderBy('name')->get(),
-            'tipos'           => Tipo::orderBy('name')->get(),
-            'slas'            => SLA::orderBy('name')->get(),
-            'avisos'          => Aviso::orderBy('name')->get(),
-            'users'           => User::orderBy('name')->get(),
-            'campanhas'       => Campanha::orderBy('name')->get(),
-        ]);
-    }
+    return view('vistas.edit', [
+        'vista'           => $vistaData,
+        'estados'         => Estado::orderBy('name')->get(),
+        'tiposFormulario' => TipoFormulario::orderBy('name')->get(),
+        'setores'         => Setor::orderBy('name')->get(),
+        'departamentos'   => Departamento::orderBy('name')->get(),
+        'origens'         => Origem::orderBy('name')->get(),
+        'tipos'           => Tipo::orderBy('name')->get(),
+        'slas'            => SLA::orderBy('name')->get(),
+        'avisos'          => Aviso::orderBy('name')->get(),
+        'users'           => User::orderBy('name')->get(),
+        'campanhas'       => Campanha::orderBy('name')->get(),
+
+        // ✅ NOVO
+        'grupos'          => Grupo::orderBy('name')->get(),
+    ]);
+}
+
 
     public function update(Request $request, string $vista)
     {
-        $allowedFields = [
-            'id',
-            'name',
-            'contact_client',
-            'plate',
-            'operator_email',
-            'mensagem',
+       $allowedFields = [
+    'id',
+    'name',
+    'contact_client',
+    'plate',
+    'operator_email',
+    'mensagem',
 
-            'estado_id',
-            'tipo_formulario_id',
-            'sla_id',
-            'campanha_id',
-            'departamento_id',
-            'destinatario_user_id',
-            'abertura',
+    'estado_id',
+    'tipo_formulario_id',
+    'sla_id',
+    'campanha_id',
+    'departamento_id',
+    'destinatario_user_id',
 
-            'setor_id',
-            'origem_id',
-            'tipo_id',
-            'aviso_id',
-        ];
+    // ✅ NOVO
+    'grupo_id',
+
+    'abertura',
+
+    'setor_id',
+    'origem_id',
+    'tipo_id',
+    'aviso_id',
+];
+
 
         $data = $request->validate([
             'nome'   => 'required|string|max:255',
