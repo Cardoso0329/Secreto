@@ -361,229 +361,239 @@ class RecadoController extends Controller
         ));
     }
 
-    public function update(Request $request, Recado $recado)
-    {
-        $recado->name = $request->input('name');
-        $recado->contact_client = $request->input('contact_client');
-        $recado->plate = $request->input('plate');
-        $recado->mensagem = $request->input('mensagem');
-        $recado->observacoes = $request->input('observacoes');
+    
+public function update(Request $request, Recado $recado)
+{
+    // se quiseres também validar no update (recomendado)
+    $rules = [
+        'name' => 'required|string|max:255',
+        'contact_client' => 'required|string|max:255',
+        'plate' => 'nullable|string|max:255',
+        'mensagem' => 'required|string',
+        'observacoes' => 'nullable|string',
 
-        $recado->estado_id = $request->input('estado_id') ?: null;
-        $recado->tipo_formulario_id = $request->input('tipo_formulario_id') ?: null;
-        $recado->sla_id = $request->input('sla_id') ?: null;
-        $recado->tipo_id = $request->input('tipo_id') ?: null;
-        $recado->origem_id = $request->input('origem_id') ?: null;
-        $recado->setor_id = $request->input('setor_id') ?: null;
-        $recado->departamento_id = $request->input('departamento_id') ?: null;
-        $recado->aviso_id = $request->input('aviso_id') ?: null;
-        $recado->campanha_id = $request->input('campanha_id') ?: null;
+        'estado_id' => 'nullable|exists:estados,id',
+        'tipo_formulario_id' => 'nullable|exists:tipo_formularios,id',
+        'sla_id' => 'nullable|exists:slas,id',
+        'tipo_id' => 'nullable|exists:tipos,id',
+        'origem_id' => 'nullable|exists:origens,id',
+        'setor_id' => 'nullable|exists:setores,id',
+        'departamento_id' => 'nullable|exists:departamentos,id',
+        'aviso_id' => 'nullable|exists:avisos,id',
+        'campanha_id' => 'nullable|exists:campanhas,id',
 
-        // ✅ Chefia
-        $recado->chefia_id = $request->input('chefia_id') ?: null;
+        // ✅ chefia opcional
+        'chefia_id' => 'nullable|exists:chefias,id',
 
-        $recado->abertura = $request->input('abertura') ?: null;
-        $recado->termino = $request->input('termino') ?: null;
+        'abertura' => 'nullable|date',
+        'termino' => 'nullable|date',
+        'ficheiro' => 'nullable|file',
 
-        if ($request->hasFile('ficheiro')) {
-            $file = $request->file('ficheiro');
-            $filename = time().'_'.$file->getClientOriginalName();
-            $file->storeAs('public/recados', $filename);
-            $recado->ficheiro = $filename;
-        }
+        'destinatarios_users' => 'array',
+        'destinatarios_users.*' => 'exists:users,id',
+        'destinatarios_grupos' => 'array',
+        'destinatarios_grupos.*' => 'exists:grupos,id',
+        'destinatarios_livres' => 'array',
+        'destinatarios_livres.*' => 'email',
+    ];
 
-        $recado->save();
+    $validated = $request->validate($rules);
 
-        $recado->destinatariosUsers()->sync($request->input('destinatarios_users', []));
-        $recado->grupos()->sync($request->input('destinatarios_grupos', []));
+    $recado->fill($validated);
 
-        if ($request->has('destinatarios_livres')) {
-            foreach ($request->destinatarios_livres as $email) {
-                $email = trim($email);
-                if (!empty($email) && !$recado->guestEmails->contains('email', $email)) {
-                    $recado->guestEmails()->create(['email' => $email]);
-                }
-            }
-        }
-
-        return redirect()->route('recados.index')->with('success', 'Recado atualizado com sucesso!');
+    if ($request->hasFile('ficheiro')) {
+        $file = $request->file('ficheiro');
+        $filename = time().'_'.$file->getClientOriginalName();
+        $file->storeAs('public/recados', $filename);
+        $recado->ficheiro = $filename;
     }
 
-    public function store(Request $request)
-    {
-        $tipoFormulario = TipoFormulario::find($request->tipo_formulario_id);
+    $recado->save();
 
-        $rules = [
-            'name' => 'required|string|max:255',
-            'contact_client' => 'required|string|max:255',
-            'plate' => 'nullable|string|max:255',
-            'operator_email' => 'nullable|email',
-            'sla_id' => 'required|exists:slas,id',
-            'tipo_id' => 'required|exists:tipos,id',
-            'origem_id' => 'required|exists:origens,id',
-            'setor_id' => 'required|exists:setores,id',
-            'departamento_id' => 'nullable|exists:departamentos,id',
-            'mensagem' => 'required|string',
-            'ficheiro' => 'nullable|file',
-            'aviso_id' => 'nullable|exists:avisos,id',
-            'estado_id' => 'nullable|exists:estados,id',
-            'observacoes' => 'nullable|string',
-            'abertura' => 'nullable|date',
-            'termino' => 'nullable|date',
-            'destinatarios_users' => 'array',
-            'destinatarios_users.*' => 'exists:users,id',
-            'destinatarios_grupos' => 'array',
-            'destinatarios_grupos.*' => 'exists:grupos,id',
-            'destinatarios_livres' => 'array',
-            'destinatarios_livres.*' => 'email',
-            'tipo_formulario_id' => 'exists:tipo_formularios,id',
-            'wip' => 'nullable|string|max:255',
+    $recado->destinatariosUsers()->sync($request->input('destinatarios_users', []));
+    $recado->grupos()->sync($request->input('destinatarios_grupos', []));
 
-            // ✅ Chefia
-            'chefia_id' => 'nullable|exists:chefias,id',
-        ];
-
-        if ($tipoFormulario && strtolower(trim($tipoFormulario->name)) === 'call center') {
-            $rules['assunto'] = 'required|string|max:255';
-            $rules['chefia_id'] = 'exists:chefias,id';
-        }
-
-        $validated = $request->validate($rules);
-        $validated['user_id'] = auth()->id();
-
-        if ($request->hasFile('ficheiro')) {
-            $validated['ficheiro'] = basename($request->file('ficheiro')->store('recados', 'public'));
-        }
-
-        $estadoNovo = Estado::where('name', 'Novo')->first();
-        if ($estadoNovo) {
-            $validated['estado_id'] = $estadoNovo->id;
-        }
-
-        $recado = Recado::create($validated);
-
-        /* ==========================================================
-           ✅ EMAILS:
-           - Users selecionados manualmente
-           - Users do departamento (pivot)
-           - Users da chefia (pivot) ✅ NOVO
-           - Users do(s) grupo(s)
-           ========================================================== */
-
-        // 1) Telefonistas sempre incluído nos grupos
-        $gruposSelecionados = $request->input('destinatarios_grupos', []);
-        $telefonistasId = Grupo::where('name', 'Telefonistas')->first()?->id;
-
-        if ($telefonistasId && !in_array($telefonistasId, $gruposSelecionados)) {
-            $gruposSelecionados[] = $telefonistasId;
-        }
-
-        $gruposSelecionados = collect($gruposSelecionados)
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
-
-        $recado->grupos()->sync($gruposSelecionados);
-
-        // 2) Destinatários MANUAIS (ficam associados ao recado)
-        $userIdsSelecionados = collect($request->input('destinatarios_users', []))
-            ->map(fn ($id) => (int) $id)
-            ->filter(fn ($id) => $id > 0)
-            ->unique()
-            ->values();
-
-        $recado->destinatariosUsers()->sync($userIdsSelecionados->all());
-
-        // 3) Users do departamento (email)
-        $depId = (int) ($validated['departamento_id'] ?? 0);
-        $emailsDept = $this->departmentEmails($depId);
-
-        // 3.1) Users da chefia (email) ✅ NOVO
-        $chefiaId = (int) ($validated['chefia_id'] ?? 0);
-        $emailsChefia = $this->chefiaEmails($chefiaId);
-
-        // 4) Users dos grupos (email)
-        $emailsGrupos = User::whereHas('grupos', fn ($q) => $q->whereIn('grupos.id', $gruposSelecionados))
-            ->pluck('email')
-            ->filter()
-            ->unique()
-            ->values();
-
-        // 5) Emails dos destinatários manuais
-        $emailsSelecionados = User::whereIn('id', $userIdsSelecionados->all())
-            ->pluck('email')
-            ->filter()
-            ->unique()
-            ->values();
-
-        // ✅ União final
-        $emailsInternos = collect()
-            ->merge($emailsSelecionados)
-            ->merge($emailsDept)
-            ->merge($emailsChefia) // ✅
-            ->merge($emailsGrupos);
-
-        $emailsInternos = $emailsInternos
-            ->map(fn ($e) => trim(mb_strtolower((string) $e)))
-            ->filter(fn ($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-            ->unique()
-            ->values();
-
-        \Log::info('Recado email list (internos)', [
-            'recado_id' => $recado->id,
-            'departamento_id' => $depId,
-            'chefia_id' => $chefiaId,
-            'emails' => $emailsInternos->all(),
-        ]);
-
-        foreach ($emailsInternos as $email) {
-            try {
-                Mail::to($email)->send(new RecadoCriadoMail($recado, null, $emailsInternos));
-            } catch (\Throwable $e) {
-                \Log::error('Falha a enviar email do recado', [
-                    'recado_id' => $recado->id,
-                    'email' => $email,
-                    'error' => $e->getMessage(),
-                ]);
-                continue;
+    if ($request->has('destinatarios_livres')) {
+        foreach ((array) $request->destinatarios_livres as $email) {
+            $email = trim($email);
+            if (!empty($email) && !$recado->guestEmails->contains('email', $email)) {
+                $recado->guestEmails()->create(['email' => $email]);
             }
         }
+    }
 
-        // 6) Destinatários livres
-        if ($request->filled('destinatarios_livres')) {
-            foreach ((array) $request->destinatarios_livres as $emailLivre) {
+    return redirect()->route('recados.index')->with('success', 'Recado atualizado com sucesso!');
+}
 
-                $emailLivre = trim(mb_strtolower((string) $emailLivre));
 
-                if (!filter_var($emailLivre, FILTER_VALIDATE_EMAIL)) continue;
+   public function store(Request $request)
+{
+    $tipoFormulario = TipoFormulario::find($request->tipo_formulario_id);
 
-                $token = Str::random(60);
+    $rules = [
+        'name' => 'required|string|max:255',
+        'contact_client' => 'required|string|max:255',
+        'plate' => 'nullable|string|max:255',
+        'operator_email' => 'nullable|email',
 
-                RecadoGuestToken::create([
+        'sla_id' => 'required|exists:slas,id',
+        'tipo_id' => 'required|exists:tipos,id',
+        'origem_id' => 'required|exists:origens,id',
+
+        // ✅ setor vai ser removido do sistema, mas pode existir na BD
+        // deixa opcional
+        'setor_id' => 'nullable|exists:setores,id',
+
+        'departamento_id' => 'nullable|exists:departamentos,id',
+        'mensagem' => 'required|string',
+        'ficheiro' => 'nullable|file',
+        'aviso_id' => 'nullable|exists:avisos,id',
+        'estado_id' => 'nullable|exists:estados,id',
+        'observacoes' => 'nullable|string',
+        'abertura' => 'nullable|date',
+        'termino' => 'nullable|date',
+
+        'destinatarios_users' => 'array',
+        'destinatarios_users.*' => 'exists:users,id',
+        'destinatarios_grupos' => 'array',
+        'destinatarios_grupos.*' => 'exists:grupos,id',
+        'destinatarios_livres' => 'array',
+        'destinatarios_livres.*' => 'email',
+
+        'tipo_formulario_id' => 'required|exists:tipo_formularios,id',
+        'wip' => 'nullable|string|max:255',
+
+        // ✅ chefia opcional nos 2 formulários
+        'chefia_id' => 'nullable|exists:chefias,id',
+    ];
+
+    // ✅ Call Center exige "assunto" (chefia continua opcional)
+    if ($tipoFormulario && strtolower(trim($tipoFormulario->name)) === 'call center') {
+        $rules['assunto'] = 'required|string|max:255';
+    }
+
+    $validated = $request->validate($rules);
+
+    $validated['user_id'] = auth()->id();
+
+    if ($request->hasFile('ficheiro')) {
+        $validated['ficheiro'] = basename($request->file('ficheiro')->store('recados', 'public'));
+    }
+
+    // ✅ força estado Novo se existir
+    $estadoNovo = Estado::where('name', 'Novo')->first();
+    if ($estadoNovo) {
+        $validated['estado_id'] = $estadoNovo->id;
+    }
+
+    $recado = Recado::create($validated);
+
+    /* ================== DESTINATÁRIOS / EMAILS ================== */
+
+    // 1) Telefonistas sempre incluído nos grupos
+    $gruposSelecionados = (array) $request->input('destinatarios_grupos', []);
+    $telefonistasId = Grupo::where('name', 'Telefonistas')->first()?->id;
+
+    if ($telefonistasId && !in_array($telefonistasId, $gruposSelecionados)) {
+        $gruposSelecionados[] = $telefonistasId;
+    }
+
+    $gruposSelecionados = collect($gruposSelecionados)
+        ->map(fn ($id) => (int) $id)
+        ->filter(fn ($id) => $id > 0)
+        ->unique()
+        ->values()
+        ->all();
+
+    $recado->grupos()->sync($gruposSelecionados);
+
+    // 2) Destinatários MANUAIS
+    $userIdsSelecionados = collect((array) $request->input('destinatarios_users', []))
+        ->map(fn ($id) => (int) $id)
+        ->filter(fn ($id) => $id > 0)
+        ->unique()
+        ->values();
+
+    $recado->destinatariosUsers()->sync($userIdsSelecionados->all());
+
+    // 3) Users do departamento (email)
+    $depId = (int) ($validated['departamento_id'] ?? 0);
+    $emailsDept = $this->departmentEmails($depId);
+
+    // 3.1) Users da chefia (email) - opcional
+    $chefiaId = (int) ($validated['chefia_id'] ?? 0);
+    $emailsChefia = $this->chefiaEmails($chefiaId);
+
+    // 4) Users dos grupos (email)
+    $emailsGrupos = User::whereHas('grupos', fn ($q) => $q->whereIn('grupos.id', $gruposSelecionados))
+        ->pluck('email')
+        ->filter()
+        ->unique()
+        ->values();
+
+    // 5) Emails dos destinatários manuais
+    $emailsSelecionados = User::whereIn('id', $userIdsSelecionados->all())
+        ->pluck('email')
+        ->filter()
+        ->unique()
+        ->values();
+
+    // ✅ União final
+    $emailsInternos = collect()
+        ->merge($emailsSelecionados)
+        ->merge($emailsDept)
+        ->merge($emailsChefia)
+        ->merge($emailsGrupos)
+        ->map(fn ($e) => trim(mb_strtolower((string) $e)))
+        ->filter(fn ($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+        ->unique()
+        ->values();
+
+    foreach ($emailsInternos as $email) {
+        try {
+            Mail::to($email)->send(new RecadoCriadoMail($recado, null, $emailsInternos));
+        } catch (\Throwable $e) {
+            \Log::error('Falha a enviar email do recado', [
+                'recado_id' => $recado->id,
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    // 6) Destinatários livres
+    if ($request->filled('destinatarios_livres')) {
+        foreach ((array) $request->destinatarios_livres as $emailLivre) {
+
+            $emailLivre = trim(mb_strtolower((string) $emailLivre));
+            if (!filter_var($emailLivre, FILTER_VALIDATE_EMAIL)) continue;
+
+            $token = Str::random(60);
+
+            RecadoGuestToken::create([
+                'recado_id' => $recado->id,
+                'email' => $emailLivre,
+                'token' => $token,
+                'expires_at' => now()->addMonth(),
+                'is_active' => true
+            ]);
+
+            try {
+                Mail::to($emailLivre)->send(
+                    new RecadoCriadoMail($recado, route('recados.guest', $token))
+                );
+            } catch (\Throwable $e) {
+                \Log::error('Falha a enviar email para destinatario livre', [
                     'recado_id' => $recado->id,
                     'email' => $emailLivre,
-                    'token' => $token,
-                    'expires_at' => now()->addMonth(),
-                    'is_active' => true
+                    'error' => $e->getMessage(),
                 ]);
-
-                try {
-                    Mail::to($emailLivre)->send(
-                        new RecadoCriadoMail($recado, route('recados.guest', $token))
-                    );
-                } catch (\Throwable $e) {
-                    \Log::error('Falha a enviar email para destinatario livre', [
-                        'recado_id' => $recado->id,
-                        'email' => $emailLivre,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
             }
         }
-
-        return redirect()->route('recados.index')->with('success', 'Recado criado e emails enviados.');
     }
+
+    return redirect()->route('recados.index')->with('success', 'Recado criado e emails enviados.');
+}
 
     public function show($id)
     {

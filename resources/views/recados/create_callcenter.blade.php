@@ -99,7 +99,7 @@
                 {{-- ✅ NOVO: Chefia (Call Center) --}}
                 <div class="mb-4">
                     <label class="form-label fw-semibold">Chefia *</label>
-                    <select name="chefia_id" id="chefia_id" class="form-select rounded-3" required>
+                    <select name="chefia_id" id="chefia_id" class="form-select rounded-3" >
                         <option value="">-- Selecione --</option>
                         @foreach ($chefias as $chefia)
                             <option value="{{ $chefia->id }}">{{ $chefia->name }}</option>
@@ -107,24 +107,6 @@
                     </select>
                 </div>
 
-                {{-- Setor filtrado --}}
-                @php
-                    $setoresPermitidos = [
-                        'Usados','Novos VLP', 'Novos VCL', 'Novos Smart', 'Novos VCP',
-                        'Colisão', 'APV - VLP', 'APV - VCL', 'APV - VCP', 'VCL', 'Marketing', 'Informática'
-                    ];
-                @endphp
-                <div class="mb-4">
-                    <label class="form-label fw-semibold">Setor *</label>
-                    <select name="setor_id" id="setor_id" class="form-select rounded-3" required>
-                        <option value="">-- Selecione --</option>
-                        @foreach ($setores as $setor)
-                            @if(in_array($setor->name, $setoresPermitidos))
-                                <option value="{{ $setor->id }}">{{ $setor->name }}</option>
-                            @endif
-                        @endforeach
-                    </select>
-                </div>
 
                 {{-- Destinatários Dinâmicos --}}
                 <div class="mb-4">
