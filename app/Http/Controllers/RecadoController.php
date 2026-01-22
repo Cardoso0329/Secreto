@@ -224,37 +224,26 @@ class RecadoController extends Controller
         }
 
         /* ================= VISIBILIDADE ================= */
-        if ($user->cargo?->name !== 'admin') {
+if ($user->cargo?->name !== 'admin') {
 
-            $uid = (int) $user->id;
+    $uid = (int) $user->id;
 
-            // ✅ Se há VISTA ativa (e não há filtros manuais), não aplicamos "só meus"
-            // para não estragar as vistas.
-            $haVistaAtiva = (!$temFiltrosManuais && !empty($vistaId));
+    // ✅ Se há vista ativa e não há filtros manuais, NÃO aplicamos "só meus/destinatários"
+    $haVistaAtiva = (!$temFiltrosManuais && !empty($vistaId));
 
-            if (!$haVistaAtiva) {
-                $recados->where(function ($q) use ($uid) {
-                    $q->where('user_id', $uid)
-                      ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid));
-                });
-            } else {
-                // ✅ Quando há vista, podes expandir por departamento/chefia apenas se pertencer ao user
-                $recados->where(function ($q) use ($uid, $permitirVerDepartamentoDaVista, $deptIdsDaVista, $permitirVerChefiaDaVista, $chefiaIdsDaVista) {
+    if (!$haVistaAtiva) {
+        $recados->where(function ($q) use ($uid) {
+            $q->where('user_id', $uid)
+              ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid))
+              ->orWhereHas('grupos.users', fn ($g) => $g->where('users.id', $uid))
+              ->orWhereHas('departamento.users', fn ($u) => $u->where('users.id', $uid))
+              ->orWhereHas('chefia.users', fn ($u) => $u->where('users.id', $uid));
+        });
+    }
 
-                    // mantém acesso normal também (opcional, mas bom)
-                    $q->where('user_id', $uid)
-                      ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid));
+    // ✅ com vista ativa: NÃO mexe mais na query (mostra "o resto dos recados" da vista)
+}
 
-                    if ($permitirVerDepartamentoDaVista && $deptIdsDaVista->isNotEmpty()) {
-                        $q->orWhereIn('departamento_id', $deptIdsDaVista->all());
-                    }
-
-                    if ($permitirVerChefiaDaVista && $chefiaIdsDaVista->isNotEmpty()) {
-                        $q->orWhereIn('chefia_id', $chefiaIdsDaVista->all());
-                    }
-                });
-            }
-        }
 
         /* ================= ORDENAÇÃO ================= */
         $sortBy  = $request->input('sort_by', 'id');
@@ -413,14 +402,36 @@ public function update(Request $request, Recado $recado)
     $recado->destinatariosUsers()->sync($request->input('destinatarios_users', []));
     $recado->grupos()->sync($request->input('destinatarios_grupos', []));
 
-    if ($request->has('destinatarios_livres')) {
-        foreach ((array) $request->destinatarios_livres as $email) {
-            $email = trim($email);
-            if (!empty($email) && !$recado->guestEmails->contains('email', $email)) {
-                $recado->guestEmails()->create(['email' => $email]);
-            }
-        }
-    }
+    // ✅ Atualizar emails livres (guest tokens)
+// - cria novos
+// - remove os que foram apagados no form
+$novosLivres = collect((array) $request->input('destinatarios_livres', []))
+    ->map(fn($e) => trim(mb_strtolower((string) $e)))
+    ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+    ->unique()
+    ->values();
+
+$atuaisLivres = $recado->guestTokens()->pluck('email')
+    ->map(fn($e) => trim(mb_strtolower((string) $e)))
+    ->values();
+
+// remove os que saíram
+$paraRemover = $atuaisLivres->diff($novosLivres);
+if ($paraRemover->isNotEmpty()) {
+    $recado->guestTokens()->whereIn('email', $paraRemover->all())->delete();
+}
+
+// adiciona os que entraram
+$paraAdicionar = $novosLivres->diff($atuaisLivres);
+foreach ($paraAdicionar as $email) {
+    $recado->guestTokens()->create([
+        'email'      => $email,
+        'token'      => Str::random(60),
+        'expires_at' => now()->addMonth(),
+        'is_active'  => true,
+    ]);
+}
+
 
     return redirect()->route('recados.index')->with('success', 'Recado atualizado com sucesso!');
 }
@@ -710,84 +721,97 @@ public function update(Request $request, Recado $recado)
     }
 
     public function exportFiltered(Request $request)
-    {
-        $user = auth()->user();
+{
+    $user = auth()->user();
 
-        $query = Recado::with([
-            'setor','origem','departamento','chefia','destinatarios','estado','sla',
-            'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
-        ]);
+    $query = Recado::with([
+        'setor','origem','departamento','chefia','destinatarios','estado','sla',
+        'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
+    ]);
 
-        $vistaId = $request->filled('vista_id')
-            ? $request->input('vista_id')
-            : $request->session()->get('recados_vista_id');
+    // --- Vista ativa (da sessão ou request) ---
+    $vistaId = $request->filled('vista_id')
+        ? $request->input('vista_id')
+        : $request->session()->get('recados_vista_id');
 
-        $manualFields = ['id','contact_client','plate','estado_id','tipo_formulario_id'];
+    $manualFields = ['id','contact_client','plate','estado_id','tipo_formulario_id'];
 
-        $temFiltrosManuais =
-            $request->filled('filtros') ||
-            collect($manualFields)->contains(fn ($f) => $request->filled($f));
+    $temFiltrosManuais =
+        $request->filled('filtros') ||
+        collect($manualFields)->contains(fn ($f) => $request->filled($f));
 
-        if (!$temFiltrosManuais && !empty($vistaId)) {
-            $vistas = collect(\App\Services\VistaService::visiveisPara($user));
-            $vista = \App\Services\VistaRepo::findOrFail($vistaId);
+    // --- Aplica filtros da vista (só se não houver filtros manuais) ---
+    if (!$temFiltrosManuais && !empty($vistaId)) {
+        $vistas = collect(\App\Services\VistaService::visiveisPara($user));
+        $vista  = \App\Services\VistaRepo::findOrFail($vistaId);
 
-            if (!$vistas->pluck('id')->contains($vista['id'])) abort(403);
+        if (!$vistas->pluck('id')->contains($vista['id'])) abort(403);
 
-            $vistaFiltros = $vista['filtros'] ?? [];
-            if (is_array($vistaFiltros) && array_key_exists('conditions', $vistaFiltros)) {
-                $vistaFiltros = $vistaFiltros['conditions'] ?? [];
-            }
-
-            $query = \App\Queries\RecadoQuery::applyFilters(
-                $query,
-                $vistaFiltros,
-                $vista['logica'] ?? 'AND'
-            );
+        $vistaFiltros = $vista['filtros'] ?? [];
+        if (is_array($vistaFiltros) && array_key_exists('conditions', $vistaFiltros)) {
+            $vistaFiltros = $vistaFiltros['conditions'] ?? [];
         }
 
-        if ($request->filled('filtros')) {
-            $query = \App\Queries\RecadoQuery::applyFilters(
-                $query,
-                $request->input('filtros', []),
-                $request->input('logica', 'AND')
-            );
-        }
-
-        foreach ($manualFields as $field) {
-            if ($request->filled($field)) {
-                $operator = in_array($field, ['contact_client','plate']) ? 'LIKE' : '=';
-                $value = in_array($field, ['contact_client','plate'])
-                    ? '%'.$request->input($field).'%'
-                    : $request->input($field);
-
-                $query->where($field, $operator, $value);
-            }
-        }
-
-        // ✅ Visibilidade só quando NÃO há vista ativa (para não estragar vistas)
-        $haVistaAtiva = (!$temFiltrosManuais && !empty($vistaId));
-
-        if ($user->cargo?->name !== 'admin' && !$haVistaAtiva) {
-            $uid = (int) $user->id;
-
-            $query->where(function ($q) use ($uid) {
-                $q->where('user_id', $uid)
-                  ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid))
-                  ->orWhereHas('grupos.users', fn ($g) => $g->where('users.id', $uid))
-                  ->orWhereHas('departamento.users', fn ($u) => $u->where('users.id', $uid))
-                  ->orWhereHas('chefia.users', fn ($u) => $u->where('users.id', $uid)); // ✅ chefia
-            });
-        }
-
-        $sortBy  = $request->input('sort_by', 'id');
-        $sortDir = $request->input('sort_dir', 'desc');
-        $query->orderBy($sortBy, $sortDir);
-
-        $recados = $query->get();
-
-        return Excel::download(new RecadosExport($recados), 'recados_filtrados.xlsx');
+        $query = \App\Queries\RecadoQuery::applyFilters(
+            $query,
+            $vistaFiltros,
+            $vista['logica'] ?? 'AND'
+        );
     }
+
+    // --- Aplica filtros manuais (builder filtros avançados) ---
+    if ($request->filled('filtros')) {
+        $query = \App\Queries\RecadoQuery::applyFilters(
+            $query,
+            $request->input('filtros', []),
+            $request->input('logica', 'AND')
+        );
+    }
+
+    // --- Aplica filtros manuais simples ---
+    foreach ($manualFields as $field) {
+        if ($request->filled($field)) {
+            $operator = in_array($field, ['contact_client','plate']) ? 'LIKE' : '=';
+            $value = in_array($field, ['contact_client','plate'])
+                ? '%'.$request->input($field).'%'
+                : $request->input($field);
+
+            $query->where($field, $operator, $value);
+        }
+    }
+
+    // ✅ Visibilidade SEMPRE para não-admin (mesmo com vista ativa)
+    if ($user->cargo?->name !== 'admin') {
+        $uid = (int) $user->id;
+
+        $query->where(function ($q) use ($uid) {
+            $q->where('user_id', $uid)
+              ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid))
+              ->orWhereHas('grupos.users', fn ($g) => $g->where('users.id', $uid))
+              ->orWhereHas('departamento.users', fn ($u) => $u->where('users.id', $uid))
+              ->orWhereHas('chefia.users', fn ($u) => $u->where('users.id', $uid));
+        });
+    }
+
+    // --- Ordenação (whitelist para evitar orderBy malicioso/erro) ---
+    $allowedSort = ['id','contact_client','plate','estado_id','tipo_formulario_id','abertura','termino','created_at'];
+    $sortBy  = $request->input('sort_by', 'id');
+    $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+    if (!in_array($sortBy, $allowedSort)) $sortBy = 'id';
+
+    $query->orderBy($sortBy, $sortDir);
+
+    // --- Executa e bloqueia export vazio ---
+    $recados = $query->get();
+
+    if ($recados->isEmpty()) {
+        return back()->with('error', 'Não existem recados para exportar com os filtros atuais.');
+    }
+
+    return Excel::download(new RecadosExport($recados), 'recados_filtrados.xlsx');
+}
+
 
     public function concluir(Recado $recado)
     {
