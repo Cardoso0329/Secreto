@@ -115,6 +115,17 @@ Route::get('/recados-campanhas', [RecadosCampanhaController::class, 'index'])
     ->middleware('auth');
 
 
+    // ✅ Link público do email (SEM login)
+Route::get('/recados/guest/{token}', [RecadoController::class, 'showGuest'])
+    ->name('recados.guest');
+
+// (Opcional) Se a tua rota show estiver dentro de auth, mantém.
+// Se NÃO estiver, mete auth nela:
+Route::get('/recados/{id}', [RecadoController::class, 'show'])
+    ->name('recados.show')
+    ->middleware('auth');
+
+
 
 
 

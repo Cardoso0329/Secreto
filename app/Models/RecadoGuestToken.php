@@ -25,8 +25,11 @@ class RecadoGuestToken extends Model
         return $this->belongsTo(Recado::class);
     }
 
-    public function isValid()
-    {
-        return $this->is_active && $this->expires_at->isFuture();
-    }
+    public function isValid(): bool
+{
+    if (!$this->is_active) return false;
+    if (!$this->expires_at) return true;
+    return $this->expires_at->isFuture();
+}
+
 }
