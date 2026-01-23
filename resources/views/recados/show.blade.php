@@ -18,6 +18,13 @@
         @endif
     </div>
 
+    @php
+        // ✅ IDs dos avisos já enviados neste recado (pivot recado_aviso)
+        $avisosEnviadosIds = $recado->relationLoaded('avisosEnviados')
+            ? $recado->avisosEnviados->pluck('id')->toArray()
+            : ($recado->avisosEnviados()->pluck('avisos.id')->toArray());
+    @endphp
+
     <div class="row g-4">
         {{-- Coluna 1 - Dados principais --}}
         <div class="col-md-4">
@@ -58,16 +65,44 @@
                     @if($avisos->count())
                         <div class="mt-4">
                             <h5 class="fw-semibold mb-2">📣 Enviar Aviso</h5>
+
                             <div class="d-flex flex-wrap gap-2">
                                 @foreach($avisos as $aviso)
-                                    <form action="{{ route('recados.enviarAviso', $recado) }}" method="POST" class="m-0">
-                                        @csrf
-                                        <input type="hidden" name="aviso_id" value="{{ $aviso->id }}">
-                                        <button type="submit" class="btn btn-outline-primary btn-sm">
-                                            {{ $aviso->name }}
+                                    @php
+                                        $enviado = in_array($aviso->id, $avisosEnviadosIds);
+                                    @endphp
+
+                                    @if($enviado)
+                                        {{-- ✅ Já enviado: botão NÃO editável --}}
+                                        <button type="button" class="btn btn-secondary btn-sm" disabled
+                                                title="Aviso já enviado">
+                                            {{ $aviso->name }} ✅
                                         </button>
-                                    </form>
+                                    @else
+                                        {{-- ✅ Ainda não enviado: form REAL fica escondido, e o botão só abre o modal --}}
+                                        <form action="{{ route('recados.enviarAviso', $recado) }}"
+                                              method="POST"
+                                              class="m-0 aviso-form"
+                                              id="avisoForm{{ $aviso->id }}">
+                                            @csrf
+                                            <input type="hidden" name="aviso_id" value="{{ $aviso->id }}">
+
+                                            {{-- Botão que abre o modal (não submete já) --}}
+                                            <button type="button"
+                                                    class="btn btn-outline-primary btn-sm btn-aviso-confirm"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#confirmAvisoModal"
+                                                    data-form-id="avisoForm{{ $aviso->id }}"
+                                                    data-aviso-nome="{{ $aviso->name }}">
+                                                {{ $aviso->name }}
+                                            </button>
+                                        </form>
+                                    @endif
                                 @endforeach
+                            </div>
+
+                            <div class="small text-muted mt-2">
+                                Ao clicar num aviso vai aparecer uma confirmação antes de enviar.
                             </div>
                         </div>
                     @endif
@@ -243,4 +278,74 @@
     </div>
 
 </div>
+
+{{-- ✅ MODAL CONFIRMAÇÃO (dupla validação) --}}
+<div class="modal fade" id="confirmAvisoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmar envio</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0">
+          Tens a certeza que queres enviar o aviso
+          <strong id="confirmAvisoNome">—</strong>?
+        </p>
+        <div class="small text-muted mt-2">
+          Esta ação envia email aos destinatários deste recado.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="confirmAvisoBtn">
+          <i class="bi bi-send"></i> Confirmar envio
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{-- ✅ Script do modal --}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    let formIdToSubmit = null;
+
+    document.querySelectorAll('.btn-aviso-confirm').forEach(btn => {
+        btn.addEventListener('click', function () {
+            formIdToSubmit = this.getAttribute('data-form-id');
+            const avisoNome = this.getAttribute('data-aviso-nome') || '—';
+            const target = document.getElementById('confirmAvisoNome');
+            if (target) target.textContent = avisoNome;
+        });
+    });
+
+    const confirmBtn = document.getElementById('confirmAvisoBtn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function () {
+            if (!formIdToSubmit) return;
+
+            const form = document.getElementById(formIdToSubmit);
+            if (!form) return;
+
+            // 🔒 evita duplo clique
+            this.disabled = true;
+            form.submit();
+        });
+    }
+
+    // reativa botão ao fechar modal
+    const modalEl = document.getElementById('confirmAvisoModal');
+    if (modalEl) {
+        modalEl.addEventListener('hidden.bs.modal', function () {
+            formIdToSubmit = null;
+            const btn = document.getElementById('confirmAvisoBtn');
+            if (btn) btn.disabled = false;
+            const target = document.getElementById('confirmAvisoNome');
+            if (target) target.textContent = '—';
+        });
+    }
+});
+</script>
+
 @endsection

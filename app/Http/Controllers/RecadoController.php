@@ -826,17 +826,37 @@ class RecadoController extends Controller
         return redirect()->back()->with('success', 'Recado concluído com sucesso.');
     }
 
-    public function enviarAviso(Recado $recado, Aviso $aviso)
-    {
-        $emails = $recado->destinatarios->pluck('email')->toArray();
-        if ($recado->guestTokens->count()) {
-            $emails = array_merge($emails, $recado->guestTokens->pluck('email')->toArray());
-        }
+   public function enviarAviso(Request $request, Recado $recado)
+{
+    // validar
+    $request->validate([
+        'aviso_id' => ['required', 'exists:avisos,id'],
+    ]);
 
-        foreach (array_values(array_unique($emails)) as $email) {
-            Mail::to($email)->send(new RecadoAvisoMail($recado, $aviso));
-        }
+    $avisoId = (int) $request->input('aviso_id');
 
-        return back()->with('success', 'Aviso enviado com sucesso!');
+    // bloquear repetidos
+    if ($recado->avisosEnviados()->where('aviso_id', $avisoId)->exists()) {
+        return back()->with('error', 'Este aviso já foi enviado.');
     }
+
+    // buscar aviso
+    $aviso = Aviso::findOrFail($avisoId);
+
+    // emails (destinatarios + guestTokens)
+    $emails = $recado->destinatarios->pluck('email')->toArray();
+
+    if ($recado->guestTokens->count()) {
+        $emails = array_merge($emails, $recado->guestTokens->pluck('email')->toArray());
+    }
+
+    foreach (array_values(array_unique($emails)) as $email) {
+        Mail::to($email)->send(new RecadoAvisoMail($recado, $aviso));
+    }
+
+    // guardar no pivot (marca como enviado)
+    $recado->avisosEnviados()->syncWithoutDetaching([$avisoId]);
+
+    return back()->with('success', 'Aviso enviado com sucesso!');
+}
 }

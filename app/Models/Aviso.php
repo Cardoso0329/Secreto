@@ -15,4 +15,11 @@ class Aviso extends Model
         protected $table = 'avisos';
     
       protected $fillable = ['name'];
+
+
+      public function recados()
+{
+    return $this->belongsToMany(Recado::class, 'recado_aviso')->withTimestamps();
+}
+
 }
