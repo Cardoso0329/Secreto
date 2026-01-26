@@ -197,10 +197,16 @@
                             </button>
 
                             {{-- ✅ Exporta já com TODOS os filtros + intervalo --}}
-                            <a href="{{ route('configuracoes.recados.export.filtered', request()->query()) }}"
-                               class="btn btn-success">
-                                <i class="bi bi-download me-1"></i> Exportar Excel
-                            </a>
+@if(
+    optional(auth()->user()->cargo)->name === 'admin'
+    || auth()->user()->grupos->contains('name', 'Telefonistas')
+)
+    <a href="{{ route('configuracoes.recados.export.filtered', request()->query()) }}"
+       class="btn btn-success">
+        <i class="bi bi-download me-1"></i> Exportar Excel
+    </a>
+@endif
+
 
                             <a href="{{ route('recados.index') }}"
                                class="btn btn-outline-secondary ms-auto">
