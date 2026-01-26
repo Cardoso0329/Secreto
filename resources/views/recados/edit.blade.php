@@ -87,18 +87,6 @@
                                 <label class="form-label">Mensagem</label>
                                 <textarea name="mensagem" class="form-control" rows="3">{{ old('mensagem', $recado->mensagem) }}</textarea>
                             </div>
-
-                            {{-- Se quiseres editar WIP/Assunto aqui também, descomenta:
-                            <div class="col-md-6">
-                                <label class="form-label">WIP</label>
-                                <input type="text" name="wip" class="form-control" value="{{ old('wip', $recado->wip) }}">
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="form-label">Assunto</label>
-                                <input type="text" name="assunto" class="form-control" value="{{ old('assunto', $recado->assunto) }}">
-                            </div>
-                            --}}
                         </div>
                     </div>
 
@@ -189,7 +177,6 @@
                                 </select>
                             </div>
 
-                            {{-- ✅ NOVO: Chefia --}}
                             <div class="col-md-4">
                                 <label class="form-label">Chefia</label>
                                 <select name="chefia_id" class="form-select">
@@ -227,7 +214,6 @@
                                 </select>
                             </div>
 
-                            {{-- Datas --}}
                             <div class="col-md-6">
                                 <label class="form-label">Abertura</label>
                                 <input type="datetime-local" name="abertura" class="form-control"
@@ -242,21 +228,37 @@
                         </div>
                     </div>
 
-                    {{-- Aba Destinatários --}}
+                    {{-- ✅ Aba Destinatários --}}
                     <div class="tab-pane fade" id="destinatarios" role="tabpanel" aria-labelledby="destinatarios-tab">
                         <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Destinatários (Users)</label>
-                                <select name="destinatarios_users[]" class="form-select" multiple>
-                                    @foreach($users as $user)
-                                        <option value="{{ $user->id }}" {{ $recado->destinatariosUsers->contains($user->id) ? 'selected' : '' }}>
-                                            {{ $user->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <small class="text-muted">Segure Ctrl (Windows) / Cmd (Mac) para selecionar vários.</small>
+
+                            {{-- ✅ Destinatários Dinâmicos (Users) --}}
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Destinatários (Users)</label>
+
+                                <div class="input-group">
+                                    <select id="novoDestinatario" class="form-select rounded-start">
+                                        <option value="">Selecione um destinatário</option>
+                                        @foreach ($users as $user)
+                                            <option value="{{ $user->id }}" data-name="{{ $user->name }}">
+                                                {{ $user->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+
+                                    <button type="button" id="adicionarDestinatario" class="btn btn-success rounded-end" disabled>
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                </div>
+
+                                <div id="listaDestinatarios" class="mt-3 d-flex flex-wrap gap-2"></div>
+                                <div id="destinatariosInputs"></div>
+
+                                {{-- ids existentes para o JS --}}
+                                <input type="hidden" id="preselectedUsers" value='@json($recado->destinatariosUsers->pluck("id")->values())'>
                             </div>
 
+                            {{-- Grupos --}}
                             <div class="col-md-6">
                                 <label class="form-label">Destinatários (Grupos)</label>
                                 <select name="destinatarios_grupos[]" class="form-select" multiple>
@@ -269,8 +271,9 @@
                                 <small class="text-muted">Segure Ctrl (Windows) / Cmd (Mac) para selecionar vários.</small>
                             </div>
 
-                            <div class="col-12">
-                                <label class="form-label">Destinatários Livres (Emails)</label>
+                            {{-- Emails livres --}}
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Destinatários Livres (Emails)</label>
                                 <div id="emails-livres">
                                     @if(count($guestEmails) > 0)
                                         @foreach($guestEmails as $email)
@@ -280,10 +283,16 @@
                                         <input type="email" name="destinatarios_livres[]" class="form-control mb-1" placeholder="email@example.com">
                                     @endif
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addEmailField()">
+
+                                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" id="btnAddEmailLivre">
                                     + Adicionar Email
                                 </button>
+
+                                <small class="text-muted d-block mt-1">
+                                    Podes deixar vazio. Emails inválidos serão ignorados no backend.
+                                </small>
                             </div>
+
                         </div>
                     </div>
 
@@ -321,16 +330,97 @@
     </div>
 </div>
 
-{{-- Script para adicionar campo de email --}}
+{{-- ✅ Scripts --}}
 <script>
-function addEmailField() {
-    const container = document.getElementById('emails-livres');
-    const input = document.createElement('input');
-    input.type = 'email';
-    input.name = 'destinatarios_livres[]';
-    input.className = 'form-control mb-1';
-    input.placeholder = 'email@example.com';
-    container.appendChild(input);
-}
+document.addEventListener('DOMContentLoaded', () => {
+    // -----------------------------
+    // ✅ Users dinâmicos (igual à criação) + carrega existentes
+    // -----------------------------
+    const select = document.getElementById('novoDestinatario');
+    const addBtn = document.getElementById('adicionarDestinatario');
+    const badgeContainer = document.getElementById('listaDestinatarios');
+    const inputContainer = document.getElementById('destinatariosInputs');
+
+    const preselectedRaw = document.getElementById('preselectedUsers')?.value || '[]';
+    const preselected = JSON.parse(preselectedRaw);
+
+    const selected = new Map(); // id -> name
+
+    const toggleBtn = () => {
+        const id = String(select.value || '');
+        addBtn.disabled = !id || selected.has(id);
+    };
+
+    function createBadge(id, name) {
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-primary d-flex align-items-center gap-2 px-2 py-2 rounded-pill';
+        badge.style.fontSize = '0.95rem';
+        badge.innerHTML = `
+            <span>${name}</span>
+            <button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remover"></button>
+        `;
+
+        badge.querySelector('button').addEventListener('click', () => {
+            selected.delete(String(id));
+            badge.remove();
+            document.getElementById(`destinatario-input-${id}`)?.remove();
+            toggleBtn();
+        });
+
+        return badge;
+    }
+
+    function addHiddenInput(id) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'destinatarios_users[]';
+        input.value = id;
+        input.id = `destinatario-input-${id}`;
+        inputContainer.appendChild(input);
+    }
+
+    function addUserById(id) {
+        const opt = select.querySelector(`option[value="${id}"]`);
+        const name = opt ? (opt.dataset.name || opt.textContent.trim()) : `User #${id}`;
+        if (!id || selected.has(String(id))) return;
+
+        selected.set(String(id), name);
+        badgeContainer.appendChild(createBadge(id, name));
+        addHiddenInput(id);
+        toggleBtn();
+    }
+
+    // carregar existentes
+    preselected.forEach((id) => addUserById(String(id)));
+
+    // eventos
+    select.addEventListener('change', toggleBtn);
+    select.addEventListener('input', toggleBtn);
+
+    addBtn.addEventListener('click', () => {
+        const id = String(select.value || '');
+        if (!id) return;
+        addUserById(id);
+        select.value = '';
+        select.selectedIndex = 0;
+        toggleBtn();
+    });
+
+    toggleBtn();
+
+    // -----------------------------
+    // ✅ Emails livres (adicionar campo)
+    // -----------------------------
+    document.getElementById('btnAddEmailLivre')?.addEventListener('click', () => {
+        const container = document.getElementById('emails-livres');
+        const input = document.createElement('input');
+        input.type = 'email';
+        input.name = 'destinatarios_livres[]';
+        input.className = 'form-control mb-1';
+        input.placeholder = 'email@example.com';
+        container.appendChild(input);
+        input.focus();
+    });
+});
 </script>
 @endsection

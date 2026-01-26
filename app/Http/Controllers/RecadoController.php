@@ -366,12 +366,16 @@ class RecadoController extends Controller
             'termino' => 'nullable|date',
             'ficheiro' => 'nullable|file',
 
-            'destinatarios_users' => 'array',
+            'destinatarios_users' => 'nullable|array',
             'destinatarios_users.*' => 'exists:users,id',
-            'destinatarios_grupos' => 'array',
+
+            'destinatarios_grupos' => 'nullable|array',
             'destinatarios_grupos.*' => 'exists:grupos,id',
-            'destinatarios_livres' => 'array',
-            'destinatarios_livres.*' => 'email',
+
+            'destinatarios_livres' => 'nullable|array',
+            'destinatarios_livres.*' => 'nullable|email',
+
+
         ];
 
         $validated = $request->validate($rules);
