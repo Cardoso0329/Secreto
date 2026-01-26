@@ -148,41 +148,62 @@
                 <div class="card-body">
                     <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
 
-                        {{-- ✅ manter vista_id (GET ou sessão) --}}
+                        {{-- ✅ manter vista_id --}}
                         @if($vistaAtivaId)
                             <input type="hidden" name="vista_id" value="{{ $vistaAtivaId }}">
                         @endif
 
+                        {{-- ID --}}
                         <div class="col-md-4 col-xl-12">
                             <label class="form-label small text-muted mb-1">ID</label>
-                            <input type="text" name="id" class="form-control" placeholder="Ex: 123"
+                            <input type="text" name="id" class="form-control"
+                                   placeholder="Ex: 123"
                                    value="{{ $getFiltro('id') }}">
                         </div>
 
+                        {{-- Contacto --}}
                         <div class="col-md-4 col-xl-12">
                             <label class="form-label small text-muted mb-1">Contacto Cliente</label>
-                            <input type="text" name="contact_client" class="form-control" placeholder="Ex: 9xx xxx xxx"
+                            <input type="text" name="contact_client" class="form-control"
+                                   placeholder="Ex: 9xx xxx xxx"
                                    value="{{ $getFiltro('contact_client') }}">
                         </div>
 
+                        {{-- Matrícula --}}
                         <div class="col-md-4 col-xl-12">
                             <label class="form-label small text-muted mb-1">Matrícula</label>
-                            <input type="text" name="plate" class="form-control" placeholder="Ex: AA-00-AA"
+                            <input type="text" name="plate" class="form-control"
+                                   placeholder="Ex: AA-00-AA"
                                    value="{{ $getFiltro('plate') }}">
                         </div>
 
+                        {{-- 📅 Intervalo de datas (abertura) --}}
+                        <div class="col-md-6 col-xl-12">
+                            <label class="form-label small text-muted mb-1">Data início</label>
+                            <input type="date" name="date_from" class="form-control"
+                                   value="{{ request('date_from') }}">
+                        </div>
+
+                        <div class="col-md-6 col-xl-12">
+                            <label class="form-label small text-muted mb-1">Data fim</label>
+                            <input type="date" name="date_to" class="form-control"
+                                   value="{{ request('date_to') }}">
+                        </div>
+
+                        {{-- BOTÕES --}}
                         <div class="col-12 d-flex gap-2 flex-wrap pt-1">
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-search me-1"></i> Filtrar
                             </button>
 
-                            {{-- ✅ Exportar ao lado do Filtrar (sem mexer na funcionalidade) --}}
+                            {{-- ✅ Exporta já com TODOS os filtros + intervalo --}}
                             <a href="{{ route('configuracoes.recados.export.filtered', request()->query()) }}"
                                class="btn btn-success">
                                 <i class="bi bi-download me-1"></i> Exportar Excel
                             </a>
 
-                            <a href="{{ route('recados.index') }}" class="btn btn-outline-secondary ms-auto">
+                            <a href="{{ route('recados.index') }}"
+                               class="btn btn-outline-secondary ms-auto">
                                 <i class="bi bi-x-circle me-1"></i> Limpar
                             </a>
                         </div>
@@ -190,7 +211,7 @@
                 </div>
             </div>
 
-        </div>
+        </div> {{-- ✅ FECHA COLUNA ESQUERDA --}}
 
         {{-- COLUNA DIREITA: TABELA --}}
         <div class="col-12 col-xl-8">
@@ -228,7 +249,7 @@
                                 <th>Destinatários</th>
                                 <th>Estado</th>
                                 <th>Tipo</th>
-                                <th class="text-nowrap">Criado em</th>
+                                <th class="text-nowrap">Abertura</th>
                                 <th class="text-center" style="width: 90px;">Ações</th>
                             </tr>
                         </thead>
@@ -291,53 +312,51 @@
                                     </td>
 
                                     <td class="text-nowrap">
-                                        {{ $recado->created_at->format('d/m/Y H:i') }}
+                                        {{-- ✅ SEM created_at: usar abertura --}}
+                                        {{ $recado->abertura ? \Carbon\Carbon::parse($recado->abertura)->format('d/m/Y H:i') : '—' }}
                                     </td>
 
                                     <td class="text-center" onclick="event.stopPropagation();">
-    <div class="dropdown">
-        <button
-            class="btn btn-sm btn-light border"
-            type="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-            onclick="event.stopPropagation();"
-        >
-            <i class="bi bi-three-dots-vertical"></i>
-        </button>
+                                        <div class="dropdown">
+                                            <button
+                                                class="btn btn-sm btn-light border"
+                                                type="button"
+                                                data-bs-toggle="dropdown"
+                                                aria-expanded="false"
+                                                onclick="event.stopPropagation();"
+                                            >
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
 
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-            {{-- ✅ Editar: todos podem (ou quem tu quiseres) --}}
-            <li>
-                <a class="dropdown-item" href="{{ route('recados.edit', $recado->id) }}">
-                    ✏️ Editar
-                </a>
-            </li>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                                <li>
+                                                    <a class="dropdown-item" href="{{ route('recados.edit', $recado->id) }}">
+                                                        ✏️ Editar
+                                                    </a>
+                                                </li>
 
-            {{-- ✅ Apagar: só admin --}}
-            @if(optional(auth()->user()->cargo)->name === 'admin')
-                <li><hr class="dropdown-divider"></li>
+                                                @if(optional(auth()->user()->cargo)->name === 'admin')
+                                                    <li><hr class="dropdown-divider"></li>
 
-                <li>
-                    <form action="{{ route('recados.destroy', $recado->id) }}" method="POST"
-                          onsubmit="return confirm('Tem a certeza que deseja eliminar este recado?')">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="dropdown-item text-danger">
-                            🗑️ Apagar
-                        </button>
-                    </form>
-                </li>
-            @endif
-        </ul>
-    </div>
-</td>
+                                                    <li>
+                                                        <form action="{{ route('recados.destroy', $recado->id) }}" method="POST"
+                                                              onsubmit="return confirm('Tem a certeza que deseja eliminar este recado?')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="dropdown-item text-danger">
+                                                                🗑️ Apagar
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                @endif
+                                            </ul>
+                                        </div>
+                                    </td>
 
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ auth()->user()->cargo->name === 'admin' ? '9' : '8' }}"
-                                        class="text-center text-muted py-4">
+                                    <td colspan="9" class="text-center text-muted py-4">
                                         <div class="d-flex flex-column align-items-center gap-2">
                                             <i class="bi bi-inbox fs-2"></i>
                                             <div>Nenhum recado encontrado.</div>
@@ -372,7 +391,6 @@
     .card { border-radius: 16px; }
     .card-header { border-top-left-radius: 16px; border-top-right-radius: 16px; }
 
-    /* deixa a tabela mais “clean” */
     .table > :not(caption) > * > * { padding-top: .85rem; padding-bottom: .85rem; }
 </style>
 
