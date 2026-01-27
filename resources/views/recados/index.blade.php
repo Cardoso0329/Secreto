@@ -78,12 +78,12 @@
         </div>
     @endif
 
-    <div class="row g-4">
-        {{-- COLUNA ESQUERDA: VISTA + FILTROS --}}
-        <div class="col-12 col-xl-4">
+    {{-- ✅ TOPO: VISTA + FILTROS (em cima) --}}
+    <div class="row g-4 mb-4">
 
-            {{-- VISTA --}}
-            <div class="card shadow-sm border-0 mb-4">
+        {{-- VISTA --}}
+        <div class="col-12 col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
                     <div class="fw-semibold">
                         <i class="bi bi-layout-sidebar-inset me-1"></i> Vista
@@ -135,9 +135,11 @@
                     </form>
                 </div>
             </div>
+        </div>
 
-            {{-- FILTROS AVANÇADOS --}}
-            <div class="card shadow-sm border-0">
+        {{-- FILTROS AVANÇADOS --}}
+        <div class="col-12 col-lg-8">
+            <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
                     <div class="fw-semibold">
                         <i class="bi bi-funnel me-1"></i> Filtros Avançados
@@ -154,7 +156,7 @@
                         @endif
 
                         {{-- ID --}}
-                        <div class="col-md-4 col-xl-12">
+                        <div class="col-12 col-md-3">
                             <label class="form-label small text-muted mb-1">ID</label>
                             <input type="text" name="id" class="form-control"
                                    placeholder="Ex: 123"
@@ -162,7 +164,7 @@
                         </div>
 
                         {{-- Contacto --}}
-                        <div class="col-md-4 col-xl-12">
+                        <div class="col-12 col-md-4">
                             <label class="form-label small text-muted mb-1">Contacto Cliente</label>
                             <input type="text" name="contact_client" class="form-control"
                                    placeholder="Ex: 9xx xxx xxx"
@@ -170,7 +172,7 @@
                         </div>
 
                         {{-- Matrícula --}}
-                        <div class="col-md-4 col-xl-12">
+                        <div class="col-12 col-md-5">
                             <label class="form-label small text-muted mb-1">Matrícula</label>
                             <input type="text" name="plate" class="form-control"
                                    placeholder="Ex: AA-00-AA"
@@ -178,13 +180,13 @@
                         </div>
 
                         {{-- 📅 Intervalo de datas (abertura) --}}
-                        <div class="col-md-6 col-xl-12">
+                        <div class="col-12 col-md-3">
                             <label class="form-label small text-muted mb-1">Data início</label>
                             <input type="date" name="date_from" class="form-control"
                                    value="{{ request('date_from') }}">
                         </div>
 
-                        <div class="col-md-6 col-xl-12">
+                        <div class="col-12 col-md-3">
                             <label class="form-label small text-muted mb-1">Data fim</label>
                             <input type="date" name="date_to" class="form-control"
                                    value="{{ request('date_to') }}">
@@ -215,236 +217,226 @@
                     </form>
                 </div>
             </div>
+        </div>
 
-        </div> {{-- ✅ FECHA COLUNA ESQUERDA --}}
+    </div>
 
-        {{-- COLUNA DIREITA: TABELA --}}
-        <div class="col-12 col-xl-8">
+    {{-- ✅ EM BAIXO: TABELA --}}
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+            <div class="fw-semibold">
+                <i class="bi bi-table me-1"></i> Lista
+            </div>
 
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
-                    <div class="fw-semibold">
-                        <i class="bi bi-table me-1"></i> Lista
-                    </div>
+            {{-- ✅ COLUNAS VISÍVEIS (frontend) + paginação --}}
+            <div class="d-flex align-items-center gap-2">
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-light border dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-columns-gap me-1"></i> Colunas
+                    </button>
 
-                    {{-- ✅ COLUNAS VISÍVEIS (frontend) + paginação --}}
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-light border dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-columns-gap me-1"></i> Colunas
+                    <div class="dropdown-menu dropdown-menu-end p-3 shadow" style="min-width: 240px;">
+                        <div class="fw-semibold mb-2">Mostrar colunas</div>
+
+                        <div class="d-grid gap-2" id="colsMenu">
+                            {{-- checkboxes gerados por JS --}}
+                        </div>
+
+                        <hr class="my-3">
+
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary w-50" id="colsReset">
+                                Reset
                             </button>
-
-                            <div class="dropdown-menu dropdown-menu-end p-3 shadow" style="min-width: 240px;">
-                                <div class="fw-semibold mb-2">Mostrar colunas</div>
-
-                                <div class="d-grid gap-2" id="colsMenu">
-                                    {{-- checkboxes gerados por JS --}}
-                                </div>
-
-                                <hr class="my-3">
-
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary w-50" id="colsReset">
-                                        Reset
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-primary w-50" id="colsAll">
-                                        Mostrar tudo
-                                    </button>
-                                </div>
-
-                                <div class="small text-muted mt-2">
-                                    A escolha fica guardada neste browser.
-                                </div>
-                            </div>
+                            <button type="button" class="btn btn-sm btn-primary w-50" id="colsAll">
+                                Mostrar tudo
+                            </button>
                         </div>
 
-                        <div class="text-muted small">
-                            Página {{ $recados->currentPage() }} de {{ $recados->lastPage() }}
+                        <div class="small text-muted mt-2">
+                            A escolha fica guardada neste browser.
                         </div>
                     </div>
                 </div>
 
-                <div class="card-body table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                @php $sortDir = request('sort_dir', 'desc') === 'asc' ? 'desc' : 'asc'; @endphp
+                <div class="text-muted small">
+                    Página {{ $recados->currentPage() }} de {{ $recados->lastPage() }}
+                </div>
+            </div>
+        </div>
 
-                                <th data-col="id" style="width: 90px;">
-                                    <a href="{{ route('recados.index', array_merge(request()->query(), ['sort_by' => 'id', 'sort_dir' => $sortDir])) }}"
-                                       class="text-decoration-none d-inline-flex align-items-center gap-1">
-                                        ID
-                                        @if(request('sort_by') === 'id')
-                                            <i class="bi {{ request('sort_dir') === 'asc' ? 'bi-sort-up' : 'bi-sort-down' }}"></i>
-                                        @else
-                                            <i class="bi bi-arrow-down-up text-muted"></i>
+        <div class="card-body table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        @php $sortDir = request('sort_dir', 'desc') === 'asc' ? 'desc' : 'asc'; @endphp
+
+                        <th data-col="id" style="width: 90px;">
+                            <a href="{{ route('recados.index', array_merge(request()->query(), ['sort_by' => 'id', 'sort_dir' => $sortDir])) }}"
+                               class="text-decoration-none d-inline-flex align-items-center gap-1">
+                                ID
+                                @if(request('sort_by') === 'id')
+                                    <i class="bi {{ request('sort_dir') === 'asc' ? 'bi-sort-up' : 'bi-sort-down' }}"></i>
+                                @else
+                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                @endif
+                            </a>
+                        </th>
+
+                        <th data-col="nome">Nome</th>
+                        <th data-col="contacto">Contacto</th>
+                        <th data-col="matricula">Matrícula</th>
+
+                        <th data-col="chefia">Chefia</th>
+                        <th data-col="departamento">Departamento</th>
+                        <th data-col="origem">Origem</th>
+                        <th data-col="sla">SLA</th>
+                        <th data-col="operador">Email do Operador</th>
+
+                        <th data-col="destinatarios">Destinatários</th>
+                        <th data-col="estado">Estado</th>
+                        <th data-col="tipo">TipoFormulário</th>
+                        <th data-col="abertura" class="text-nowrap">Abertura</th>
+                        <th data-col="acoes" class="text-center" style="width: 90px;">Ações</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @forelse($recados as $recado)
+                        <tr class="clickable-row" data-href="{{ route('recados.show', $recado->id) }}">
+                            <td data-col="id" class="fw-semibold">#{{ $recado->id }}</td>
+                            <td data-col="nome" class="fw-semibold">{{ $recado->name }}</td>
+                            <td data-col="contacto">{{ $recado->contact_client }}</td>
+                            <td data-col="matricula">{{ $recado->plate ?? '—' }}</td>
+
+                            <td data-col="chefia" class="small">
+                                {{ $recado->chefia->name ?? '—' }}
+                            </td>
+
+                            <td data-col="departamento" class="small">
+                                {{ $recado->departamento->name ?? '—' }}
+                            </td>
+
+                            <td data-col="origem" class="small">
+                                {{ $recado->origem->name ?? '—' }}
+                            </td>
+
+                            <td data-col="sla" class="small">
+                                {{ $recado->sla->name ?? '—' }}
+                            </td>
+
+                            <td data-col="operador" class="small text-truncate" style="max-width: 220px;">
+                                <span title="{{ $recado->operator_email ?? '' }}">
+                                    {{ $recado->operator_email ?? '—' }}
+                                </span>
+                            </td>
+
+                            {{-- Destinatários --}}
+                            <td data-col="destinatarios" class="small">
+                                @php
+                                    $destinatarios = collect();
+                                    if($recado->destinatarios->count()) {
+                                        $destinatarios = $destinatarios->merge($recado->destinatarios->pluck('name'));
+                                    }
+                                    if($recado->grupos->count()) {
+                                        $destinatarios = $destinatarios->merge($recado->grupos->pluck('name'));
+                                    }
+                                    if($recado->guestTokens->count()) {
+                                        $destinatarios = $destinatarios->merge($recado->guestTokens->pluck('email'));
+                                    }
+                                    $destinatarios = $destinatarios->unique();
+                                @endphp
+                                {!! $destinatarios->implode('<br>') !!}
+                            </td>
+
+                            {{-- Estado --}}
+                            <td data-col="estado">
+                                @php
+                                    $estadoNome = strtolower($recado->estado->name ?? '');
+                                    $badgeEstado = match($estadoNome) {
+                                        'novo' => 'bg-info text-white',
+                                        'pendente' => 'bg-warning text-dark',
+                                        'tratado' => 'bg-purple text-white',
+                                        default => 'bg-secondary text-white'
+                                    };
+                                @endphp
+                                <span class="badge rounded-pill {{ $badgeEstado }}">
+                                    {{ $estadoNome ? ucfirst($estadoNome) : '—' }}
+                                </span>
+                            </td>
+
+                            {{-- Tipo --}}
+                            <td data-col="tipo">
+                                @php
+                                    $tipoNome = strtolower($recado->tipoFormulario->name ?? '');
+                                    $badgeTipo = match($tipoNome) {
+                                        'central' => 'bg-primary text-white',
+                                        'call center' => 'bg-success text-white',
+                                        default => 'bg-secondary text-white'
+                                    };
+                                @endphp
+                                <span class="badge rounded-pill {{ $badgeTipo }}">
+                                    {{ $tipoNome ? ucfirst($tipoNome) : '—' }}
+                                </span>
+                            </td>
+
+                            <td data-col="abertura" class="text-nowrap">
+                                {{ $recado->abertura ? \Carbon\Carbon::parse($recado->abertura)->format('d/m/Y H:i') : '—' }}
+                            </td>
+
+                            <td data-col="acoes" class="text-center" onclick="event.stopPropagation();">
+                                <div class="dropdown">
+                                    <button
+                                        class="btn btn-sm btn-light border"
+                                        type="button"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false"
+                                        onclick="event.stopPropagation();"
+                                    >
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('recados.edit', $recado->id) }}">
+                                                ✏️ Editar
+                                            </a>
+                                        </li>
+
+                                        @if(optional(auth()->user()->cargo)->name === 'admin')
+                                            <li><hr class="dropdown-divider"></li>
+
+                                            <li>
+                                                <form action="{{ route('recados.destroy', $recado->id) }}" method="POST"
+                                                      onsubmit="return confirm('Tem a certeza que deseja eliminar este recado?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="dropdown-item text-danger">
+                                                        🗑️ Apagar
+                                                    </button>
+                                                </form>
+                                            </li>
                                         @endif
-                                    </a>
-                                </th>
+                                    </ul>
+                                </div>
+                            </td>
 
-                                <th data-col="nome">Nome</th>
-                                <th data-col="contacto">Contacto</th>
-                                <th data-col="matricula">Matrícula</th>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="15" class="text-center text-muted py-4">
+                                <div class="d-flex flex-column align-items-center gap-2">
+                                    <i class="bi bi-inbox fs-2"></i>
+                                    <div>Nenhum recado encontrado.</div>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
 
-                                {{-- ✅ NOVAS COLUNAS --}}
-                                
-                                <th data-col="chefia">Chefia</th>
-                                <th data-col="departamento">Departamento</th>
-                                <th data-col="origem">Origem</th>
-                                <th data-col="sla">SLA</th>
-                                <th data-col="operador">Email do Operador</th>
-
-                                <th data-col="destinatarios">Destinatários</th>
-                                <th data-col="estado">Estado</th>
-                                <th data-col="tipo">TipoFormulário</th>
-                                <th data-col="abertura" class="text-nowrap">Abertura</th>
-                                <th data-col="acoes" class="text-center" style="width: 90px;">Ações</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            @forelse($recados as $recado)
-                                <tr class="clickable-row" data-href="{{ route('recados.show', $recado->id) }}">
-                                    <td data-col="id" class="fw-semibold">#{{ $recado->id }}</td>
-                                    <td data-col="nome" class="fw-semibold">{{ $recado->name }}</td>
-                                    <td data-col="contacto">{{ $recado->contact_client }}</td>
-                                    <td data-col="matricula">{{ $recado->plate ?? '—' }}</td>
-
-                                    {{-- ✅ NOVAS COLUNAS (puxando relações/campos) --}}
-                                    
-
-                                    <td data-col="chefia" class="small">
-                                        {{ $recado->chefia->name ?? '—' }}
-                                    </td>
-
-                                    <td data-col="departamento" class="small">
-                                        {{ $recado->departamento->name ?? '—' }}
-                                    </td>
-
-                                    <td data-col="origem" class="small">
-                                        {{ $recado->origem->name ?? '—' }}
-                                    </td>
-
-                                    <td data-col="sla" class="small">
-                                        {{ $recado->sla->name ?? '—' }}
-                                    </td>
-
-                                    <td data-col="operador" class="small text-truncate" style="max-width: 220px;">
-                                        <span title="{{ $recado->operator_email ?? '' }}">
-                                            {{ $recado->operator_email ?? '—' }}
-                                        </span>
-                                    </td>
-
-                                    {{-- Destinatários --}}
-                                    <td data-col="destinatarios" class="small">
-                                        @php
-                                            $destinatarios = collect();
-                                            if($recado->destinatarios->count()) {
-                                                $destinatarios = $destinatarios->merge($recado->destinatarios->pluck('name'));
-                                            }
-                                            if($recado->grupos->count()) {
-                                                $destinatarios = $destinatarios->merge($recado->grupos->pluck('name'));
-                                            }
-                                            if($recado->guestTokens->count()) {
-                                                $destinatarios = $destinatarios->merge($recado->guestTokens->pluck('email'));
-                                            }
-                                            $destinatarios = $destinatarios->unique();
-                                        @endphp
-                                        {!! $destinatarios->implode('<br>') !!}
-                                    </td>
-
-                                    {{-- Estado --}}
-                                    <td data-col="estado">
-                                        @php
-                                            $estadoNome = strtolower($recado->estado->name ?? '');
-                                            $badgeEstado = match($estadoNome) {
-                                                'novo' => 'bg-info text-white',
-                                                'pendente' => 'bg-warning text-dark',
-                                                'tratado' => 'bg-purple text-white',
-                                                default => 'bg-secondary text-white'
-                                            };
-                                        @endphp
-                                        <span class="badge rounded-pill {{ $badgeEstado }}">
-                                            {{ $estadoNome ? ucfirst($estadoNome) : '—' }}
-                                        </span>
-                                    </td>
-
-                                    {{-- Tipo --}}
-                                    <td data-col="tipo">
-                                        @php
-                                            $tipoNome = strtolower($recado->tipoFormulario->name ?? '');
-                                            $badgeTipo = match($tipoNome) {
-                                                'central' => 'bg-primary text-white',
-                                                'call center' => 'bg-success text-white',
-                                                default => 'bg-secondary text-white'
-                                            };
-                                        @endphp
-                                        <span class="badge rounded-pill {{ $badgeTipo }}">
-                                            {{ $tipoNome ? ucfirst($tipoNome) : '—' }}
-                                        </span>
-                                    </td>
-
-                                    <td data-col="abertura" class="text-nowrap">
-                                        {{-- ✅ SEM created_at: usar abertura --}}
-                                        {{ $recado->abertura ? \Carbon\Carbon::parse($recado->abertura)->format('d/m/Y H:i') : '—' }}
-                                    </td>
-
-                                    <td data-col="acoes" class="text-center" onclick="event.stopPropagation();">
-                                        <div class="dropdown">
-                                            <button
-                                                class="btn btn-sm btn-light border"
-                                                type="button"
-                                                data-bs-toggle="dropdown"
-                                                aria-expanded="false"
-                                                onclick="event.stopPropagation();"
-                                            >
-                                                <i class="bi bi-three-dots-vertical"></i>
-                                            </button>
-
-                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('recados.edit', $recado->id) }}">
-                                                        ✏️ Editar
-                                                    </a>
-                                                </li>
-
-                                                @if(optional(auth()->user()->cargo)->name === 'admin')
-                                                    <li><hr class="dropdown-divider"></li>
-
-                                                    <li>
-                                                        <form action="{{ route('recados.destroy', $recado->id) }}" method="POST"
-                                                              onsubmit="return confirm('Tem a certeza que deseja eliminar este recado?')">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="dropdown-item text-danger">
-                                                                🗑️ Apagar
-                                                            </button>
-                                                        </form>
-                                                    </li>
-                                                @endif
-                                            </ul>
-                                        </div>
-                                    </td>
-
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="15" class="text-center text-muted py-4">
-                                        <div class="d-flex flex-column align-items-center gap-2">
-                                            <i class="bi bi-inbox fs-2"></i>
-                                            <div>Nenhum recado encontrado.</div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-
-                    <div class="d-flex justify-content-center mt-4">
-                        {{ $recados->appends(request()->query())->links() }}
-                    </div>
-
-                </div>
+            <div class="d-flex justify-content-center mt-4">
+                {{ $recados->appends(request()->query())->links() }}
             </div>
 
         </div>
@@ -530,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         colsMenu.innerHTML = '';
 
         colDefs.forEach(c => {
-            // ✅ impedir esconder "Ações" (para nunca perder o menu)
+            // ✅ impedir esconder "Ações"
             if (c.key === 'acoes') return;
 
             const id = `col_${c.key}`;
