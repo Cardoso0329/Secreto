@@ -62,50 +62,75 @@
                     @endif
 
                     {{-- Avisos em fila para envio por email --}}
-                    @if($avisos->count())
-                        <div class="mt-4">
-                            <h5 class="fw-semibold mb-2">📣 Enviar Aviso</h5>
+@if($avisos->count())
+    <div class="mt-4">
+        <h5 class="fw-semibold mb-2">📣 Avisos</h5>
 
-                            <div class="d-flex flex-wrap gap-2">
-                                @foreach($avisos as $aviso)
-                                    @php
-                                        $enviado = in_array($aviso->id, $avisosEnviadosIds);
-                                    @endphp
+        @php
+            $podeEnviarAvisos =
+                optional(auth()->user()->cargo)->name === 'admin'
+                || auth()->user()->grupos->contains('name', 'Telefonistas');
+        @endphp
 
-                                    @if($enviado)
-                                        {{-- ✅ Já enviado: botão NÃO editável --}}
-                                        <button type="button" class="btn btn-secondary btn-sm" disabled
-                                                title="Aviso já enviado">
-                                            {{ $aviso->name }} ✅
-                                        </button>
-                                    @else
-                                        {{-- ✅ Ainda não enviado: form REAL fica escondido, e o botão só abre o modal --}}
-                                        <form action="{{ route('recados.enviarAviso', $recado) }}"
-                                              method="POST"
-                                              class="m-0 aviso-form"
-                                              id="avisoForm{{ $aviso->id }}">
-                                            @csrf
-                                            <input type="hidden" name="aviso_id" value="{{ $aviso->id }}">
+        <div class="d-flex flex-wrap gap-2">
 
-                                            {{-- Botão que abre o modal (não submete já) --}}
-                                            <button type="button"
-                                                    class="btn btn-outline-primary btn-sm btn-aviso-confirm"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#confirmAvisoModal"
-                                                    data-form-id="avisoForm{{ $aviso->id }}"
-                                                    data-aviso-nome="{{ $aviso->name }}">
-                                                {{ $aviso->name }}
-                                            </button>
-                                        </form>
-                                    @endif
-                                @endforeach
-                            </div>
+            @foreach($avisos as $aviso)
+                @php
+                    $enviado = in_array($aviso->id, $avisosEnviadosIds);
+                @endphp
 
-                            <div class="small text-muted mt-2">
-                                Ao clicar num aviso vai aparecer uma confirmação antes de enviar.
-                            </div>
-                        </div>
+                {{-- ✅ ADMIN OU TELEFONISTA --}}
+                @if($podeEnviarAvisos)
+
+                    @if($enviado)
+                        {{-- Já enviado --}}
+                        <button type="button"
+                                class="btn btn-secondary btn-sm"
+                                disabled
+                                title="Aviso já enviado">
+                            {{ $aviso->name }} ✅
+                        </button>
+                    @else
+                        {{-- Pode enviar --}}
+                        <form action="{{ route('recados.enviarAviso', $recado) }}"
+                              method="POST"
+                              class="m-0 aviso-form"
+                              id="avisoForm{{ $aviso->id }}">
+                            @csrf
+                            <input type="hidden" name="aviso_id" value="{{ $aviso->id }}">
+
+                            <button type="button"
+                                    class="btn btn-outline-primary btn-sm btn-aviso-confirm"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#confirmAvisoModal"
+                                    data-form-id="avisoForm{{ $aviso->id }}"
+                                    data-aviso-nome="{{ $aviso->name }}">
+                                {{ $aviso->name }}
+                            </button>
+                        </form>
                     @endif
+
+                {{-- ❌ UTILIZADOR NORMAL --}}
+                @else
+                    @if($enviado)
+                        {{-- Mostra apenas aviso enviado (estático) --}}
+                        <span class="badge bg-secondary px-3 py-2">
+                            {{ $aviso->name }}
+                        </span>
+                    @endif
+                @endif
+
+            @endforeach
+        </div>
+
+        @if($podeEnviarAvisos)
+            <div class="small text-muted mt-2">
+                Ao clicar num aviso vai aparecer uma confirmação antes de enviar.
+            </div>
+        @endif
+    </div>
+@endif
+
 
                     {{-- Estado editável --}}
                     <hr>
