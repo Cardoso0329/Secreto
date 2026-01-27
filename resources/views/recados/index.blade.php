@@ -295,7 +295,13 @@
 
                         <th data-col="destinatarios">Destinatários</th>
                         <th data-col="estado">Estado</th>
+
+                        {{-- ✅ NOVO: Tipo (tipo_id -> tabela tipos) --}}
+                        <th data-col="tipo_recado">Tipo</th>
+
+                        {{-- Já tinhas: TipoFormulário --}}
                         <th data-col="tipo">TipoFormulário</th>
+
                         <th data-col="abertura" class="text-nowrap">Abertura</th>
                         <th data-col="acoes" class="text-center" style="width: 90px;">Ações</th>
                     </tr>
@@ -365,18 +371,31 @@
                                 </span>
                             </td>
 
-                            {{-- Tipo --}}
+                            {{-- ✅ NOVO: Tipo (tabela tipos) --}}
+                            <td data-col="tipo_recado" class="small">
+                                @php
+                                    $tipoRecadoNome = strtolower($recado->tipo->name ?? '');
+                                    $badgeTipoRecado = match($tipoRecadoNome) {
+                                        default => 'bg-dark text-white'
+                                    };
+                                @endphp
+                                <span class="badge rounded-pill {{ $badgeTipoRecado }}">
+                                    {{ $recado->tipo->name ?? '—' }}
+                                </span>
+                            </td>
+
+                            {{-- TipoFormulário --}}
                             <td data-col="tipo">
                                 @php
-                                    $tipoNome = strtolower($recado->tipoFormulario->name ?? '');
-                                    $badgeTipo = match($tipoNome) {
+                                    $tipoFormularioNome = strtolower($recado->tipoFormulario->name ?? '');
+                                    $badgeTipoFormulario = match($tipoFormularioNome) {
                                         'central' => 'bg-primary text-white',
                                         'call center' => 'bg-success text-white',
                                         default => 'bg-secondary text-white'
                                     };
                                 @endphp
-                                <span class="badge rounded-pill {{ $badgeTipo }}">
-                                    {{ $tipoNome ? ucfirst($tipoNome) : '—' }}
+                                <span class="badge rounded-pill {{ $badgeTipoFormulario }}">
+                                    {{ $tipoFormularioNome ? ucfirst($tipoFormularioNome) : '—' }}
                                 </span>
                             </td>
 
@@ -424,7 +443,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="15" class="text-center text-muted py-4">
+                            <td colspan="16" class="text-center text-muted py-4">
                                 <div class="d-flex flex-column align-items-center gap-2">
                                     <i class="bi bi-inbox fs-2"></i>
                                     <div>Nenhum recado encontrado.</div>
