@@ -89,11 +89,10 @@ class RecadoController extends Controller
     /* ================= QUERY BASE ================= */
     $recados = Recado::with([
         'setor','origem','departamento','chefia','destinatarios','estado','sla',
-        'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
+        'tipo','aviso','avisosEnviados','tipoFormulario','grupos','guestTokens','campanha'
     ]);
 
     /* ================= DETETAR FILTROS MANUAIS ================= */
-    // ✅ adicionados date_from/date_to
     $manualFields = ['id','contact_client','plate','estado_id','tipo_formulario_id','date_from','date_to'];
 
     $temFiltrosManuais =
@@ -195,7 +194,6 @@ class RecadoController extends Controller
     }
 
     /* ================= ORDENAÇÃO (com whitelist) ================= */
-    // ✅ removi created_at
     $allowedSort = ['id','contact_client','plate','estado_id','tipo_formulario_id','abertura','termino'];
     $sortBy  = $request->input('sort_by', 'id');
     $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';

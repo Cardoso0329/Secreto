@@ -95,11 +95,13 @@ public function chefia()
     return $this->belongsTo(\App\Models\Chefia::class, 'chefia_id');
 }
 
+
 public function avisosEnviados()
 {
-    return $this->belongsToMany(Aviso::class, 'recado_aviso')->withTimestamps();
+    return $this->belongsToMany(Aviso::class, 'recado_aviso')
+        ->withPivot('created_at')
+        ->orderBy('recado_aviso.created_at', 'asc');
 }
-
 
 
 

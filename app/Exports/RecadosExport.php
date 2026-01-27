@@ -28,13 +28,14 @@ class RecadosExport implements FromCollection, WithHeadings
 
             return [
                 'ID'                 => $recado->id,
-                'Cliente'            => $recado->contact_client,
+                'Nome'               => $recado->name,
+                'Contacto'            =>$recado->contact_client,
                 'Matrícula'          => $recado->plate,
                 'Email Operador'     => $recado->operator_email,
                 'Estado'             => $recado->estado->name ?? '',
                 'Tipo Formulário'    => $recado->tipoFormulario->name ?? '',
                 'SLA'                => $recado->sla->name ?? '',
-                'Setor'              => $recado->setor->name ?? '',
+                'Chefia'             => $recado->chefia->name ?? '',
                 'Departamento'       => $recado->departamento->name ?? '',
                 'Origem'             => $recado->origem->name ?? '',
                 'Aviso'              => $recado->aviso->name ?? '',
@@ -54,13 +55,14 @@ class RecadosExport implements FromCollection, WithHeadings
     {
         return [
             'ID',
-            'Cliente',
+            'Nome',
+            'Contacto',
             'Matrícula',
             'Email Operador',
             'Estado',
             'Tipo Formulário',
             'SLA',
-            'Setor',
+            'Chefia',
             'Departamento',
             'Origem',
             'Aviso',

@@ -119,6 +119,9 @@
             </div>
         @endif
 
+                <p><span class="label">Mensagem:</span><br><span class="value">{{ $recado->mensagem }}</span></p>
+
+
         <div class="footer">
             Este é um email automático enviado pelo <strong>Sistema Secreto</strong>.<br>
             Por favor, não responda a este email.

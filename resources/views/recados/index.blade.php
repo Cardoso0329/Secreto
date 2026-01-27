@@ -294,12 +294,16 @@
                         <th data-col="operador">Email do Operador</th>
 
                         <th data-col="destinatarios">Destinatários</th>
+
+                        {{-- ✅ Aviso estático do recado (aviso_id) --}}
+                        <th data-col="aviso">Aviso</th>
+
                         <th data-col="estado">Estado</th>
 
-                        {{-- ✅ NOVO: Tipo (tipo_id -> tabela tipos) --}}
+                        {{-- ✅ Tipo (tipo_id -> tabela tipos) --}}
                         <th data-col="tipo_recado">Tipo</th>
 
-                        {{-- Já tinhas: TipoFormulário --}}
+                        {{-- TipoFormulário --}}
                         <th data-col="tipo">TipoFormulário</th>
 
                         <th data-col="abertura" class="text-nowrap">Abertura</th>
@@ -341,6 +345,7 @@
                             <td data-col="destinatarios" class="small">
                                 @php
                                     $destinatarios = collect();
+
                                     if($recado->destinatarios->count()) {
                                         $destinatarios = $destinatarios->merge($recado->destinatarios->pluck('name'));
                                     }
@@ -350,10 +355,35 @@
                                     if($recado->guestTokens->count()) {
                                         $destinatarios = $destinatarios->merge($recado->guestTokens->pluck('email'));
                                     }
+
                                     $destinatarios = $destinatarios->unique();
                                 @endphp
                                 {!! $destinatarios->implode('<br>') !!}
                             </td>
+
+                            {{-- ✅ Aviso (último enviado) --}}
+<td data-col="aviso" class="small">
+    @php
+        $ultimoAviso = $recado->avisosEnviados->last()
+            ?? $recado->aviso
+            ?? null;
+
+        $textoAviso =
+            $ultimoAviso->titulo
+            ?? $ultimoAviso->name
+            ?? $ultimoAviso->assunto
+            ?? null;
+    @endphp
+
+    @if($textoAviso)
+        <span class="badge rounded-pill bg-secondary text-white">
+            {{ \Illuminate\Support\Str::limit($textoAviso, 40) }}
+        </span>
+    @else
+        —
+    @endif
+</td>
+
 
                             {{-- Estado --}}
                             <td data-col="estado">
@@ -371,15 +401,9 @@
                                 </span>
                             </td>
 
-                            {{-- ✅ NOVO: Tipo (tabela tipos) --}}
+                            {{-- Tipo (tabela tipos) --}}
                             <td data-col="tipo_recado" class="small">
-                                @php
-                                    $tipoRecadoNome = strtolower($recado->tipo->name ?? '');
-                                    $badgeTipoRecado = match($tipoRecadoNome) {
-                                        default => 'bg-dark text-white'
-                                    };
-                                @endphp
-                                <span class="badge rounded-pill {{ $badgeTipoRecado }}">
+                                <span class="badge rounded-pill bg-dark text-white">
                                     {{ $recado->tipo->name ?? '—' }}
                                 </span>
                             </td>
@@ -443,6 +467,7 @@
                         </tr>
                     @empty
                         <tr>
+                            {{-- ✅ 16 colunas --}}
                             <td colspan="16" class="text-center text-muted py-4">
                                 <div class="d-flex flex-column align-items-center gap-2">
                                     <i class="bi bi-inbox fs-2"></i>
