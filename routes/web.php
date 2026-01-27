@@ -128,6 +128,13 @@ Route::get('/recados/{id}', [RecadoController::class, 'show'])
 
 
 
+use App\Http\Controllers\EmailLogController;
+
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/email-logs', [EmailLogController::class, 'index'])->name('email_logs.index');
+    Route::get('/email-logs/{emailLog}', [EmailLogController::class, 'show'])->name('email_logs.show');
+});
 
 
        
