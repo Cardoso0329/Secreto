@@ -197,16 +197,15 @@
                             </button>
 
                             {{-- ✅ Exporta já com TODOS os filtros + intervalo --}}
-@if(
-    optional(auth()->user()->cargo)->name === 'admin'
-    || auth()->user()->grupos->contains('name', 'Telefonistas')
-)
-    <a href="{{ route('configuracoes.recados.export.filtered', request()->query()) }}"
-       class="btn btn-success">
-        <i class="bi bi-download me-1"></i> Exportar Excel
-    </a>
-@endif
-
+                            @if(
+                                optional(auth()->user()->cargo)->name === 'admin'
+                                || auth()->user()->grupos->contains('name', 'Telefonistas')
+                            )
+                                <a href="{{ route('configuracoes.recados.export.filtered', request()->query()) }}"
+                                   class="btn btn-success">
+                                    <i class="bi bi-download me-1"></i> Exportar Excel
+                                </a>
+                            @endif
 
                             <a href="{{ route('recados.index') }}"
                                class="btn btn-outline-secondary ms-auto">
@@ -228,8 +227,40 @@
                         <i class="bi bi-table me-1"></i> Lista
                     </div>
 
-                    <div class="text-muted small">
-                        Página {{ $recados->currentPage() }} de {{ $recados->lastPage() }}
+                    {{-- ✅ COLUNAS VISÍVEIS (frontend) + paginação --}}
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light border dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-columns-gap me-1"></i> Colunas
+                            </button>
+
+                            <div class="dropdown-menu dropdown-menu-end p-3 shadow" style="min-width: 240px;">
+                                <div class="fw-semibold mb-2">Mostrar colunas</div>
+
+                                <div class="d-grid gap-2" id="colsMenu">
+                                    {{-- checkboxes gerados por JS --}}
+                                </div>
+
+                                <hr class="my-3">
+
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary w-50" id="colsReset">
+                                        Reset
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-primary w-50" id="colsAll">
+                                        Mostrar tudo
+                                    </button>
+                                </div>
+
+                                <div class="small text-muted mt-2">
+                                    A escolha fica guardada neste browser.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-muted small">
+                            Página {{ $recados->currentPage() }} de {{ $recados->lastPage() }}
+                        </div>
                     </div>
                 </div>
 
@@ -238,7 +269,8 @@
                         <thead class="table-light">
                             <tr>
                                 @php $sortDir = request('sort_dir', 'desc') === 'asc' ? 'desc' : 'asc'; @endphp
-                                <th style="width: 90px;">
+
+                                <th data-col="id" style="width: 90px;">
                                     <a href="{{ route('recados.index', array_merge(request()->query(), ['sort_by' => 'id', 'sort_dir' => $sortDir])) }}"
                                        class="text-decoration-none d-inline-flex align-items-center gap-1">
                                         ID
@@ -249,27 +281,62 @@
                                         @endif
                                     </a>
                                 </th>
-                                <th>Nome</th>
-                                <th>Contacto</th>
-                                <th>Matrícula</th>
-                                <th>Destinatários</th>
-                                <th>Estado</th>
-                                <th>Tipo</th>
-                                <th class="text-nowrap">Abertura</th>
-                                <th class="text-center" style="width: 90px;">Ações</th>
+
+                                <th data-col="nome">Nome</th>
+                                <th data-col="contacto">Contacto</th>
+                                <th data-col="matricula">Matrícula</th>
+
+                                {{-- ✅ NOVAS COLUNAS --}}
+                                
+                                <th data-col="chefia">Chefia</th>
+                                <th data-col="departamento">Departamento</th>
+                                <th data-col="origem">Origem</th>
+                                <th data-col="sla">SLA</th>
+                                <th data-col="operador">Email do Operador</th>
+
+                                <th data-col="destinatarios">Destinatários</th>
+                                <th data-col="estado">Estado</th>
+                                <th data-col="tipo">TipoFormulário</th>
+                                <th data-col="abertura" class="text-nowrap">Abertura</th>
+                                <th data-col="acoes" class="text-center" style="width: 90px;">Ações</th>
                             </tr>
                         </thead>
 
                         <tbody>
                             @forelse($recados as $recado)
                                 <tr class="clickable-row" data-href="{{ route('recados.show', $recado->id) }}">
-                                    <td class="fw-semibold">#{{ $recado->id }}</td>
-                                    <td class="fw-semibold">{{ $recado->name }}</td>
-                                    <td>{{ $recado->contact_client }}</td>
-                                    <td>{{ $recado->plate ?? '—' }}</td>
+                                    <td data-col="id" class="fw-semibold">#{{ $recado->id }}</td>
+                                    <td data-col="nome" class="fw-semibold">{{ $recado->name }}</td>
+                                    <td data-col="contacto">{{ $recado->contact_client }}</td>
+                                    <td data-col="matricula">{{ $recado->plate ?? '—' }}</td>
+
+                                    {{-- ✅ NOVAS COLUNAS (puxando relações/campos) --}}
+                                    
+
+                                    <td data-col="chefia" class="small">
+                                        {{ $recado->chefia->name ?? '—' }}
+                                    </td>
+
+                                    <td data-col="departamento" class="small">
+                                        {{ $recado->departamento->name ?? '—' }}
+                                    </td>
+
+                                    <td data-col="origem" class="small">
+                                        {{ $recado->origem->name ?? '—' }}
+                                    </td>
+
+                                    <td data-col="sla" class="small">
+                                        {{ $recado->sla->name ?? '—' }}
+                                    </td>
+
+                                    <td data-col="operador" class="small text-truncate" style="max-width: 220px;">
+                                        <span title="{{ $recado->operator_email ?? '' }}">
+                                            {{ $recado->operator_email ?? '—' }}
+                                        </span>
+                                    </td>
 
                                     {{-- Destinatários --}}
-                                    <td class="small">
+                                    <td data-col="destinatarios" class="small">
                                         @php
                                             $destinatarios = collect();
                                             if($recado->destinatarios->count()) {
@@ -287,7 +354,7 @@
                                     </td>
 
                                     {{-- Estado --}}
-                                    <td>
+                                    <td data-col="estado">
                                         @php
                                             $estadoNome = strtolower($recado->estado->name ?? '');
                                             $badgeEstado = match($estadoNome) {
@@ -303,7 +370,7 @@
                                     </td>
 
                                     {{-- Tipo --}}
-                                    <td>
+                                    <td data-col="tipo">
                                         @php
                                             $tipoNome = strtolower($recado->tipoFormulario->name ?? '');
                                             $badgeTipo = match($tipoNome) {
@@ -317,12 +384,12 @@
                                         </span>
                                     </td>
 
-                                    <td class="text-nowrap">
+                                    <td data-col="abertura" class="text-nowrap">
                                         {{-- ✅ SEM created_at: usar abertura --}}
                                         {{ $recado->abertura ? \Carbon\Carbon::parse($recado->abertura)->format('d/m/Y H:i') : '—' }}
                                     </td>
 
-                                    <td class="text-center" onclick="event.stopPropagation();">
+                                    <td data-col="acoes" class="text-center" onclick="event.stopPropagation();">
                                         <div class="dropdown">
                                             <button
                                                 class="btn btn-sm btn-light border"
@@ -362,7 +429,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" class="text-center text-muted py-4">
+                                    <td colspan="15" class="text-center text-muted py-4">
                                         <div class="d-flex flex-column align-items-center gap-2">
                                             <i class="bi bi-inbox fs-2"></i>
                                             <div>Nenhum recado encontrado.</div>
@@ -398,12 +465,117 @@
     .card-header { border-top-left-radius: 16px; border-top-right-radius: 16px; }
 
     .table > :not(caption) > * > * { padding-top: .85rem; padding-bottom: .85rem; }
+
+    /* ✅ esconder colunas (frontend only) */
+    .col-hidden { display: none !important; }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // clique na linha
     document.querySelectorAll('.clickable-row').forEach(row =>
         row.addEventListener('click', () => window.location.href = row.dataset.href)
     );
+
+    // ---- Colunas (frontend only) ----
+    const table = document.querySelector('table');
+    if (!table) return;
+
+    const storageKey = 'recados_cols_v1';
+    const colsMenu = document.getElementById('colsMenu');
+    const btnReset = document.getElementById('colsReset');
+    const btnAll = document.getElementById('colsAll');
+
+    // lista de colunas a partir do thead
+    const ths = Array.from(table.querySelectorAll('thead th[data-col]'));
+    const colDefs = ths.map(th => ({
+        key: th.dataset.col,
+        label: (th.innerText || th.textContent || th.dataset.col).trim()
+    }));
+
+    // default: tudo visível
+    const defaultState = Object.fromEntries(colDefs.map(c => [c.key, true]));
+
+    // ler estado guardado
+    let state;
+    try {
+        state = JSON.parse(localStorage.getItem(storageKey)) || defaultState;
+    } catch (e) {
+        state = defaultState;
+    }
+
+    // garantir que novas colunas entram como true
+    colDefs.forEach(c => {
+        if (typeof state[c.key] !== 'boolean') state[c.key] = true;
+    });
+
+    function applyState() {
+        colDefs.forEach(c => {
+            const visible = !!state[c.key];
+
+            // TH
+            table.querySelectorAll(`thead th[data-col="${c.key}"]`)
+                .forEach(el => el.classList.toggle('col-hidden', !visible));
+
+            // TD
+            table.querySelectorAll(`tbody td[data-col="${c.key}"]`)
+                .forEach(el => el.classList.toggle('col-hidden', !visible));
+        });
+
+        localStorage.setItem(storageKey, JSON.stringify(state));
+    }
+
+    function renderMenu() {
+        if (!colsMenu) return;
+        colsMenu.innerHTML = '';
+
+        colDefs.forEach(c => {
+            // ✅ impedir esconder "Ações" (para nunca perder o menu)
+            if (c.key === 'acoes') return;
+
+            const id = `col_${c.key}`;
+            const wrapper = document.createElement('label');
+            wrapper.className = 'form-check d-flex align-items-center gap-2 mb-0';
+
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.className = 'form-check-input';
+            input.id = id;
+            input.checked = !!state[c.key];
+
+            input.addEventListener('change', () => {
+                state[c.key] = input.checked;
+                applyState();
+            });
+
+            const span = document.createElement('span');
+            span.className = 'form-check-label';
+            span.textContent = c.label;
+
+            wrapper.appendChild(input);
+            wrapper.appendChild(span);
+            colsMenu.appendChild(wrapper);
+        });
+    }
+
+    // botões
+    if (btnReset) {
+        btnReset.addEventListener('click', () => {
+            state = { ...defaultState };
+            renderMenu();
+            applyState();
+        });
+    }
+
+    if (btnAll) {
+        btnAll.addEventListener('click', () => {
+            colDefs.forEach(c => state[c.key] = true);
+            renderMenu();
+            applyState();
+        });
+    }
+
+    renderMenu();
+    applyState();
 });
 </script>

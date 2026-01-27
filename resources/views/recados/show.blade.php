@@ -56,77 +56,62 @@
                     <p><strong>Chefia:</strong> {{ $recado->chefia->name ?? '—' }}</p>
                     <p><strong>Departamento:</strong> {{ $recado->departamento->name ?? '—' }}</p>
 
+                    {{-- ✅ Chefia (só mostra se existir) --}}
+                    @if($recado->chefia)
+                        <p><strong>Chefia:</strong> {{ $recado->chefia->name }}</p>
+                    @endif
 
                     {{-- Avisos em fila para envio por email --}}
-@if($avisos->count())
-    <div class="mt-4">
-        <h5 class="fw-semibold mb-2">📣 Avisos</h5>
+                    @if($avisos->count())
+                        <div class="mt-4">
+                            <h5 class="fw-semibold mb-2">📣 Avisos</h5>
 
-        @php
-            $podeEnviarAvisos =
-                optional(auth()->user()->cargo)->name === 'admin'
-                || auth()->user()->grupos->contains('name', 'Telefonistas');
-        @endphp
+                            @php
+                                $podeEnviarAvisos =
+                                    optional(auth()->user()->cargo)->name === 'admin'
+                                    || auth()->user()->grupos->contains('name', 'Telefonistas');
+                            @endphp
 
-        <div class="d-flex flex-wrap gap-2">
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach($avisos as $aviso)
+                                    @php
+                                        $enviado = in_array($aviso->id, $avisosEnviadosIds);
+                                    @endphp
 
-            @foreach($avisos as $aviso)
-                @php
-                    $enviado = in_array($aviso->id, $avisosEnviadosIds);
-                @endphp
+                                    @if($podeEnviarAvisos)
+                                        @if($enviado)
+                                            <button type="button" class="btn btn-secondary btn-sm" disabled title="Aviso já enviado">
+                                                {{ $aviso->name }} ✅
+                                            </button>
+                                        @else
+                                            <form action="{{ route('recados.enviarAviso', $recado) }}" method="POST" class="m-0 aviso-form" id="avisoForm{{ $aviso->id }}">
+                                                @csrf
+                                                <input type="hidden" name="aviso_id" value="{{ $aviso->id }}">
+                                                <button type="button"
+                                                        class="btn btn-outline-primary btn-sm btn-aviso-confirm"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#confirmAvisoModal"
+                                                        data-form-id="avisoForm{{ $aviso->id }}"
+                                                        data-aviso-nome="{{ $aviso->name }}">
+                                                    {{ $aviso->name }}
+                                                </button>
+                                            </form>
+                                        @endif
+                                    @else
+                                        @if($enviado)
+                                            <span class="badge bg-secondary px-3 py-2">{{ $aviso->name }}</span>
+                                        @endif
+                                    @endif
+                                @endforeach
+                            </div>
 
-                {{-- ✅ ADMIN OU TELEFONISTA --}}
-                @if($podeEnviarAvisos)
-
-                    @if($enviado)
-                        {{-- Já enviado --}}
-                        <button type="button"
-                                class="btn btn-secondary btn-sm"
-                                disabled
-                                title="Aviso já enviado">
-                            {{ $aviso->name }} ✅
-                        </button>
-                    @else
-                        {{-- Pode enviar --}}
-                        <form action="{{ route('recados.enviarAviso', $recado) }}"
-                              method="POST"
-                              class="m-0 aviso-form"
-                              id="avisoForm{{ $aviso->id }}">
-                            @csrf
-                            <input type="hidden" name="aviso_id" value="{{ $aviso->id }}">
-
-                            <button type="button"
-                                    class="btn btn-outline-primary btn-sm btn-aviso-confirm"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#confirmAvisoModal"
-                                    data-form-id="avisoForm{{ $aviso->id }}"
-                                    data-aviso-nome="{{ $aviso->name }}">
-                                {{ $aviso->name }}
-                            </button>
-                        </form>
+                            @if($podeEnviarAvisos)
+                                <div class="small text-muted mt-2">
+                                    Ao clicar num aviso vai aparecer uma confirmação antes de enviar.
+                                </div>
+                            @endif
+                        </div>
                     @endif
-
-                {{-- ❌ UTILIZADOR NORMAL --}}
-                @else
-                    @if($enviado)
-                        {{-- Mostra apenas aviso enviado (estático) --}}
-                        <span class="badge bg-secondary px-3 py-2">
-                            {{ $aviso->name }}
-                        </span>
-                    @endif
-                @endif
-
-            @endforeach
-        </div>
-
-        @if($podeEnviarAvisos)
-            <div class="small text-muted mt-2">
-                Ao clicar num aviso vai aparecer uma confirmação antes de enviar.
-            </div>
-        @endif
-    </div>
-@endif
-
 
                     {{-- Estado editável --}}
                     <hr>
@@ -179,11 +164,8 @@
                         <p><strong>Destinatários Livres:</strong> —</p>
                     @endif
 
-                    {{-- Campanhas --}}
                     <p><strong>Campanha:</strong> {{ $recado->campanha->name ?? '—' }}</p>
-
                     <p><strong>Assunto:</strong> {{ $recado->assunto ?? '—' }}</p>
-
                     <p><strong>Mensagem:</strong> {{ $recado->mensagem }}</p>
 
                     <p><strong>Ficheiro:</strong></p>
@@ -194,7 +176,6 @@
                             $imageExtensions = ['jpg','jpeg','png','gif','webp'];
                         @endphp
 
-                        {{-- Pré-visualização para imagens --}}
                         @if(in_array(strtolower($ext), $imageExtensions))
                             <div class="mb-2">
                                 <img src="{{ $fileUrl }}" alt="Pré-visualização" class="img-fluid rounded" style="max-height: 300px;">
@@ -207,7 +188,6 @@
                             <p class="text-muted">Pré-visualização não disponível para este tipo de ficheiro.</p>
                         @endif
 
-                        {{-- Botões de Ver e Download --}}
                         <div class="d-flex gap-2">
                             <a href="{{ $fileUrl }}" target="_blank" class="btn btn-outline-primary btn-sm">
                                 <i class="bi bi-eye"></i> Abrir
@@ -267,16 +247,17 @@
                         @endphp
 
                         <div class="d-flex mb-2 {{ $isMine ? 'justify-content-end' : 'justify-content-start' }}">
-                            <div class="px-3 py-2 rounded-3 small
-                                {{ $isMine ? 'bg-primary text-white' : 'bg-white border text-dark' }}"
-                                style="max-width: 75%;">
+                            <div class="px-3 py-2 rounded-3 small {{ $isMine ? 'bg-primary text-white' : 'bg-white border text-dark' }}"
+                                 style="max-width: 75%;">
                                 @if($c['data'] && $c['autor'])
                                     <div class="small {{ $isMine ? 'text-white-50' : 'text-muted' }}">
                                         {{ $c['data'] }} - {{ $c['autor'] }}
                                     </div>
-                                    <div>{{ $c['msg'] }}</div>
+
+                                    {{-- ✅ Renderiza HTML do editor --}}
+                                    <div class="comentario-html">{!! $c['msg'] !!}</div>
                                 @else
-                                    <div>{{ trim($c['raw']) }}</div>
+                                    <div style="white-space: pre-wrap;">{{ trim($c['raw']) }}</div>
                                 @endif
                             </div>
                         </div>
@@ -285,15 +266,45 @@
                     @endforelse
                 </div>
 
-                {{-- Novo comentário --}}
-                <form action="{{ route('recados.observacoes.update', $recado) }}" method="POST" class="d-flex gap-2">
+                {{-- Novo comentário (EDITOR) --}}
+                <form action="{{ route('recados.observacoes.update', $recado) }}" method="POST" id="comentarioForm">
                     @csrf
                     @method('PUT')
-                    <input type="text" name="comentario" class="form-control rounded-pill" placeholder="Escreve um comentário..." required>
-                    <button class="btn btn-primary rounded-pill d-flex align-items-center gap-2" type="submit">
-                        <i class="bi bi-send"></i> Enviar
-                    </button>
+
+                    {{-- Toolbar + editor --}}
+                    <div class="mb-2">
+                        <div id="quillToolbar" class="rounded-top border bg-white">
+                            <span class="ql-formats">
+                                <button class="ql-bold"></button>
+                                <button class="ql-italic"></button>
+                                <button class="ql-underline"></button>
+                            </span>
+                            <span class="ql-formats">
+                                <button class="ql-list" value="ordered"></button>
+                                <button class="ql-list" value="bullet"></button>
+                            </span>
+                            <span class="ql-formats">
+                                <button class="ql-link"></button>
+                                <button class="ql-clean"></button>
+                            </span>
+                        </div>
+
+                        <div id="quillEditor" class="border border-top-0 rounded-bottom bg-white" style="min-height: 90px;"></div>
+                    </div>
+
+                    {{-- Campo hidden que vai levar o HTML --}}
+                    <input type="hidden" name="comentario" id="comentarioHtml" required>
+
+                    <div class="d-flex justify-content-end">
+                        <button class="btn btn-primary rounded-pill d-flex align-items-center gap-2" type="submit">
+                            <i class="bi bi-send"></i> Enviar
+                        </button>
+                    </div>
                 </form>
+
+                <div class="small text-muted mt-2">
+                    Atalhos: <strong>Ctrl+B</strong> (negrito), <strong>Ctrl+I</strong> (itálico), listas pelo botão.
+                </div>
             </div>
         </div>
     </div>
@@ -327,9 +338,14 @@
   </div>
 </div>
 
-{{-- ✅ Script do modal --}}
+{{-- ✅ Quill (CDN) --}}
+<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+
+{{-- ✅ Scripts --}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // ===== Modal Avisos =====
     let formIdToSubmit = null;
 
     document.querySelectorAll('.btn-aviso-confirm').forEach(btn => {
@@ -345,17 +361,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (confirmBtn) {
         confirmBtn.addEventListener('click', function () {
             if (!formIdToSubmit) return;
-
             const form = document.getElementById(formIdToSubmit);
             if (!form) return;
-
-            // 🔒 evita duplo clique
             this.disabled = true;
             form.submit();
         });
     }
 
-    // reativa botão ao fechar modal
     const modalEl = document.getElementById('confirmAvisoModal');
     if (modalEl) {
         modalEl.addEventListener('hidden.bs.modal', function () {
@@ -366,6 +378,28 @@ document.addEventListener('DOMContentLoaded', function () {
             if (target) target.textContent = '—';
         });
     }
+
+    // ===== Quill Editor =====
+    const quill = new Quill('#quillEditor', {
+        theme: 'snow',
+        modules: { toolbar: '#quillToolbar' }
+    });
+
+    // Ao submeter: mete HTML no hidden input
+    const form = document.getElementById('comentarioForm');
+    form.addEventListener('submit', function (e) {
+        const html = quill.root.innerHTML.trim();
+
+        // impede enviar vazio (Quill manda "<p><br></p>")
+        const plain = quill.getText().trim();
+        if (!plain) {
+            e.preventDefault();
+            alert('Escreve um comentário antes de enviar.');
+            return;
+        }
+
+        document.getElementById('comentarioHtml').value = html;
+    });
 });
 </script>
 
