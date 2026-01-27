@@ -53,13 +53,9 @@
                     <p><strong>SLA:</strong> {{ $recado->sla->name ?? '—' }}</p>
                     <p><strong>Tipo:</strong> {{ $recado->tipo->name ?? '—' }}</p>
                     <p><strong>Origem:</strong> {{ $recado->origem->name ?? '—' }}</p>
-                    <p><strong>Setor:</strong> {{ $recado->setor->name ?? '—' }}</p>
+                    <p><strong>Chefia:</strong> {{ $recado->chefia->name ?? '—' }}</p>
                     <p><strong>Departamento:</strong> {{ $recado->departamento->name ?? '—' }}</p>
 
-                    {{-- ✅ Chefia (só mostra se existir) --}}
-                    @if($recado->chefia)
-                        <p><strong>Chefia:</strong> {{ $recado->chefia->name }}</p>
-                    @endif
 
                     {{-- Avisos em fila para envio por email --}}
 @if($avisos->count())
