@@ -1,132 +1,164 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-    <meta charset="UTF-8">
-    <title>Novo Recado</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f3f4f6;
-            margin: 0;
-            padding: 0;
-        }
-        .email-container {
-            max-width: 600px;
-            margin: 40px auto;
-            background-color: #ffffff;
-            padding: 30px;
-            border-radius: 12px;
-            text-align: left;
-            box-shadow: 0 0 10px rgba(0,0,0,0.05);
-        }
-        h1 {
-            color: #1d4ed8;
-            margin-bottom: 25px;
-            text-align: center;
-        }
-        p { margin: 8px 0; }
-        .label { font-weight: bold; color: #374151; }
-        .value { color: #111827; }
-        .button {
-            display: inline-block;
-            margin-top: 25px;
-            padding: 12px 22px;
-            background-color: #2563eb;
-            color: #ffffff;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .footer {
-            margin-top: 35px;
-            font-size: 12px;
-            color: #6b7280;
-            text-align: center;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Novo Recado</title>
 </head>
-<body>
-    <div class="email-container">
+<body style="margin:0;padding:0;background:#f8f9fa;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fa;padding:24px 0;">
+    <tr>
+      <td align="center">
 
-        <h1>📩 Novo Recado Criado</h1>
+        <!-- Container -->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0"
+               style="width:600px;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);">
+          <!-- Header -->
+          <tr>
+            <td style="padding:18px 22px;background:#0d6efd;color:#ffffff;">
+              <div style="font-size:18px;font-weight:700;line-height:1.2;">Novo Recado Criado</div>
+              <div style="font-size:12px;opacity:.9;margin-top:4px;">Registo automático do Sistema Secreto</div>
+            </td>
+          </tr>
 
-        <p>
-            <span class="label">ID:</span>
-            <span class="value">{{ $recado->id }}</span>
-        </p>
+          <!-- Body -->
+          <tr>
+            <td style="padding:18px 22px;">
 
-        <p>
-            <span class="label">Nome:</span>
-            <span class="value">{{ $recado->name }}</span>
-        </p>
+              <!-- Badge -->
+              <div style="margin-bottom:14px;">
+                <span style="display:inline-block;padding:6px 10px;border-radius:999px;background:#e7f1ff;color:#0d6efd;border:1px solid #cfe2ff;font-size:12px;font-weight:700;">
+                  Recado #{{ $recado->id }}
+                </span>
+                <span style="display:inline-block;margin-left:8px;color:#6c757d;font-size:12px;">
+                  {{ optional($recado->created_at)->format('d/m/Y H:i') }}
+                </span>
+              </div>
 
-        <p>
-            <span class="label">Contacto:</span>
-            <span class="value">{{ $recado->contact_client }}</span>
-        </p>
+              <!-- Section: Dados -->
+              <div style="font-size:12px;font-weight:700;color:#212529;text-transform:uppercase;letter-spacing:.4px;margin:14px 0 8px;">
+                Dados do recado
+              </div>
 
-        {{-- ✅ Matrícula correta (no teu modelo é "plate") --}}
-        @if(!empty($recado->plate))
-            <p>
-                <span class="label">Matrícula:</span>
-                <span class="value">{{ $recado->plate }}</span>
-            </p>
-        @endif
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                <tr>
+                  <td style="padding:8px 0;color:#6c757d;font-size:13px;width:160px;font-weight:700;">Nome</td>
+                  <td style="padding:8px 0;color:#212529;font-size:13px;">{{ $recado->name }}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;color:#6c757d;font-size:13px;width:160px;font-weight:700;">Contacto</td>
+                  <td style="padding:8px 0;color:#212529;font-size:13px;">{{ $recado->contact_client }}</td>
+                </tr>
 
-        {{-- ✅ Email do Operador --}}
-        @if(!empty($recado->operator_email))
-            <p>
-                <span class="label">Email do Operador:</span>
-                <span class="value">{{ $recado->operator_email }}</span>
-            </p>
-        @endif
+                @if(!empty($recado->plate))
+                  <tr>
+                    <td style="padding:8px 0;color:#6c757d;font-size:13px;width:160px;font-weight:700;">Matrícula</td>
+                    <td style="padding:8px 0;color:#212529;font-size:13px;">{{ $recado->plate }}</td>
+                  </tr>
+                @endif
 
-        {{-- Assunto --}}
-        @if(!empty($recado->assunto))
-            <p>
-                <span class="label">Assunto:</span><br>
-                <span class="value">{{ $recado->assunto }}</span>
-            </p>
-        @endif
+                @if(!empty($recado->operator_email))
+                  <tr>
+                    <td style="padding:8px 0;color:#6c757d;font-size:13px;width:160px;font-weight:700;">Email operador</td>
+                    <td style="padding:8px 0;color:#212529;font-size:13px;">{{ $recado->operator_email }}</td>
+                  </tr>
+                @endif
+              </table>
 
-        {{-- ✅ Tipo corrigido/seguro --}}
-        @if($recado->tipo)
-            <p>
-                <span class="label">Tipo:</span>
-                <span class="value">{{ $recado->tipo->name }}</span>
-            </p>
-        @endif
+              <!-- Section: Classificação -->
+              <div style="height:1px;background:#e9ecef;margin:14px 0;"></div>
+              <div style="font-size:12px;font-weight:700;color:#212529;text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px;">
+                Classificação
+              </div>
 
-        @if($recado->sla)
-            <p>
-                <span class="label">SLA:</span>
-                <span class="value">{{ $recado->sla->name }}</span>
-            </p>
-        @endif
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                @if($recado->tipo)
+                  <tr>
+                    <td style="padding:8px 0;color:#6c757d;font-size:13px;width:160px;font-weight:700;">Tipo</td>
+                    <td style="padding:8px 0;color:#212529;font-size:13px;">{{ $recado->tipo->name }}</td>
+                  </tr>
+                @endif
+                @if($recado->sla)
+                  <tr>
+                    <td style="padding:8px 0;color:#6c757d;font-size:13px;width:160px;font-weight:700;">SLA</td>
+                    <td style="padding:8px 0;color:#212529;font-size:13px;">{{ $recado->sla->name }}</td>
+                  </tr>
+                @endif
+              </table>
 
-        <p>
-            <span class="label">Data:</span>
-            <span class="value">{{ optional($recado->created_at)->format('d/m/Y H:i') }}</span>
-        </p>
+              <!-- Assunto -->
+              @if(!empty($recado->assunto))
+                <div style="height:1px;background:#e9ecef;margin:14px 0;"></div>
+                <div style="font-size:12px;font-weight:700;color:#212529;text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px;">
+                  Assunto
+                </div>
+                <div style="background:#f8f9fa;border:1px solid #e9ecef;border-radius:10px;padding:12px 14px;color:#212529;font-size:13px;line-height:1.5;">
+                  {{ $recado->assunto }}
+                </div>
+              @endif
 
-        @if(!empty($guestUrl))
-            <div style="text-align:center;">
-                <a href="{{ $guestUrl }}" class="button">🔍 Ver Recado</a>
-            </div>
-        @else
-            <div style="text-align:center;">
-                <a href="{{ route('recados.show', $recado->id) }}" class="button">🔍 Ver Recado</a>
-            </div>
-        @endif
+              <!-- Destinatários -->
+              @php
+                $destinatarios = collect();
 
-                <p><span class="label">Mensagem:</span><br><span class="value">{{ $recado->mensagem }}</span></p>
+                if ($recado->departamento) {
+                  $destinatarios->push('Para: ' . $recado->departamento->name);
+                }
 
+                if ($recado->chefia) {
+                  $destinatarios->push('Cc: ' . $recado->chefia->name);
+                }
 
-        <div class="footer">
-            Este é um email automático enviado pelo <strong>Sistema Secreto</strong>.<br>
-            Por favor, não responda a este email.
-        </div>
+                if ($recado->destinatarios && $recado->destinatarios->count()) {
+                  foreach ($recado->destinatarios as $user) {
+                    $destinatarios->push('Utilizador: ' . $user->name);
+                  }
+                }
+              @endphp
 
-    </div>
+              @if($destinatarios->count())
+                <div style="height:1px;background:#e9ecef;margin:14px 0;"></div>
+                <div style="font-size:12px;font-weight:700;color:#212529;text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px;">
+                  Destinatário(s)
+                </div>
+                <div style="background:#f8f9fa;border:1px solid #e9ecef;border-radius:10px;padding:12px 14px;color:#212529;font-size:13px;line-height:1.6;">
+                  {!! implode('<br>', $destinatarios->toArray()) !!}
+                </div>
+              @endif
+
+              <!-- Button -->
+              <div style="text-align:center;margin:18px 0 6px;">
+                @if(!empty($guestUrl))
+                  <a href="{{ $guestUrl }}"
+                     style="display:inline-block;background:#0d6efd;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700;font-size:14px;">
+                    Ver Recado
+                  </a>
+                @else
+                  <a href="{{ route('recados.show', $recado->id) }}"
+                     style="display:inline-block;background:#0d6efd;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700;font-size:14px;">
+                    Ver Recado
+                  </a>
+                @endif
+              </div>
+
+              <div style="color:#6c757d;font-size:12px;text-align:center;margin-top:12px;">
+                Se não reconhece este pedido, ignore esta mensagem.
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:14px 22px;background:#ffffff;border-top:1px solid #e9ecef;">
+              <div style="font-size:12px;color:#6c757d;text-align:center;line-height:1.4;">
+                Este é um email automático enviado pelo <strong>Sistema Secreto</strong>.<br>
+                Por favor, não responda a este email.
+              </div>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
