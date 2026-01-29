@@ -12,11 +12,16 @@
         <!-- Container -->
         <table role="presentation" width="600" cellpadding="0" cellspacing="0"
                style="width:600px;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);">
+
           <!-- Header -->
           <tr>
             <td style="padding:18px 22px;background:#0d6efd;color:#ffffff;">
-              <div style="font-size:18px;font-weight:700;line-height:1.2;">Novo Recado Criado</div>
-              <div style="font-size:12px;opacity:.9;margin-top:4px;">Registo automático do Sistema Secreto</div>
+              <div style="font-size:18px;font-weight:700;line-height:1.2;">
+                Novo Recado Criado
+              </div>
+              <div style="font-size:12px;opacity:.9;margin-top:4px;">
+                Registo automático do Sistema Secreto
+              </div>
             </td>
           </tr>
 
@@ -34,7 +39,7 @@
                 </span>
               </div>
 
-              <!-- Section: Dados -->
+              <!-- Dados -->
               <div style="font-size:12px;font-weight:700;color:#212529;text-transform:uppercase;letter-spacing:.4px;margin:14px 0 8px;">
                 Dados do recado
               </div>
@@ -64,7 +69,7 @@
                 @endif
               </table>
 
-              <!-- Section: Classificação -->
+              <!-- Classificação -->
               <div style="height:1px;background:#e9ecef;margin:14px 0;"></div>
               <div style="font-size:12px;font-weight:700;color:#212529;text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px;">
                 Classificação
@@ -104,14 +109,14 @@
                   $destinatarios->push('Para: ' . $recado->departamento->name);
                 }
 
-                if ($recado->chefia) {
-                  $destinatarios->push('Cc: ' . $recado->chefia->name);
-                }
-
                 if ($recado->destinatarios && $recado->destinatarios->count()) {
                   foreach ($recado->destinatarios as $user) {
                     $destinatarios->push('Utilizador: ' . $user->name);
                   }
+                }
+
+                if ($recado->chefia) {
+                  $destinatarios->push('Cc: ' . $recado->chefia->name);
                 }
               @endphp
 
@@ -125,7 +130,18 @@
                 </div>
               @endif
 
-              <!-- Button -->
+              <!-- ✅ Mensagem (agora DEPOIS dos destinatários) -->
+              @if(!empty($recado->mensagem))
+                <div style="height:1px;background:#e9ecef;margin:14px 0;"></div>
+                <div style="font-size:12px;font-weight:700;color:#212529;text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px;">
+                  Mensagem
+                </div>
+                <div style="background:#f8f9fa;border:1px solid #e9ecef;border-radius:10px;padding:12px 14px;color:#212529;font-size:13px;line-height:1.6;">
+                  {!! nl2br(e($recado->mensagem)) !!}
+                </div>
+              @endif
+
+              <!-- Botão -->
               <div style="text-align:center;margin:18px 0 6px;">
                 @if(!empty($guestUrl))
                   <a href="{{ $guestUrl }}"
@@ -143,6 +159,7 @@
               <div style="color:#6c757d;font-size:12px;text-align:center;margin-top:12px;">
                 Se não reconhece este pedido, ignore esta mensagem.
               </div>
+
             </td>
           </tr>
 
@@ -155,6 +172,7 @@
               </div>
             </td>
           </tr>
+
         </table>
 
       </td>

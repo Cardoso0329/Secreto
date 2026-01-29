@@ -10,6 +10,7 @@ use App\Models\{
 };
 use App\Exports\RecadosExport;
 use App\Queries\RecadoQuery;
+use Illuminate\Support\Facades\Mail;
 use App\Services\EmailLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -316,84 +317,169 @@ class RecadoController extends Controller
         ));
     }
 
-    public function update(Request $request, Recado $recado)
-    {
-        $rules = [
-            'name' => 'required|string|max:255',
-            'contact_client' => 'required|string|max:255',
-            'plate' => 'nullable|string|max:255',
-            'mensagem' => 'required|string',
-            'observacoes' => 'nullable|string',
+    
 
-            'estado_id' => 'nullable|exists:estados,id',
-            'tipo_formulario_id' => 'nullable|exists:tipo_formularios,id',
-            'sla_id' => 'nullable|exists:slas,id',
-            'tipo_id' => 'nullable|exists:tipos,id',
-            'origem_id' => 'nullable|exists:origens,id',
-            'setor_id' => 'nullable|exists:setores,id',
-            'departamento_id' => 'nullable|exists:departamentos,id',
-            'aviso_id' => 'nullable|exists:avisos,id',
-            'campanha_id' => 'nullable|exists:campanhas,id',
-            'chefia_id' => 'nullable|exists:chefias,id',
+public function update(Request $request, Recado $recado, EmailLogger $emailLogger)
 
-            'abertura' => 'nullable|date',
-            'termino' => 'nullable|date',
-            'ficheiro' => 'nullable|file',
+{
+    // ================== CAPTURAR ESTADO ANTES (para comparar) ==================
+    $oldUserIds   = $recado->destinatariosUsers()->pluck('users.id')->map(fn($v)=>(int)$v)->values();
+    $oldGroupIds  = $recado->grupos()->pluck('grupos.id')->map(fn($v)=>(int)$v)->values();
+    $oldFreeEmails = $recado->guestTokens()->pluck('email')
+        ->map(fn($e) => trim(mb_strtolower((string)$e)))
+        ->values();
 
-            'destinatarios_users' => 'nullable|array',
-            'destinatarios_users.*' => 'exists:users,id',
+    // ================== VALIDAR ==================
+    $rules = [
+        'name' => 'required|string|max:255',
+        'contact_client' => 'required|string|max:255',
+        'plate' => 'nullable|string|max:255',
+        'mensagem' => 'required|string',
+        'observacoes' => 'nullable|string',
 
-            'destinatarios_grupos' => 'nullable|array',
-            'destinatarios_grupos.*' => 'exists:grupos,id',
+        'estado_id' => 'nullable|exists:estados,id',
+        'tipo_formulario_id' => 'nullable|exists:tipo_formularios,id',
+        'sla_id' => 'nullable|exists:slas,id',
+        'tipo_id' => 'nullable|exists:tipos,id',
+        'origem_id' => 'nullable|exists:origens,id',
+        'setor_id' => 'nullable|exists:setores,id',
+        'departamento_id' => 'nullable|exists:departamentos,id',
+        'aviso_id' => 'nullable|exists:avisos,id',
+        'campanha_id' => 'nullable|exists:campanhas,id',
+        'chefia_id' => 'nullable|exists:chefias,id',
 
-            'destinatarios_livres' => 'nullable|array',
-            'destinatarios_livres.*' => 'nullable|email',
-        ];
+        'abertura' => 'nullable|date',
+        'termino' => 'nullable|date',
+        'ficheiro' => 'nullable|file',
 
-        $validated = $request->validate($rules);
+        'destinatarios_users' => 'nullable|array',
+        'destinatarios_users.*' => 'exists:users,id',
 
-        $recado->fill($validated);
+        'destinatarios_grupos' => 'nullable|array',
+        'destinatarios_grupos.*' => 'exists:grupos,id',
 
-        if ($request->hasFile('ficheiro')) {
-            $file = $request->file('ficheiro');
-            $filename = time().'_'.$file->getClientOriginalName();
-            $file->storeAs('public/recados', $filename);
-            $recado->ficheiro = $filename;
+        'destinatarios_livres' => 'nullable|array',
+        'destinatarios_livres.*' => 'nullable|email',
+    ];
+
+    $validated = $request->validate($rules);
+
+    // ================== UPDATE RECADO ==================
+    $recado->fill($validated);
+
+    if ($request->hasFile('ficheiro')) {
+        $file = $request->file('ficheiro');
+        $filename = time().'_'.$file->getClientOriginalName();
+        $file->storeAs('public/recados', $filename);
+        $recado->ficheiro = $filename;
+    }
+
+    $recado->save();
+
+    // ================== SYNC USERS / GRUPOS ==================
+    $newUserIds  = collect((array) $request->input('destinatarios_users', []))->map(fn($v)=>(int)$v)->values();
+    $newGroupIds = collect((array) $request->input('destinatarios_grupos', []))->map(fn($v)=>(int)$v)->values();
+
+    $recado->destinatariosUsers()->sync($newUserIds->all());
+    $recado->grupos()->sync($newGroupIds->all());
+
+    // ================== ATUALIZAR EMAILS LIVRES (GUEST TOKENS) ==================
+    $novosLivres = collect((array) $request->input('destinatarios_livres', []))
+        ->map(fn($e) => trim(mb_strtolower((string) $e)))
+        ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+        ->unique()
+        ->values();
+
+    $atuaisLivres = $recado->guestTokens()->pluck('email')
+        ->map(fn($e) => trim(mb_strtolower((string) $e)))
+        ->values();
+
+    $paraRemover = $atuaisLivres->diff($novosLivres);
+    if ($paraRemover->isNotEmpty()) {
+        $recado->guestTokens()->whereIn('email', $paraRemover->all())->delete();
+    }
+
+    // vamos guardar os tokens dos que foram ADICIONADOS agora
+    $tokensByEmail = [];
+
+    $paraAdicionar = $novosLivres->diff($atuaisLivres);
+    foreach ($paraAdicionar as $email) {
+        $token = Str::random(60);
+
+        $recado->guestTokens()->create([
+            'email'      => $email,
+            'token'      => $token,
+            'expires_at' => now()->addMonth(),
+            'is_active'  => true,
+        ]);
+
+        $tokensByEmail[$email] = $token;
+    }
+
+    // ================== DETETAR NOVOS DESTINATÁRIOS ==================
+    $addedUserIds  = $newUserIds->diff($oldUserIds)->values();       // users novos
+    $addedGroupIds = $newGroupIds->diff($oldGroupIds)->values();     // grupos novos
+    $addedFreeEmails = $paraAdicionar->values();                     // emails livres novos
+
+    $temNovos = $addedUserIds->isNotEmpty() || $addedGroupIds->isNotEmpty() || $addedFreeEmails->isNotEmpty();
+
+    // ================== ENVIAR EMAIL "RECADO CRIADO" PARA NOVOS ==================
+    if ($temNovos) {
+
+        // 1) Emails dos users adicionados diretamente
+        $emailsUsers = \App\Models\User::whereIn('id', $addedUserIds->all())
+            ->pluck('email')
+            ->filter()
+            ->map(fn($e) => trim(mb_strtolower($e)));
+
+        // 2) Emails dos utilizadores dos grupos adicionados
+        // ⚠️ Ajusta a relação do Grupo: ->users() (ou ->utilizadores())
+        $emailsGrupos = collect();
+        if ($addedGroupIds->isNotEmpty()) {
+            $grupos = Grupo::with('users')->whereIn('id', $addedGroupIds->all())->get();
+            $emailsGrupos = $grupos->flatMap(fn($g) => $g->users->pluck('email'))
+                ->filter()
+                ->map(fn($e) => trim(mb_strtolower($e)));
         }
 
-        $recado->save();
-
-        $recado->destinatariosUsers()->sync($request->input('destinatarios_users', []));
-        $recado->grupos()->sync($request->input('destinatarios_grupos', []));
-
-        // ✅ Atualizar emails livres (guest tokens)
-        $novosLivres = collect((array) $request->input('destinatarios_livres', []))
-            ->map(fn($e) => trim(mb_strtolower((string) $e)))
-            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
+        // 3) Juntar e remover duplicados + remover emails livres (porque esses vão com link guest)
+        $emailsInternos = $emailsUsers
+            ->merge($emailsGrupos)
             ->unique()
             ->values();
 
-        $atuaisLivres = $recado->guestTokens()->pluck('email')
-            ->map(fn($e) => trim(mb_strtolower((string) $e)))
-            ->values();
-
-        $paraRemover = $atuaisLivres->diff($novosLivres);
-        if ($paraRemover->isNotEmpty()) {
-            $recado->guestTokens()->whereIn('email', $paraRemover->all())->delete();
-        }
-
-        $paraAdicionar = $novosLivres->diff($atuaisLivres);
-        foreach ($paraAdicionar as $email) {
-            $recado->guestTokens()->create([
-                'email'      => $email,
-                'token'      => Str::random(60),
-                'expires_at' => now()->addMonth(),
-                'is_active'  => true,
-            ]);
-        }
-
-        return redirect()->route('recados.index')->with('success', 'Recado atualizado com sucesso!');
+        // Enviar para internos (sem guestUrl)
+        foreach ($emailsInternos as $email) {
+    try {
+        $mailable = new RecadoCriadoMail($recado, null, $emailsInternos);
+        $mailable = $this->attachEmailLogContext($mailable, $recado);
+        $emailLogger->sendLogged($mailable, $email);
+    } catch (\Throwable $e) {
+        continue;
     }
+}
+
+        // Enviar para emails livres (com guestUrl individual)
+        // ✅ Enviar para emails livres (com guestUrl) - COM 3 args + log
+foreach ($addedFreeEmails as $email) {
+    $token = $tokensByEmail[$email] ?? null;
+    if (!$token) continue;
+
+    // usa a tua rota real (no store usas route('recados.guest', $token))
+    $guestUrl = route('recados.guest', $token);
+
+    try {
+        // 3º argumento pode ser uma collection com 1 email
+        $mailable = new RecadoCriadoMail($recado, $guestUrl, collect([$email]));
+        $mailable = $this->attachEmailLogContext($mailable, $recado);
+        $emailLogger->sendLogged($mailable, $email);
+    } catch (\Throwable $e) {
+        continue;
+    }
+}
+    }
+    return redirect()->route('recados.index')->with('success', 'Recado atualizado com sucesso!');
+}
 
     public function store(Request $request, EmailLogger $emailLogger)
     {
