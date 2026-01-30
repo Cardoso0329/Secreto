@@ -185,13 +185,20 @@ const fieldsConfig = {
         options: @json($departamentos->map(fn($d)=>['id'=>$d->id,'name'=>$d->name])->values())
     },
 
+    // ✅ NOVO: Chefias nas condições
+    chefia_id: {
+        label: 'Chefia',
+        type: 'select',
+        options: @json(($chefias ?? collect())->map(fn($c)=>['id'=>$c->id,'name'=>$c->name])->values())
+    },
+
     destinatario_user_id: {
         label: 'Destinatário (Utilizador)',
         type: 'select',
         options: @json($users->map(fn($u)=>['id'=>$u->id,'name'=>$u->name])->values())
     },
 
-    // ✅ NOVO: Grupo nas condições
+    // ✅ Grupo nas condições
     grupo_id: {
         label: 'Grupo',
         type: 'select',

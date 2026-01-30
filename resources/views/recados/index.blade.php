@@ -47,6 +47,11 @@
 
     $getFiltro = fn($field) =>
         collect($vistaConditions)->firstWhere('field', $field)['value'] ?? request($field);
+
+    // ✅ Permissão para ver "Ações"
+    $podeVerAcoes =
+        optional(auth()->user()->cargo)->name === 'admin'
+        || auth()->user()->grupos->contains('name', 'Telefonistas');
 @endphp
 
 <div class="container py-4">
@@ -294,20 +299,17 @@
                         <th data-col="operador">Email do Operador</th>
 
                         <th data-col="destinatarios">Destinatários</th>
-
-                        {{-- ✅ Aviso estático do recado (aviso_id) --}}
                         <th data-col="aviso">Aviso</th>
-
                         <th data-col="estado">Estado</th>
-
-                        {{-- ✅ Tipo (tipo_id -> tabela tipos) --}}
                         <th data-col="tipo_recado">Tipo</th>
-
-                        {{-- TipoFormulário --}}
                         <th data-col="tipo">TipoFormulário</th>
 
                         <th data-col="abertura" class="text-nowrap">Abertura</th>
-                        <th data-col="acoes" class="text-center" style="width: 90px;">Ações</th>
+
+                        {{-- ✅ Só Admin e Telefonistas vêem Ações --}}
+                        @if($podeVerAcoes)
+                            <th data-col="acoes" class="text-center" style="width: 90px;">Ações</th>
+                        @endif
                     </tr>
                 </thead>
 
@@ -362,28 +364,27 @@
                             </td>
 
                             {{-- ✅ Aviso (último enviado) --}}
-<td data-col="aviso" class="small">
-    @php
-        $ultimoAviso = $recado->avisosEnviados->last()
-            ?? $recado->aviso
-            ?? null;
+                            <td data-col="aviso" class="small">
+                                @php
+                                    $ultimoAviso = $recado->avisosEnviados->last()
+                                        ?? $recado->aviso
+                                        ?? null;
 
-        $textoAviso =
-            $ultimoAviso->titulo
-            ?? $ultimoAviso->name
-            ?? $ultimoAviso->assunto
-            ?? null;
-    @endphp
+                                    $textoAviso =
+                                        $ultimoAviso->titulo
+                                        ?? $ultimoAviso->name
+                                        ?? $ultimoAviso->assunto
+                                        ?? null;
+                                @endphp
 
-    @if($textoAviso)
-        <span class="badge rounded-pill bg-secondary text-white">
-            {{ \Illuminate\Support\Str::limit($textoAviso, 40) }}
-        </span>
-    @else
-        —
-    @endif
-</td>
-
+                                @if($textoAviso)
+                                    <span class="badge rounded-pill bg-secondary text-white">
+                                        {{ \Illuminate\Support\Str::limit($textoAviso, 40) }}
+                                    </span>
+                                @else
+                                    —
+                                @endif
+                            </td>
 
                             {{-- Estado --}}
                             <td data-col="estado">
@@ -427,48 +428,51 @@
                                 {{ $recado->abertura ? \Carbon\Carbon::parse($recado->abertura)->format('d/m/Y H:i') : '—' }}
                             </td>
 
-                            <td data-col="acoes" class="text-center" onclick="event.stopPropagation();">
-                                <div class="dropdown">
-                                    <button
-                                        class="btn btn-sm btn-light border"
-                                        type="button"
-                                        data-bs-toggle="dropdown"
-                                        aria-expanded="false"
-                                        onclick="event.stopPropagation();"
-                                    >
-                                        <i class="bi bi-three-dots-vertical"></i>
-                                    </button>
+                            {{-- ✅ Só Admin/Telefonistas têm a coluna e o dropdown --}}
+                            @if($podeVerAcoes)
+                                <td data-col="acoes" class="text-center" onclick="event.stopPropagation();">
+                                    <div class="dropdown">
+                                        <button
+                                            class="btn btn-sm btn-light border"
+                                            type="button"
+                                            data-bs-toggle="dropdown"
+                                            aria-expanded="false"
+                                            onclick="event.stopPropagation();"
+                                        >
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
 
-                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                        <li>
-                                            <a class="dropdown-item" href="{{ route('recados.edit', $recado->id) }}">
-                                                ✏️ Editar
-                                            </a>
-                                        </li>
-
-                                        @if(optional(auth()->user()->cargo)->name === 'admin')
-                                            <li><hr class="dropdown-divider"></li>
-
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                                             <li>
-                                                <form action="{{ route('recados.destroy', $recado->id) }}" method="POST"
-                                                      onsubmit="return confirm('Tem a certeza que deseja eliminar este recado?')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="dropdown-item text-danger">
-                                                        🗑️ Apagar
-                                                    </button>
-                                                </form>
+                                                <a class="dropdown-item" href="{{ route('recados.edit', $recado->id) }}">
+                                                    ✏️ Editar
+                                                </a>
                                             </li>
-                                        @endif
-                                    </ul>
-                                </div>
-                            </td>
+
+                                            @if(optional(auth()->user()->cargo)->name === 'admin')
+                                                <li><hr class="dropdown-divider"></li>
+
+                                                <li>
+                                                    <form action="{{ route('recados.destroy', $recado->id) }}" method="POST"
+                                                          onsubmit="return confirm('Tem a certeza que deseja eliminar este recado?')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="dropdown-item text-danger">
+                                                            🗑️ Apagar
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            @endif
+                                        </ul>
+                                    </div>
+                                </td>
+                            @endif
 
                         </tr>
                     @empty
                         <tr>
-                            {{-- ✅ 16 colunas --}}
-                            <td colspan="16" class="text-center text-muted py-4">
+                            {{-- ✅ colspan ajusta conforme existe ou não "Ações" --}}
+                            <td colspan="{{ $podeVerAcoes ? 16 : 15 }}" class="text-center text-muted py-4">
                                 <div class="d-flex flex-column align-items-center gap-2">
                                     <i class="bi bi-inbox fs-2"></i>
                                     <div>Nenhum recado encontrado.</div>
@@ -543,7 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // garantir que novas colunas entram como true
     colDefs.forEach(c => {
         if (typeof state[c.key] !== 'boolean') state[c.key] = true;
-    });
+    });.j
 
     function applyState() {
         colDefs.forEach(c => {
@@ -566,7 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
         colsMenu.innerHTML = '';
 
         colDefs.forEach(c => {
-            // ✅ impedir esconder "Ações"
+            // ✅ impedir aparecer "Ações" no menu
             if (c.key === 'acoes') return;
 
             const id = `col_${c.key}`;
