@@ -935,4 +935,6 @@ foreach ($addedFreeEmails as $email) {
 
         return back()->with('success', 'Aviso enviado com sucesso!');
     }
+
+    
 }

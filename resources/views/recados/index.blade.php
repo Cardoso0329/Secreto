@@ -184,6 +184,19 @@
                                    value="{{ $getFiltro('plate') }}">
                         </div>
 
+                        {{-- ✅ Estado (filtro) --}}
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small text-muted mb-1">Estado</label>
+                            <select name="estado_id" class="form-select">
+                                <option value="">Todos</option>
+                                @foreach($estados as $e)
+                                    <option value="{{ $e->id }}" @selected((string)request('estado_id') === (string)$e->id)>
+                                        {{ $e->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         {{-- 📅 Intervalo de datas (abertura) --}}
                         <div class="col-12 col-md-3">
                             <label class="form-label small text-muted mb-1">Data início</label>
@@ -203,11 +216,7 @@
                                 <i class="bi bi-search me-1"></i> Filtrar
                             </button>
 
-                            {{-- ✅ Exporta já com TODOS os filtros + intervalo --}}
-                            @if(
-                                optional(auth()->user()->cargo)->name === 'admin'
-                                || auth()->user()->grupos->contains('name', 'Telefonistas')
-                            )
+                            @if($podeVerAcoes)
                                 <a href="{{ route('configuracoes.recados.export.filtered', request()->query()) }}"
                                    class="btn btn-success">
                                     <i class="bi bi-download me-1"></i> Exportar Excel
@@ -300,13 +309,28 @@
 
                         <th data-col="destinatarios">Destinatários</th>
                         <th data-col="aviso">Aviso</th>
-                        <th data-col="estado">Estado</th>
+
+                        {{-- ✅ Estado header vira "limpar filtro" quando estiver filtrado --}}
+                        <th data-col="estado">
+                            @php
+                                $estadoClearUrl = route('recados.index', array_merge(request()->query(), ['estado_id' => null, 'page' => 1]));
+                            @endphp
+
+                            <a href="{{ $estadoClearUrl }}" class="text-decoration-none d-inline-flex align-items-center gap-1">
+                                Estado
+                                @if(request('estado_id'))
+                                    <span class="badge bg-dark">filtrado</span>
+                                @else
+                                    <i class="bi bi-funnel text-muted"></i>
+                                @endif
+                            </a>
+                        </th>
+
                         <th data-col="tipo_recado">Tipo</th>
                         <th data-col="tipo">TipoFormulário</th>
 
                         <th data-col="abertura" class="text-nowrap">Abertura</th>
 
-                        {{-- ✅ Só Admin e Telefonistas vêem Ações --}}
                         @if($podeVerAcoes)
                             <th data-col="acoes" class="text-center" style="width: 90px;">Ações</th>
                         @endif
@@ -321,21 +345,10 @@
                             <td data-col="contacto">{{ $recado->contact_client }}</td>
                             <td data-col="matricula">{{ $recado->plate ?? '—' }}</td>
 
-                            <td data-col="chefia" class="small">
-                                {{ $recado->chefia->name ?? '—' }}
-                            </td>
-
-                            <td data-col="departamento" class="small">
-                                {{ $recado->departamento->name ?? '—' }}
-                            </td>
-
-                            <td data-col="origem" class="small">
-                                {{ $recado->origem->name ?? '—' }}
-                            </td>
-
-                            <td data-col="sla" class="small">
-                                {{ $recado->sla->name ?? '—' }}
-                            </td>
+                            <td data-col="chefia" class="small">{{ $recado->chefia->name ?? '—' }}</td>
+                            <td data-col="departamento" class="small">{{ $recado->departamento->name ?? '—' }}</td>
+                            <td data-col="origem" class="small">{{ $recado->origem->name ?? '—' }}</td>
+                            <td data-col="sla" class="small">{{ $recado->sla->name ?? '—' }}</td>
 
                             <td data-col="operador" class="small text-truncate" style="max-width: 220px;">
                                 <span title="{{ $recado->operator_email ?? '' }}">
@@ -348,33 +361,20 @@
                                 @php
                                     $destinatarios = collect();
 
-                                    if($recado->destinatarios->count()) {
-                                        $destinatarios = $destinatarios->merge($recado->destinatarios->pluck('name'));
-                                    }
-                                    if($recado->grupos->count()) {
-                                        $destinatarios = $destinatarios->merge($recado->grupos->pluck('name'));
-                                    }
-                                    if($recado->guestTokens->count()) {
-                                        $destinatarios = $destinatarios->merge($recado->guestTokens->pluck('email'));
-                                    }
+                                    if($recado->destinatarios->count()) $destinatarios = $destinatarios->merge($recado->destinatarios->pluck('name'));
+                                    if($recado->grupos->count()) $destinatarios = $destinatarios->merge($recado->grupos->pluck('name'));
+                                    if($recado->guestTokens->count()) $destinatarios = $destinatarios->merge($recado->guestTokens->pluck('email'));
 
                                     $destinatarios = $destinatarios->unique();
                                 @endphp
                                 {!! $destinatarios->implode('<br>') !!}
                             </td>
 
-                            {{-- ✅ Aviso (último enviado) --}}
+                            {{-- Aviso --}}
                             <td data-col="aviso" class="small">
                                 @php
-                                    $ultimoAviso = $recado->avisosEnviados->last()
-                                        ?? $recado->aviso
-                                        ?? null;
-
-                                    $textoAviso =
-                                        $ultimoAviso->titulo
-                                        ?? $ultimoAviso->name
-                                        ?? $ultimoAviso->assunto
-                                        ?? null;
+                                    $ultimoAviso = $recado->avisosEnviados->last() ?? $recado->aviso ?? null;
+                                    $textoAviso = $ultimoAviso->titulo ?? $ultimoAviso->name ?? $ultimoAviso->assunto ?? null;
                                 @endphp
 
                                 @if($textoAviso)
@@ -386,8 +386,8 @@
                                 @endif
                             </td>
 
-                            {{-- Estado --}}
-                            <td data-col="estado">
+                            {{-- ✅ Estado (badge clicável -> FILTRO) --}}
+                            <td data-col="estado" onclick="event.stopPropagation();">
                                 @php
                                     $estadoNome = strtolower($recado->estado->name ?? '');
                                     $badgeEstado = match($estadoNome) {
@@ -396,13 +396,21 @@
                                         'tratado' => 'bg-purple text-white',
                                         default => 'bg-secondary text-white'
                                     };
+
+                                    $estadoFilterUrl = route('recados.index', array_merge(
+                                        request()->query(),
+                                        ['estado_id' => $recado->estado_id, 'page' => 1]
+                                    ));
                                 @endphp
-                                <span class="badge rounded-pill {{ $badgeEstado }}">
-                                    {{ $estadoNome ? ucfirst($estadoNome) : '—' }}
-                                </span>
+
+                                <a href="{{ $estadoFilterUrl }}" class="text-decoration-none">
+                                    <span class="badge rounded-pill {{ $badgeEstado }}" style="cursor:pointer">
+                                        {{ $estadoNome ? ucfirst($estadoNome) : '—' }}
+                                    </span>
+                                </a>
                             </td>
 
-                            {{-- Tipo (tabela tipos) --}}
+                            {{-- Tipo --}}
                             <td data-col="tipo_recado" class="small">
                                 <span class="badge rounded-pill bg-dark text-white">
                                     {{ $recado->tipo->name ?? '—' }}
@@ -428,17 +436,14 @@
                                 {{ $recado->abertura ? \Carbon\Carbon::parse($recado->abertura)->format('d/m/Y H:i') : '—' }}
                             </td>
 
-                            {{-- ✅ Só Admin/Telefonistas têm a coluna e o dropdown --}}
                             @if($podeVerAcoes)
                                 <td data-col="acoes" class="text-center" onclick="event.stopPropagation();">
                                     <div class="dropdown">
-                                        <button
-                                            class="btn btn-sm btn-light border"
-                                            type="button"
-                                            data-bs-toggle="dropdown"
-                                            aria-expanded="false"
-                                            onclick="event.stopPropagation();"
-                                        >
+                                        <button class="btn btn-sm btn-light border"
+                                                type="button"
+                                                data-bs-toggle="dropdown"
+                                                aria-expanded="false"
+                                                onclick="event.stopPropagation();">
                                             <i class="bi bi-three-dots-vertical"></i>
                                         </button>
 
@@ -471,7 +476,6 @@
                         </tr>
                     @empty
                         <tr>
-                            {{-- ✅ colspan ajusta conforme existe ou não "Ações" --}}
                             <td colspan="{{ $podeVerAcoes ? 16 : 15 }}" class="text-center text-muted py-4">
                                 <div class="d-flex flex-column align-items-center gap-2">
                                     <i class="bi bi-inbox fs-2"></i>
@@ -512,10 +516,14 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // clique na linha
-    document.querySelectorAll('.clickable-row').forEach(row =>
-        row.addEventListener('click', () => window.location.href = row.dataset.href)
-    );
+    // ✅ clique na linha abre o recado
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', (e) => {
+            // se clicou num elemento interativo, não navega
+            if (e.target.closest('a, button, input, select, textarea, label, .dropdown, .dropdown-menu')) return;
+            window.location.href = row.dataset.href;
+        });
+    });
 
     // ---- Colunas (frontend only) ----
     const table = document.querySelector('table');
@@ -526,17 +534,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnReset = document.getElementById('colsReset');
     const btnAll = document.getElementById('colsAll');
 
-    // lista de colunas a partir do thead
     const ths = Array.from(table.querySelectorAll('thead th[data-col]'));
     const colDefs = ths.map(th => ({
         key: th.dataset.col,
         label: (th.innerText || th.textContent || th.dataset.col).trim()
     }));
 
-    // default: tudo visível
     const defaultState = Object.fromEntries(colDefs.map(c => [c.key, true]));
 
-    // ler estado guardado
     let state;
     try {
         state = JSON.parse(localStorage.getItem(storageKey)) || defaultState;
@@ -544,20 +549,17 @@ document.addEventListener('DOMContentLoaded', () => {
         state = defaultState;
     }
 
-    // garantir que novas colunas entram como true
     colDefs.forEach(c => {
         if (typeof state[c.key] !== 'boolean') state[c.key] = true;
-    });.j
+    });
 
     function applyState() {
         colDefs.forEach(c => {
             const visible = !!state[c.key];
 
-            // TH
             table.querySelectorAll(`thead th[data-col="${c.key}"]`)
                 .forEach(el => el.classList.toggle('col-hidden', !visible));
 
-            // TD
             table.querySelectorAll(`tbody td[data-col="${c.key}"]`)
                 .forEach(el => el.classList.toggle('col-hidden', !visible));
         });
@@ -570,8 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
         colsMenu.innerHTML = '';
 
         colDefs.forEach(c => {
-            // ✅ impedir aparecer "Ações" no menu
-            if (c.key === 'acoes') return;
+            if (c.key === 'acoes') return; // não mostrar ações no menu
 
             const id = `col_${c.key}`;
             const wrapper = document.createElement('label');
@@ -598,7 +599,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // botões
     if (btnReset) {
         btnReset.addEventListener('click', () => {
             state = { ...defaultState };
