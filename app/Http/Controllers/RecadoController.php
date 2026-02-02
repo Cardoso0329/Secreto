@@ -93,16 +93,15 @@ class RecadoController extends Controller
     }
 
     public function index(Request $request)
-    {
-        $user = auth()->user();
+{
+    $user = auth()->user();
 
+    /* ================= DADOS BASE ================= */
+    $estados = Estado::orderBy('name')->get();
+    $tiposFormulario = TipoFormulario::orderBy('name')->get();
+    $tipos = Tipo::orderBy('name')->get();
 
-        /* ================= DADOS BASE ================= */
-        $estados = Estado::orderBy('name')->get();
-        $tiposFormulario = TipoFormulario::orderBy('name')->get();
-
-        // vistas visíveis para o user (arrays)
-        $vistas = collect(\App\Services\VistaService::visiveisPara($user));
+    $vistas = collect(\App\Services\VistaService::visiveisPara($user));
 
     /* ================= QUERY BASE ================= */
     $recados = Recado::with([
@@ -111,127 +110,130 @@ class RecadoController extends Controller
     ]);
 
     /* ================= DETETAR FILTROS MANUAIS ================= */
-    $manualFields = ['id','contact_client','plate','estado_id','tipo_formulario_id','date_from','date_to'];
+    $manualFields = ['id','contact_client','plate','estado_id','tipo_id','tipo_formulario_id','date_from','date_to'];
 
-        $temFiltrosManuais =
-            $request->filled('filtros') ||
-            collect($manualFields)->contains(fn ($f) => $request->filled($f));
+    $temFiltrosManuais =
+        $request->filled('filtros') ||
+        collect($manualFields)->contains(fn ($f) => $request->filled($f));
 
-        /* ================= VISTA ATIVA (GET + SESSÃO) ================= */
-        if ($request->has('vista_id')) {
-            $vistaId = $request->input('vista_id');
+    /* ================= VISTA ATIVA (GET + SESSÃO) ================= */
+    if ($request->has('vista_id')) {
+        $vistaIdInput = $request->input('vista_id');
+        if ($vistaIdInput) $request->session()->put('recados_vista_id', $vistaIdInput);
+        else $request->session()->forget('recados_vista_id');
+    }
 
-            if ($vistaId) $request->session()->put('recados_vista_id', $vistaId);
-            else $request->session()->forget('recados_vista_id');
-        }
+    $vistaId = $request->filled('vista_id')
+        ? $request->input('vista_id')
+        : $request->session()->get('recados_vista_id');
 
-        $vistaId = $request->filled('vista_id')
-            ? $request->input('vista_id')
-            : $request->session()->get('recados_vista_id');
+    $vistaFiltros = [];
 
+    // ✅ Se há filtros manuais, ignorar completamente a vista nesta request
+    if ($temFiltrosManuais) {
+        $vistaId = null;
         $vistaFiltros = [];
+    }
 
-        /* ================= APLICAR VISTA (SÓ SE NÃO HÁ FILTROS MANUAIS) ================= */
-        if (!$temFiltrosManuais && !empty($vistaId)) {
+    /* ================= APLICAR VISTA (SÓ SE NÃO HÁ FILTROS MANUAIS) ================= */
+    if (!$temFiltrosManuais && !empty($vistaId)) {
 
-            $vista = \App\Services\VistaRepo::findOrFail($vistaId);
+        $vista = \App\Services\VistaRepo::findOrFail($vistaId);
+        if (!$vistas->pluck('id')->contains($vista['id'])) abort(403);
 
-            if (!$vistas->pluck('id')->contains($vista['id'])) abort(403);
+        $vistaFiltros = $vista['filtros'] ?? [];
 
-            $vistaFiltros = $vista['filtros'] ?? [];
-
-            // aceita formato antigo {conditions: []}
-            if (is_array($vistaFiltros) && array_key_exists('conditions', $vistaFiltros)) {
-                $vistaFiltros = $vistaFiltros['conditions'] ?? [];
-            }
-
-            $recados = \App\Queries\RecadoQuery::applyFilters(
-                $recados,
-                $vistaFiltros,
-                $vista['logica'] ?? 'AND'
-            );
+        if (is_array($vistaFiltros) && array_key_exists('conditions', $vistaFiltros)) {
+            $vistaFiltros = $vistaFiltros['conditions'] ?? [];
         }
 
-        /* ================= FILTROS TEMPORÁRIOS ================= */
-        if ($request->filled('filtros')) {
-            $recados = \App\Queries\RecadoQuery::applyFilters(
-                $recados,
-                $request->input('filtros', []),
-                $request->input('logica', 'AND')
-            );
+        $recados = \App\Queries\RecadoQuery::applyFilters(
+            $recados,
+            $vistaFiltros,
+            $vista['logica'] ?? 'AND'
+        );
+    }
+
+    /* ================= FILTROS TEMPORÁRIOS ================= */
+    if ($request->filled('filtros')) {
+        $recados = \App\Queries\RecadoQuery::applyFilters(
+            $recados,
+            $request->input('filtros', []),
+            $request->input('logica', 'AND')
+        );
+    }
+
+    /* ================= FILTROS MANUAIS ================= */
+    foreach (['id','contact_client','plate','estado_id','tipo_id','tipo_formulario_id'] as $field) {
+        if ($request->filled($field)) {
+            $operator = in_array($field, ['contact_client','plate']) ? 'LIKE' : '=';
+            $value = in_array($field, ['contact_client','plate'])
+                ? '%'.$request->input($field).'%'
+                : $request->input($field);
+
+            $recados->where($field, $operator, $value);
         }
+    }
 
-        /* ================= FILTROS MANUAIS ================= */
-        foreach (['id','contact_client','plate','estado_id','tipo_formulario_id'] as $field) {
-            if ($request->filled($field)) {
-                $operator = in_array($field, ['contact_client','plate']) ? 'LIKE' : '=';
-                $value = in_array($field, ['contact_client','plate'])
-                    ? '%'.$request->input($field).'%'
-                    : $request->input($field);
+    /* ================= ✅ INTERVALO DE DATAS (abertura) ================= */
+    $request->validate([
+        'date_from' => ['nullable','date'],
+        'date_to'   => ['nullable','date','after_or_equal:date_from'],
+    ]);
 
-                $recados->where($field, $operator, $value);
-            }
+    if ($request->filled('date_from') && $request->filled('date_to')) {
+        $from = Carbon::parse($request->input('date_from'))->startOfDay();
+        $to   = Carbon::parse($request->input('date_to'))->endOfDay();
+        $recados->whereBetween('recados.abertura', [$from, $to]);
+    } elseif ($request->filled('date_from')) {
+        $from = Carbon::parse($request->input('date_from'))->startOfDay();
+        $recados->where('recados.abertura', '>=', $from);
+    } elseif ($request->filled('date_to')) {
+        $to = Carbon::parse($request->input('date_to'))->endOfDay();
+        $recados->where('recados.abertura', '<=', $to);
+    }
+
+    /* ================= VISIBILIDADE ================= */
+    if ($user->cargo?->name !== 'admin') {
+
+        $uid = (int) $user->id;
+        $haVistaAtiva = (!$temFiltrosManuais && !empty($vistaId));
+
+        if (!$haVistaAtiva) {
+            $recados->where(function ($q) use ($uid) {
+                $q->where('user_id', $uid)
+                  ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid))
+                  ->orWhereHas('grupos.users', fn ($g) => $g->where('users.id', $uid))
+                  ->orWhereHas('departamento.users', fn ($u) => $u->where('users.id', $uid))
+                  ->orWhereHas('chefia.users', fn ($u) => $u->where('users.id', $uid));
+            });
         }
+    }
 
-        /* ================= ✅ INTERVALO DE DATAS (abertura) ================= */
-        $request->validate([
-            'date_from' => ['nullable','date'],
-            'date_to'   => ['nullable','date','after_or_equal:date_from'],
-        ]);
-
-        if ($request->filled('date_from') && $request->filled('date_to')) {
-            $from = Carbon::parse($request->input('date_from'))->startOfDay();
-            $to   = Carbon::parse($request->input('date_to'))->endOfDay();
-
-            $recados->whereBetween('recados.abertura', [$from, $to]);
-        } elseif ($request->filled('date_from')) {
-            $from = Carbon::parse($request->input('date_from'))->startOfDay();
-
-            $recados->where('recados.abertura', '>=', $from);
-        } elseif ($request->filled('date_to')) {
-            $to = Carbon::parse($request->input('date_to'))->endOfDay();
-
-            $recados->where('recados.abertura', '<=', $to);
-        }
-
-        /* ================= VISIBILIDADE ================= */
-        if ($user->cargo?->name !== 'admin') {
-
-            $uid = (int) $user->id;
-            $haVistaAtiva = (!$temFiltrosManuais && !empty($vistaId));
-
-            if (!$haVistaAtiva) {
-                $recados->where(function ($q) use ($uid) {
-                    $q->where('user_id', $uid)
-                      ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid))
-                      ->orWhereHas('grupos.users', fn ($g) => $g->where('users.id', $uid))
-                      ->orWhereHas('departamento.users', fn ($u) => $u->where('users.id', $uid))
-                      ->orWhereHas('chefia.users', fn ($u) => $u->where('users.id', $uid));
-                });
-            }
-        }
-
-    /* ================= ORDENAÇÃO (com whitelist) ================= */
+    /* ================= ORDENAÇÃO ================= */
     $allowedSort = ['id','contact_client','plate','estado_id','tipo_formulario_id','abertura','termino'];
     $sortBy  = $request->input('sort_by', 'id');
     $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
     if (!in_array($sortBy, $allowedSort)) $sortBy = 'id';
 
-        $recados = $recados
-            ->orderBy($sortBy, $sortDir)
-            ->paginate(10)
-            ->withQueryString();
+    $recados = $recados
+        ->orderBy($sortBy, $sortDir)
+        ->paginate(10)
+        ->withQueryString();
 
-        $showPopup = !$request->session()->has('local_trabalho');
+    $showPopup = !$request->session()->has('local_trabalho');
 
-        return view('recados.index', compact(
-            'recados',
-            'estados',
-            'tiposFormulario',
-            'vistas',
-            'showPopup'
-        ));
-    }
+    return view('recados.index', compact(
+        'recados',
+        'estados',
+        'tiposFormulario',
+        'tipos',
+        'vistas',
+        'showPopup',
+        'temFiltrosManuais'
+    ));
+}
+
 
     public function create(Request $request)
     {

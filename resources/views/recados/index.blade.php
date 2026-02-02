@@ -46,7 +46,9 @@
     }
 
     $getFiltro = fn($field) =>
-        collect($vistaConditions)->firstWhere('field', $field)['value'] ?? request($field);
+    $temFiltrosManuais
+        ? request($field)
+        : (collect($vistaConditions)->firstWhere('field', $field)['value'] ?? request($field));
 
     // ✅ Permissão para ver "Ações"
     $podeVerAcoes =
@@ -153,7 +155,7 @@
                 </div>
 
                 <div class="card-body">
-                    <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
+                    <form action="{{ route('recados.index') }}" method="GET" class="row g-3" id="formFiltrosAvancados">
 
                         {{-- ✅ manter vista_id --}}
                         @if($vistaAtivaId)
@@ -184,14 +186,29 @@
                                    value="{{ $getFiltro('plate') }}">
                         </div>
 
-                        {{-- ✅ Estado (filtro) --}}
+                        {{-- ✅ Estado (sempre visível e persistente após refresh) --}}
                         <div class="col-12 col-md-3">
                             <label class="form-label small text-muted mb-1">Estado</label>
-                            <select name="estado_id" class="form-select">
+                            <select name="estado_id" id="filtroEstado" class="form-select">
                                 <option value="">Todos</option>
                                 @foreach($estados as $e)
-                                    <option value="{{ $e->id }}" @selected((string)request('estado_id') === (string)$e->id)>
+                                    <option value="{{ $e->id }}"
+                                        @selected((string)request('estado_id') === (string)$e->id)>
                                         {{ $e->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- ✅ Tipo do recado (persistente após refresh) --}}
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small text-muted mb-1">Tipo</label>
+                            <select name="tipo_id" id="filtroTipoRecado" class="form-select">
+                                <option value="">Todos</option>
+                                @foreach($tipos as $t)
+                                    <option value="{{ $t->id }}"
+                                        @selected((string)request('tipo_id') === (string)$t->id)>
+                                        {{ $t->name }}
                                     </option>
                                 @endforeach
                             </select>
@@ -224,7 +241,8 @@
                             @endif
 
                             <a href="{{ route('recados.index') }}"
-                               class="btn btn-outline-secondary ms-auto">
+                               class="btn btn-outline-secondary ms-auto"
+                               id="btnLimparFiltros">
                                 <i class="bi bi-x-circle me-1"></i> Limpar
                             </a>
                         </div>
@@ -310,21 +328,7 @@
                         <th data-col="destinatarios">Destinatários</th>
                         <th data-col="aviso">Aviso</th>
 
-                        {{-- ✅ Estado header vira "limpar filtro" quando estiver filtrado --}}
-                        <th data-col="estado">
-                            @php
-                                $estadoClearUrl = route('recados.index', array_merge(request()->query(), ['estado_id' => null, 'page' => 1]));
-                            @endphp
-
-                            <a href="{{ $estadoClearUrl }}" class="text-decoration-none d-inline-flex align-items-center gap-1">
-                                Estado
-                                @if(request('estado_id'))
-                                    <span class="badge bg-dark">filtrado</span>
-                                @else
-                                    <i class="bi bi-funnel text-muted"></i>
-                                @endif
-                            </a>
-                        </th>
+                        <th data-col="estado">Estado</th>
 
                         <th data-col="tipo_recado">Tipo</th>
                         <th data-col="tipo">TipoFormulário</th>
@@ -386,7 +390,7 @@
                                 @endif
                             </td>
 
-                            {{-- ✅ Estado (badge clicável -> FILTRO) --}}
+                            {{-- Estado --}}
                             <td data-col="estado" onclick="event.stopPropagation();">
                                 @php
                                     $estadoNome = strtolower($recado->estado->name ?? '');
@@ -396,18 +400,11 @@
                                         'tratado' => 'bg-purple text-white',
                                         default => 'bg-secondary text-white'
                                     };
-
-                                    $estadoFilterUrl = route('recados.index', array_merge(
-                                        request()->query(),
-                                        ['estado_id' => $recado->estado_id, 'page' => 1]
-                                    ));
                                 @endphp
 
-                                <a href="{{ $estadoFilterUrl }}" class="text-decoration-none">
-                                    <span class="badge rounded-pill {{ $badgeEstado }}" style="cursor:pointer">
-                                        {{ $estadoNome ? ucfirst($estadoNome) : '—' }}
-                                    </span>
-                                </a>
+                                <span class="badge rounded-pill {{ $badgeEstado }}">
+                                    {{ $estadoNome ? ucfirst($estadoNome) : '—' }}
+                                </span>
                             </td>
 
                             {{-- Tipo --}}
@@ -617,5 +614,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderMenu();
     applyState();
+
+    /* =======================
+       ✅ Estado persistente (não sai no refresh)
+       ======================= */
+    const estadoSelect = document.getElementById('filtroEstado');
+    const estadoKey = 'recados_estado_id_v1';
+    const formFiltros = document.getElementById('formFiltrosAvancados');
+    const btnLimpar = document.getElementById('btnLimparFiltros');
+
+    if (estadoSelect) {
+        const url = new URL(window.location.href);
+        const urlEstado = url.searchParams.get('estado_id');
+        const savedEstado = localStorage.getItem(estadoKey);
+
+        if ((!urlEstado || urlEstado === '') && savedEstado && savedEstado !== '') {
+            estadoSelect.value = savedEstado;
+            if (formFiltros) formFiltros.submit();
+        }
+
+        estadoSelect.addEventListener('change', () => {
+            localStorage.setItem(estadoKey, estadoSelect.value || '');
+        });
+    }
+
+    /* =======================
+       ✅ Tipo (recado) persistente (igual ao Estado)
+       ======================= */
+    const tipoSelect = document.getElementById('filtroTipoRecado');
+    const tipoKey = 'recados_tipo_id_v1';
+
+    if (tipoSelect) {
+        const url = new URL(window.location.href);
+        const urlTipo = url.searchParams.get('tipo_id');
+        const savedTipo = localStorage.getItem(tipoKey);
+
+        if ((!urlTipo || urlTipo === '') && savedTipo && savedTipo !== '') {
+            tipoSelect.value = savedTipo;
+            if (formFiltros) formFiltros.submit();
+        }
+
+        tipoSelect.addEventListener('change', () => {
+            localStorage.setItem(tipoKey, tipoSelect.value || '');
+        });
+    }
+
+    // ✅ ao limpar -> apagar o guardado (estado + tipo)
+    if (btnLimpar) {
+        btnLimpar.addEventListener('click', () => {
+            localStorage.removeItem(estadoKey);
+            localStorage.removeItem(tipoKey);
+        });
+    }
 });
 </script>
