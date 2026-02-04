@@ -6,10 +6,12 @@ use Illuminate\Support\Str;
 use App\Models\RecadoGuestToken;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\Auditable;
 
 class Recado extends Model
 {
     use HasFactory;
+    use Auditable;
 
         protected $casts = [
     'abertura' => 'datetime',

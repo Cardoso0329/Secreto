@@ -37,6 +37,7 @@
     // ✅ vista ativa: GET ou sessão
     $vistaAtivaId = request('vista_id') ?? session('recados_vista_id');
 
+
     $vistaSelecionada = null;
     $vistaConditions = [];
 

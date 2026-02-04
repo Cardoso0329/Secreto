@@ -136,5 +136,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/email-logs/{emailLog}', [EmailLogController::class, 'show'])->name('email_logs.show');
 });
 
+use App\Http\Controllers\AuditLogController;
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/admin/audit-logs', [AuditLogController::class, 'index'])->name('audit_logs.index');
+    Route::get('/admin/audit-logs/{auditLog}', [AuditLogController::class, 'show'])->name('audit_logs.show');
+});
+
+
 
        

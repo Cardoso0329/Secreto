@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Queries\RecadoQuery;
+use App\Traits\Auditable;
 
 class Vista extends Model
 {
+
+    use Auditable;
     protected $fillable = [
         'nome',
         'filtros',

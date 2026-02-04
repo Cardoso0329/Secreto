@@ -24,14 +24,4 @@ class EventServiceProvider extends ServiceProvider
             });
         });
     }
-    
-    protected $listen = [
-    \Illuminate\Mail\Events\MessageSent::class => [
-        \App\Listeners\LogEmailSent::class,
-    ],
-    \Illuminate\Mail\Events\MessageFailed::class => [
-        \App\Listeners\LogEmailFailed::class,
-    ],
-];
-
 }

@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\Auditable;
 
 class Campanha extends Model
 {
     use HasFactory;
+    use Auditable;
 
     // Se quiseres permitir preenchimento em massa
     protected $fillable = [

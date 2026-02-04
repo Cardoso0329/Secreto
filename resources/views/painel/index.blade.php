@@ -105,7 +105,13 @@
             <a href="#" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/email-logs';">
               <i class="bi bi-envelope-paper"></i> Logs de Emails
             </a>
+
+            {{-- ✅ NOVO: Audit Logs (entre Logs de Emails e Sair) --}}
+            <a href="#" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/admin/audit-logs';">
+              <i class="bi bi-shield-check"></i> Audit Logs
+            </a>
           @endif
+          
 
           <form method="POST" action="{{ route('logout') }}">
             @csrf

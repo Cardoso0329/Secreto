@@ -12,6 +12,7 @@ use App\Exports\RecadosExport;
 use App\Queries\RecadoQuery;
 use Illuminate\Support\Facades\Mail;
 use App\Services\EmailLogger;
+use App\Services\AuditService; // ✅ AUDIT (tudo menos emails)
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
@@ -81,7 +82,6 @@ class RecadoController extends Controller
      */
     private function attachEmailLogContext($mailable, Recado $recado)
     {
-        // Só chama se o teu Mailable tiver o trait LogsEmail (com estes métodos)
         if (method_exists($mailable, 'withRecado')) {
             $mailable->withRecado($recado->id);
         }
@@ -93,147 +93,154 @@ class RecadoController extends Controller
     }
 
     public function index(Request $request)
-{
-    $user = auth()->user();
+    {
+        $user = auth()->user();
 
-    /* ================= DADOS BASE ================= */
-    $estados = Estado::orderBy('name')->get();
-    $tiposFormulario = TipoFormulario::orderBy('name')->get();
-    $tipos = Tipo::orderBy('name')->get();
+        /* ================= DADOS BASE ================= */
+        $estados = Estado::orderBy('name')->get();
+        $tiposFormulario = TipoFormulario::orderBy('name')->get();
+        $tipos = Tipo::orderBy('name')->get();
 
-    $vistas = collect(\App\Services\VistaService::visiveisPara($user));
+        $vistas = collect(\App\Services\VistaService::visiveisPara($user));
 
-    /* ================= QUERY BASE ================= */
-    $recados = Recado::with([
-        'setor','origem','departamento','chefia','destinatarios','estado','sla',
-        'tipo','aviso','avisosEnviados','tipoFormulario','grupos','guestTokens','campanha'
-    ]);
+        /* ================= QUERY BASE ================= */
+        $recados = Recado::with([
+            'setor','origem','departamento','chefia','destinatarios','estado','sla',
+            'tipo','aviso','avisosEnviados','tipoFormulario','grupos','guestTokens','campanha'
+        ]);
 
-    /* ================= DETETAR FILTROS MANUAIS ================= */
-    $manualFields = ['id','contact_client','plate','estado_id','tipo_id','tipo_formulario_id','date_from','date_to'];
+        /* ================= DETETAR FILTROS MANUAIS ================= */
+        $manualFields = ['id','contact_client','plate','estado_id','tipo_id','tipo_formulario_id','date_from','date_to'];
 
-    $temFiltrosManuais =
-        $request->filled('filtros') ||
-        collect($manualFields)->contains(fn ($f) => $request->filled($f));
+        $temFiltrosManuais =
+            $request->filled('filtros') ||
+            collect($manualFields)->contains(fn ($f) => $request->filled($f));
 
-    /* ================= VISTA ATIVA (GET + SESSÃO) ================= */
-    if ($request->has('vista_id')) {
-        $vistaIdInput = $request->input('vista_id');
-        if ($vistaIdInput) $request->session()->put('recados_vista_id', $vistaIdInput);
-        else $request->session()->forget('recados_vista_id');
-    }
+        /* ================= VISTA ATIVA (GET + SESSÃO) ================= */
+        if ($request->has('vista_id')) {
+            $vistaIdInput = $request->input('vista_id');
+            if ($vistaIdInput) $request->session()->put('recados_vista_id', $vistaIdInput);
+            else $request->session()->forget('recados_vista_id');
+        }
 
-    $vistaId = $request->filled('vista_id')
-        ? $request->input('vista_id')
-        : $request->session()->get('recados_vista_id');
+        $vistaId = $request->filled('vista_id')
+            ? $request->input('vista_id')
+            : $request->session()->get('recados_vista_id');
 
-    $vistaFiltros = [];
-
-    // ✅ Se há filtros manuais, ignorar completamente a vista nesta request
-    if ($temFiltrosManuais) {
-        $vistaId = null;
         $vistaFiltros = [];
-    }
 
-    /* ================= APLICAR VISTA (SÓ SE NÃO HÁ FILTROS MANUAIS) ================= */
-    if (!$temFiltrosManuais && !empty($vistaId)) {
-
-        $vista = \App\Services\VistaRepo::findOrFail($vistaId);
-        if (!$vistas->pluck('id')->contains($vista['id'])) abort(403);
-
-        $vistaFiltros = $vista['filtros'] ?? [];
-
-        if (is_array($vistaFiltros) && array_key_exists('conditions', $vistaFiltros)) {
-            $vistaFiltros = $vistaFiltros['conditions'] ?? [];
+        // ✅ Se há filtros manuais, ignorar completamente a vista nesta request
+        if ($temFiltrosManuais) {
+            $vistaId = null;
+            $vistaFiltros = [];
         }
 
-        $recados = \App\Queries\RecadoQuery::applyFilters(
-            $recados,
-            $vistaFiltros,
-            $vista['logica'] ?? 'AND'
-        );
-    }
+        /* ================= APLICAR VISTA (SÓ SE NÃO HÁ FILTROS MANUAIS) ================= */
+        if (!$temFiltrosManuais && !empty($vistaId)) {
 
-    /* ================= FILTROS TEMPORÁRIOS ================= */
-    if ($request->filled('filtros')) {
-        $recados = \App\Queries\RecadoQuery::applyFilters(
-            $recados,
-            $request->input('filtros', []),
-            $request->input('logica', 'AND')
-        );
-    }
+            $vista = \App\Services\VistaRepo::findOrFail($vistaId);
+            if (!$vistas->pluck('id')->contains($vista['id'])) abort(403);
 
-    /* ================= FILTROS MANUAIS ================= */
-    foreach (['id','contact_client','plate','estado_id','tipo_id','tipo_formulario_id'] as $field) {
-        if ($request->filled($field)) {
-            $operator = in_array($field, ['contact_client','plate']) ? 'LIKE' : '=';
-            $value = in_array($field, ['contact_client','plate'])
-                ? '%'.$request->input($field).'%'
-                : $request->input($field);
+            $vistaFiltros = $vista['filtros'] ?? [];
 
-            $recados->where($field, $operator, $value);
+            if (is_array($vistaFiltros) && array_key_exists('conditions', $vistaFiltros)) {
+                $vistaFiltros = $vistaFiltros['conditions'] ?? [];
+            }
+
+            $recados = \App\Queries\RecadoQuery::applyFilters(
+                $recados,
+                $vistaFiltros,
+                $vista['logica'] ?? 'AND'
+            );
         }
-    }
 
-    /* ================= ✅ INTERVALO DE DATAS (abertura) ================= */
-    $request->validate([
-        'date_from' => ['nullable','date'],
-        'date_to'   => ['nullable','date','after_or_equal:date_from'],
-    ]);
-
-    if ($request->filled('date_from') && $request->filled('date_to')) {
-        $from = Carbon::parse($request->input('date_from'))->startOfDay();
-        $to   = Carbon::parse($request->input('date_to'))->endOfDay();
-        $recados->whereBetween('recados.abertura', [$from, $to]);
-    } elseif ($request->filled('date_from')) {
-        $from = Carbon::parse($request->input('date_from'))->startOfDay();
-        $recados->where('recados.abertura', '>=', $from);
-    } elseif ($request->filled('date_to')) {
-        $to = Carbon::parse($request->input('date_to'))->endOfDay();
-        $recados->where('recados.abertura', '<=', $to);
-    }
-
-    /* ================= VISIBILIDADE ================= */
-    if ($user->cargo?->name !== 'admin') {
-
-        $uid = (int) $user->id;
-        $haVistaAtiva = (!$temFiltrosManuais && !empty($vistaId));
-
-        if (!$haVistaAtiva) {
-            $recados->where(function ($q) use ($uid) {
-                $q->where('user_id', $uid)
-                  ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid))
-                  ->orWhereHas('grupos.users', fn ($g) => $g->where('users.id', $uid))
-                  ->orWhereHas('departamento.users', fn ($u) => $u->where('users.id', $uid))
-                  ->orWhereHas('chefia.users', fn ($u) => $u->where('users.id', $uid));
-            });
+        /* ================= FILTROS TEMPORÁRIOS ================= */
+        if ($request->filled('filtros')) {
+            $recados = \App\Queries\RecadoQuery::applyFilters(
+                $recados,
+                $request->input('filtros', []),
+                $request->input('logica', 'AND')
+            );
         }
+
+        /* ================= FILTROS MANUAIS ================= */
+        foreach (['id','contact_client','plate','estado_id','tipo_id','tipo_formulario_id'] as $field) {
+            if ($request->filled($field)) {
+                $operator = in_array($field, ['contact_client','plate']) ? 'LIKE' : '=';
+                $value = in_array($field, ['contact_client','plate'])
+                    ? '%'.$request->input($field).'%'
+                    : $request->input($field);
+
+                $recados->where($field, $operator, $value);
+            }
+        }
+
+        /* ================= ✅ INTERVALO DE DATAS (abertura) ================= */
+        $request->validate([
+            'date_from' => ['nullable','date'],
+            'date_to'   => ['nullable','date','after_or_equal:date_from'],
+        ]);
+
+        if ($request->filled('date_from') && $request->filled('date_to')) {
+            $from = Carbon::parse($request->input('date_from'))->startOfDay();
+            $to   = Carbon::parse($request->input('date_to'))->endOfDay();
+            $recados->whereBetween('recados.abertura', [$from, $to]);
+        } elseif ($request->filled('date_from')) {
+            $from = Carbon::parse($request->input('date_from'))->startOfDay();
+            $recados->where('recados.abertura', '>=', $from);
+        } elseif ($request->filled('date_to')) {
+            $to = Carbon::parse($request->input('date_to'))->endOfDay();
+            $recados->where('recados.abertura', '<=', $to);
+        }
+
+        /* ================= VISIBILIDADE ================= */
+        if ($user->cargo?->name !== 'admin') {
+
+            $uid = (int) $user->id;
+            $haVistaAtiva = (!$temFiltrosManuais && !empty($vistaId));
+
+            if (!$haVistaAtiva) {
+                $recados->where(function ($q) use ($uid) {
+                    $q->where('user_id', $uid)
+                      ->orWhereHas('destinatarios', fn ($d) => $d->where('users.id', $uid))
+                      ->orWhereHas('grupos.users', fn ($g) => $g->where('users.id', $uid))
+                      ->orWhereHas('departamento.users', fn ($u) => $u->where('users.id', $uid))
+                      ->orWhereHas('chefia.users', fn ($u) => $u->where('users.id', $uid));
+                });
+            }
+        }
+
+        /* ================= ORDENAÇÃO ================= */
+        $allowedSort = ['id','contact_client','plate','estado_id','tipo_formulario_id','abertura','termino'];
+        $sortBy  = $request->input('sort_by', 'id');
+        $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+        if (!in_array($sortBy, $allowedSort)) $sortBy = 'id';
+
+        $recados = $recados
+            ->orderBy($sortBy, $sortDir)
+            ->paginate(10)
+            ->withQueryString();
+
+        $showPopup = !$request->session()->has('local_trabalho');
+
+        // ✅ AUDIT: listar + filtros (sem emails)
+        AuditService::log('recados_index', null, [
+            'vista_id' => $vistaId,
+            'tem_filtros_manuais' => $temFiltrosManuais,
+            'query' => $request->except(['password', '_token']),
+            'page_total' => $recados->count(),
+        ]);
+
+        return view('recados.index', compact(
+            'recados',
+            'estados',
+            'tiposFormulario',
+            'tipos',
+            'vistas',
+            'showPopup',
+            'temFiltrosManuais'
+        ));
     }
-
-    /* ================= ORDENAÇÃO ================= */
-    $allowedSort = ['id','contact_client','plate','estado_id','tipo_formulario_id','abertura','termino'];
-    $sortBy  = $request->input('sort_by', 'id');
-    $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
-    if (!in_array($sortBy, $allowedSort)) $sortBy = 'id';
-
-    $recados = $recados
-        ->orderBy($sortBy, $sortDir)
-        ->paginate(10)
-        ->withQueryString();
-
-    $showPopup = !$request->session()->has('local_trabalho');
-
-    return view('recados.index', compact(
-        'recados',
-        'estados',
-        'tiposFormulario',
-        'tipos',
-        'vistas',
-        'showPopup',
-        'temFiltrosManuais'
-    ));
-}
-
 
     public function create(Request $request)
     {
@@ -276,6 +283,13 @@ class RecadoController extends Controller
             default => 'recados.create_central',
         };
 
+        // ✅ AUDIT: abrir formulário create
+        AuditService::log('recado_create_form', null, [
+            'local_trabalho' => $localTrabalho,
+            'view' => $view,
+            'tipo_formulario_id_default' => $tipoFormularioId,
+        ]);
+
         return view($view, compact(
             'estados',
             'tiposFormulario',
@@ -296,6 +310,9 @@ class RecadoController extends Controller
 
     public function edit(Recado $recado)
     {
+        // ✅ AUDIT: abrir form edit
+        AuditService::log('recado_edit_form', $recado, ['recado_id' => $recado->id]);
+
         $estados = Estado::all();
         $tiposFormulario = TipoFormulario::all();
         $users = User::all();
@@ -319,169 +336,184 @@ class RecadoController extends Controller
         ));
     }
 
-    
+    public function update(Request $request, Recado $recado, EmailLogger $emailLogger)
+    {
+        // ================== CAPTURAR ESTADO ANTES (para comparar) ==================
+        $oldUserIds   = $recado->destinatariosUsers()->pluck('users.id')->map(fn($v)=>(int)$v)->values();
+        $oldGroupIds  = $recado->grupos()->pluck('grupos.id')->map(fn($v)=>(int)$v)->values();
+        $oldFreeEmails = $recado->guestTokens()->pluck('email')
+            ->map(fn($e) => trim(mb_strtolower((string)$e)))
+            ->values();
 
-public function update(Request $request, Recado $recado, EmailLogger $emailLogger)
+        // ================== VALIDAR ==================
+        $rules = [
+            'name' => 'required|string|max:255',
+            'contact_client' => 'required|string|max:255',
+            'plate' => 'nullable|string|max:255',
+            'mensagem' => 'required|string',
+            'observacoes' => 'nullable|string',
 
-{
-    // ================== CAPTURAR ESTADO ANTES (para comparar) ==================
-    $oldUserIds   = $recado->destinatariosUsers()->pluck('users.id')->map(fn($v)=>(int)$v)->values();
-    $oldGroupIds  = $recado->grupos()->pluck('grupos.id')->map(fn($v)=>(int)$v)->values();
-    $oldFreeEmails = $recado->guestTokens()->pluck('email')
-        ->map(fn($e) => trim(mb_strtolower((string)$e)))
-        ->values();
+            'estado_id' => 'nullable|exists:estados,id',
+            'tipo_formulario_id' => 'nullable|exists:tipo_formularios,id',
+            'sla_id' => 'nullable|exists:slas,id',
+            'tipo_id' => 'nullable|exists:tipos,id',
+            'origem_id' => 'nullable|exists:origens,id',
+            'setor_id' => 'nullable|exists:setores,id',
+            'departamento_id' => 'nullable|exists:departamentos,id',
+            'aviso_id' => 'nullable|exists:avisos,id',
+            'campanha_id' => 'nullable|exists:campanhas,id',
+            'chefia_id' => 'nullable|exists:chefias,id',
 
-    // ================== VALIDAR ==================
-    $rules = [
-        'name' => 'required|string|max:255',
-        'contact_client' => 'required|string|max:255',
-        'plate' => 'nullable|string|max:255',
-        'mensagem' => 'required|string',
-        'observacoes' => 'nullable|string',
+            'abertura' => 'nullable|date',
+            'termino' => 'nullable|date',
+            'ficheiro' => 'nullable|file',
 
-        'estado_id' => 'nullable|exists:estados,id',
-        'tipo_formulario_id' => 'nullable|exists:tipo_formularios,id',
-        'sla_id' => 'nullable|exists:slas,id',
-        'tipo_id' => 'nullable|exists:tipos,id',
-        'origem_id' => 'nullable|exists:origens,id',
-        'setor_id' => 'nullable|exists:setores,id',
-        'departamento_id' => 'nullable|exists:departamentos,id',
-        'aviso_id' => 'nullable|exists:avisos,id',
-        'campanha_id' => 'nullable|exists:campanhas,id',
-        'chefia_id' => 'nullable|exists:chefias,id',
+            'destinatarios_users' => 'nullable|array',
+            'destinatarios_users.*' => 'exists:users,id',
 
-        'abertura' => 'nullable|date',
-        'termino' => 'nullable|date',
-        'ficheiro' => 'nullable|file',
+            'destinatarios_grupos' => 'nullable|array',
+            'destinatarios_grupos.*' => 'exists:grupos,id',
 
-        'destinatarios_users' => 'nullable|array',
-        'destinatarios_users.*' => 'exists:users,id',
+            'destinatarios_livres' => 'nullable|array',
+            'destinatarios_livres.*' => 'nullable|email',
+        ];
 
-        'destinatarios_grupos' => 'nullable|array',
-        'destinatarios_grupos.*' => 'exists:grupos,id',
+        $validated = $request->validate($rules);
 
-        'destinatarios_livres' => 'nullable|array',
-        'destinatarios_livres.*' => 'nullable|email',
-    ];
-
-    $validated = $request->validate($rules);
-
-    // ================== UPDATE RECADO ==================
-    $recado->fill($validated);
-
-    if ($request->hasFile('ficheiro')) {
-        $file = $request->file('ficheiro');
-        $filename = time().'_'.$file->getClientOriginalName();
-        $file->storeAs('public/recados', $filename);
-        $recado->ficheiro = $filename;
-    }
-
-    $recado->save();
-
-    // ================== SYNC USERS / GRUPOS ==================
-    $newUserIds  = collect((array) $request->input('destinatarios_users', []))->map(fn($v)=>(int)$v)->values();
-    $newGroupIds = collect((array) $request->input('destinatarios_grupos', []))->map(fn($v)=>(int)$v)->values();
-
-    $recado->destinatariosUsers()->sync($newUserIds->all());
-    $recado->grupos()->sync($newGroupIds->all());
-
-    // ================== ATUALIZAR EMAILS LIVRES (GUEST TOKENS) ==================
-    $novosLivres = collect((array) $request->input('destinatarios_livres', []))
-        ->map(fn($e) => trim(mb_strtolower((string) $e)))
-        ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
-        ->unique()
-        ->values();
-
-    $atuaisLivres = $recado->guestTokens()->pluck('email')
-        ->map(fn($e) => trim(mb_strtolower((string) $e)))
-        ->values();
-
-    $paraRemover = $atuaisLivres->diff($novosLivres);
-    if ($paraRemover->isNotEmpty()) {
-        $recado->guestTokens()->whereIn('email', $paraRemover->all())->delete();
-    }
-
-    // vamos guardar os tokens dos que foram ADICIONADOS agora
-    $tokensByEmail = [];
-
-    $paraAdicionar = $novosLivres->diff($atuaisLivres);
-    foreach ($paraAdicionar as $email) {
-        $token = Str::random(60);
-
-        $recado->guestTokens()->create([
-            'email'      => $email,
-            'token'      => $token,
-            'expires_at' => now()->addMonth(),
-            'is_active'  => true,
+        // ✅ AUDIT: update chamado (sem emails)
+        AuditService::log('recado_update_request', $recado, [
+            'recado_id' => $recado->id,
+            'fields' => array_keys($validated),
         ]);
 
-        $tokensByEmail[$email] = $token;
-    }
+        // ================== UPDATE RECADO ==================
+        $recado->fill($validated);
 
-    // ================== DETETAR NOVOS DESTINATÁRIOS ==================
-    $addedUserIds  = $newUserIds->diff($oldUserIds)->values();       // users novos
-    $addedGroupIds = $newGroupIds->diff($oldGroupIds)->values();     // grupos novos
-    $addedFreeEmails = $paraAdicionar->values();                     // emails livres novos
-
-    $temNovos = $addedUserIds->isNotEmpty() || $addedGroupIds->isNotEmpty() || $addedFreeEmails->isNotEmpty();
-
-    // ================== ENVIAR EMAIL "RECADO CRIADO" PARA NOVOS ==================
-    if ($temNovos) {
-
-        // 1) Emails dos users adicionados diretamente
-        $emailsUsers = \App\Models\User::whereIn('id', $addedUserIds->all())
-            ->pluck('email')
-            ->filter()
-            ->map(fn($e) => trim(mb_strtolower($e)));
-
-        // 2) Emails dos utilizadores dos grupos adicionados
-        // ⚠️ Ajusta a relação do Grupo: ->users() (ou ->utilizadores())
-        $emailsGrupos = collect();
-        if ($addedGroupIds->isNotEmpty()) {
-            $grupos = Grupo::with('users')->whereIn('id', $addedGroupIds->all())->get();
-            $emailsGrupos = $grupos->flatMap(fn($g) => $g->users->pluck('email'))
-                ->filter()
-                ->map(fn($e) => trim(mb_strtolower($e)));
+        if ($request->hasFile('ficheiro')) {
+            $file = $request->file('ficheiro');
+            $filename = time().'_'.$file->getClientOriginalName();
+            $file->storeAs('public/recados', $filename);
+            $recado->ficheiro = $filename;
         }
 
-        // 3) Juntar e remover duplicados + remover emails livres (porque esses vão com link guest)
-        $emailsInternos = $emailsUsers
-            ->merge($emailsGrupos)
+        $recado->save();
+
+        // ================== SYNC USERS / GRUPOS ==================
+        $newUserIds  = collect((array) $request->input('destinatarios_users', []))->map(fn($v)=>(int)$v)->values();
+        $newGroupIds = collect((array) $request->input('destinatarios_grupos', []))->map(fn($v)=>(int)$v)->values();
+
+        $recado->destinatariosUsers()->sync($newUserIds->all());
+        $recado->grupos()->sync($newGroupIds->all());
+
+        // ================== ATUALIZAR EMAILS LIVRES (GUEST TOKENS) ==================
+        $novosLivres = collect((array) $request->input('destinatarios_livres', []))
+            ->map(fn($e) => trim(mb_strtolower((string) $e)))
+            ->filter(fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))
             ->unique()
             ->values();
 
-        // Enviar para internos (sem guestUrl)
-        foreach ($emailsInternos as $email) {
-    try {
-        $mailable = new RecadoCriadoMail($recado, null, $emailsInternos);
-        $mailable = $this->attachEmailLogContext($mailable, $recado);
-        $emailLogger->sendLogged($mailable, $email);
-    } catch (\Throwable $e) {
-        continue;
-    }
-}
+        $atuaisLivres = $recado->guestTokens()->pluck('email')
+            ->map(fn($e) => trim(mb_strtolower((string) $e)))
+            ->values();
 
-        // Enviar para emails livres (com guestUrl individual)
-        // ✅ Enviar para emails livres (com guestUrl) - COM 3 args + log
-foreach ($addedFreeEmails as $email) {
-    $token = $tokensByEmail[$email] ?? null;
-    if (!$token) continue;
+        $paraRemover = $atuaisLivres->diff($novosLivres);
+        if ($paraRemover->isNotEmpty()) {
+            $recado->guestTokens()->whereIn('email', $paraRemover->all())->delete();
+        }
 
-    // usa a tua rota real (no store usas route('recados.guest', $token))
-    $guestUrl = route('recados.guest', $token);
+        // vamos guardar os tokens dos que foram ADICIONADOS agora
+        $tokensByEmail = [];
 
-    try {
-        // 3º argumento pode ser uma collection com 1 email
-        $mailable = new RecadoCriadoMail($recado, $guestUrl, collect([$email]));
-        $mailable = $this->attachEmailLogContext($mailable, $recado);
-        $emailLogger->sendLogged($mailable, $email);
-    } catch (\Throwable $e) {
-        continue;
+        $paraAdicionar = $novosLivres->diff($atuaisLivres);
+        foreach ($paraAdicionar as $email) {
+            $token = Str::random(60);
+
+            $recado->guestTokens()->create([
+                'email'      => $email,
+                'token'      => $token,
+                'expires_at' => now()->addMonth(),
+                'is_active'  => true,
+            ]);
+
+            $tokensByEmail[$email] = $token;
+        }
+
+        // ================== DETETAR NOVOS DESTINATÁRIOS ==================
+        $addedUserIds  = $newUserIds->diff($oldUserIds)->values();       // users novos
+        $addedGroupIds = $newGroupIds->diff($oldGroupIds)->values();     // grupos novos
+        $addedFreeEmails = $paraAdicionar->values();                     // emails livres novos
+
+        $removedUsers  = $oldUserIds->diff($newUserIds)->values();
+        $removedGroups = $oldGroupIds->diff($newGroupIds)->values();
+
+        // ✅ AUDIT: alterações de destinatários (pivots/guest) — sem emails
+        AuditService::log('recado_update_destinatarios', $recado, [
+            'recado_id' => $recado->id,
+            'added_users' => $addedUserIds->all(),
+            'added_groups' => $addedGroupIds->all(),
+            'added_free_emails' => $addedFreeEmails->all(),
+            'removed_users' => $removedUsers->all(),
+            'removed_groups' => $removedGroups->all(),
+            'removed_free_emails' => $paraRemover->values()->all(),
+        ]);
+
+        $temNovos = $addedUserIds->isNotEmpty() || $addedGroupIds->isNotEmpty() || $addedFreeEmails->isNotEmpty();
+
+        // ================== ENVIAR EMAIL "RECADO CRIADO" PARA NOVOS ==================
+        // ❌ NÃO AUDITAR AQUI (emails já têm EmailLogger)
+        if ($temNovos) {
+
+            // 1) Emails dos users adicionados diretamente
+            $emailsUsers = \App\Models\User::whereIn('id', $addedUserIds->all())
+                ->pluck('email')
+                ->filter()
+                ->map(fn($e) => trim(mb_strtolower($e)));
+
+            // 2) Emails dos utilizadores dos grupos adicionados
+            $emailsGrupos = collect();
+            if ($addedGroupIds->isNotEmpty()) {
+                $grupos = Grupo::with('users')->whereIn('id', $addedGroupIds->all())->get();
+                $emailsGrupos = $grupos->flatMap(fn($g) => $g->users->pluck('email'))
+                    ->filter()
+                    ->map(fn($e) => trim(mb_strtolower($e)));
+            }
+
+            // 3) Juntar e remover duplicados + remover emails livres (porque esses vão com link guest)
+            $emailsInternos = $emailsUsers
+                ->merge($emailsGrupos)
+                ->unique()
+                ->values();
+
+            // Enviar para internos (sem guestUrl)
+            foreach ($emailsInternos as $email) {
+                try {
+                    $mailable = new RecadoCriadoMail($recado, null, $emailsInternos);
+                    $mailable = $this->attachEmailLogContext($mailable, $recado);
+                    $emailLogger->sendLogged($mailable, $email);
+                } catch (\Throwable $e) {
+                    continue;
+                }
+            }
+
+            // Enviar para emails livres (com guestUrl individual)
+            foreach ($addedFreeEmails as $email) {
+                $token = $tokensByEmail[$email] ?? null;
+                if (!$token) continue;
+
+                $guestUrl = route('recados.guest', $token);
+
+                try {
+                    $mailable = new RecadoCriadoMail($recado, $guestUrl, collect([$email]));
+                    $mailable = $this->attachEmailLogContext($mailable, $recado);
+                    $emailLogger->sendLogged($mailable, $email);
+                } catch (\Throwable $e) {
+                    continue;
+                }
+            }
+        }
+
+        return redirect()->route('recados.index')->with('success', 'Recado atualizado com sucesso!');
     }
-}
-    }
-    return redirect()->route('recados.index')->with('success', 'Recado atualizado com sucesso!');
-}
 
     public function store(Request $request, EmailLogger $emailLogger)
     {
@@ -524,6 +556,12 @@ foreach ($addedFreeEmails as $email) {
         }
 
         $validated = $request->validate($rules);
+
+        // ✅ AUDIT: store request (antes de criar)
+        AuditService::log('recado_store_request', null, [
+            'fields' => array_keys($validated),
+            'tipo_formulario_id' => $validated['tipo_formulario_id'] ?? null,
+        ]);
 
         $validated['user_id'] = auth()->id();
 
@@ -592,7 +630,17 @@ foreach ($addedFreeEmails as $email) {
             ->unique()
             ->values();
 
-        // ✅ Envio com log em BD (um log por destinatário)
+        // ✅ AUDIT: destinatários associados no store (sem emails)
+        AuditService::log('recado_store_destinatarios', $recado, [
+            'recado_id' => $recado->id,
+            'grupos' => $gruposSelecionados,
+            'users' => $userIdsSelecionados->all(),
+            'departamento_id' => $depId ?: null,
+            'chefia_id' => $chefiaId ?: null,
+            'internos_total' => $emailsInternos->count(),
+        ]);
+
+        // ❌ envio com EmailLogger (já tens logs de email)
         foreach ($emailsInternos as $email) {
             try {
                 $mailable = new RecadoCriadoMail($recado, null, $emailsInternos);
@@ -600,8 +648,6 @@ foreach ($addedFreeEmails as $email) {
 
                 $emailLogger->sendLogged($mailable, $email);
             } catch (\Throwable $e) {
-                // não precisamos de Log::error (o EmailLogger já grava o erro na BD)
-                // mantemos apenas para não parar o loop
                 continue;
             }
         }
@@ -623,13 +669,18 @@ foreach ($addedFreeEmails as $email) {
                     'is_active' => true
                 ]);
 
+                // ✅ AUDIT: guest token criado (sem emails)
+                AuditService::log('recado_store_guest_token', $recado, [
+                    'recado_id' => $recado->id,
+                    'guest_email' => $emailLivre,
+                ]);
+
                 try {
                     $mailable = new RecadoCriadoMail($recado, route('recados.guest', $token));
                     $mailable = $this->attachEmailLogContext($mailable, $recado);
 
                     $emailLogger->sendLogged($mailable, $emailLivre);
                 } catch (\Throwable $e) {
-                    // erro já fica na BD; não paramos os restantes envios
                     continue;
                 }
             }
@@ -677,6 +728,9 @@ foreach ($addedFreeEmails as $email) {
             }
         }
 
+        // ✅ AUDIT: abrir recado
+        AuditService::log('recado_show', $recado, ['recado_id' => $recado->id]);
+
         $avisos = Aviso::all();
         $estados = Estado::all();
 
@@ -697,6 +751,13 @@ foreach ($addedFreeEmails as $email) {
             'guestTokens','grupos.users','campanha'
         ])->findOrFail($guest->recado_id);
 
+        // ✅ AUDIT: acesso guest
+        AuditService::log('recado_show_guest', $recado, [
+            'recado_id' => $recado->id,
+            'guest_email' => $guest->email,
+            'guest_token_id' => $guest->id,
+        ]);
+
         $avisos = Aviso::all();
         $estados = Estado::all();
 
@@ -709,6 +770,10 @@ foreach ($addedFreeEmails as $email) {
         if ($user->cargo?->name !== 'admin') abort(403, 'Acesso não autorizado');
 
         $recado = Recado::findOrFail($id);
+
+        // ✅ AUDIT: tentativa de delete
+        AuditService::log('recado_destroy', $recado, ['recado_id' => $recado->id]);
+
         $recado->delete();
 
         return redirect()->route('recados.index')->with('success', 'Recado apagado com sucesso!');
@@ -717,6 +782,18 @@ foreach ($addedFreeEmails as $email) {
     public function adicionarComentario(Request $request, Recado $recado)
     {
         $request->validate(['comentario' => 'required|string']);
+
+        $oldObs = (string) $recado->observacoes;
+
+        // ✅ AUDIT: comentário adicionado (sem guardar texto completo)
+        AuditService::log('recado_add_comment', $recado, [
+            'recado_id' => $recado->id,
+        ], [
+            'observacoes_len' => mb_strlen($oldObs),
+        ], [
+            'comentario_len' => mb_strlen((string)$request->comentario),
+        ]);
+
         $novaLinha = now()->format('d/m/Y H:i').' - '.auth()->user()->name.': '.$request->comentario;
 
         $recado->observacoes = $recado->observacoes
@@ -744,6 +821,17 @@ foreach ($addedFreeEmails as $email) {
 
         if (!$novoEstado) return redirect()->back()->with('error', 'Estado inválido.');
 
+        // ✅ AUDIT: mudança de estado
+        AuditService::log('recado_update_estado', $recado, [
+            'recado_id' => $recado->id,
+            'from' => $estadoAntigo?->name,
+            'to' => $novoEstado?->name,
+        ], [
+            'estado_id' => $estadoAntigo?->id,
+        ], [
+            'estado_id' => $novoEstado?->id,
+        ]);
+
         $recado->estado_id = $novoEstado->id;
 
         $comentarioSistema = null;
@@ -770,6 +858,12 @@ foreach ($addedFreeEmails as $email) {
     public function escolherLocal(Request $request)
     {
         $request->validate(['local' => 'required|in:Central,Call Center']);
+
+        // ✅ AUDIT: escolha de local
+        AuditService::log('recado_escolher_local', null, [
+            'local' => $request->local,
+        ]);
+
         $request->session()->put('local_trabalho', $request->local);
         return redirect()->route('recados.index');
     }
@@ -778,7 +872,6 @@ foreach ($addedFreeEmails as $email) {
     {
         $user = auth()->user();
 
-        // ✅ valida intervalo também no export
         $request->validate([
             'date_from' => ['nullable','date'],
             'date_to'   => ['nullable','date','after_or_equal:date_from'],
@@ -793,7 +886,6 @@ foreach ($addedFreeEmails as $email) {
             ? $request->input('vista_id')
             : $request->session()->get('recados_vista_id');
 
-        // ✅ adicionados date_from/date_to
         $manualFields = ['id','contact_client','plate','estado_id','tipo_formulario_id','date_from','date_to'];
 
         $temFiltrosManuais =
@@ -837,19 +929,15 @@ foreach ($addedFreeEmails as $email) {
             }
         }
 
-        /* ================= ✅ INTERVALO DE DATAS (abertura) ================= */
         if ($request->filled('date_from') && $request->filled('date_to')) {
             $from = \Carbon\Carbon::parse($request->input('date_from'))->startOfDay();
             $to   = \Carbon\Carbon::parse($request->input('date_to'))->endOfDay();
-
             $query->whereBetween('recados.abertura', [$from, $to]);
         } elseif ($request->filled('date_from')) {
             $from = \Carbon\Carbon::parse($request->input('date_from'))->startOfDay();
-
             $query->where('recados.abertura', '>=', $from);
         } elseif ($request->filled('date_to')) {
             $to = \Carbon\Carbon::parse($request->input('date_to'))->endOfDay();
-
             $query->where('recados.abertura', '<=', $to);
         }
 
@@ -865,7 +953,6 @@ foreach ($addedFreeEmails as $email) {
             });
         }
 
-        // ✅ removi created_at da whitelist
         $allowedSort = ['id','contact_client','plate','estado_id','tipo_formulario_id','abertura','termino'];
         $sortBy  = $request->input('sort_by', 'id');
         $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
@@ -879,6 +966,12 @@ foreach ($addedFreeEmails as $email) {
             return back()->with('error', 'Não existem recados para exportar com os filtros atuais.');
         }
 
+        // ✅ AUDIT: exportação
+        AuditService::log('recados_export_filtered', null, [
+            'total' => $recados->count(),
+            'filters' => $request->except(['password', '_token']),
+        ]);
+
         return Excel::download(new RecadosExport($recados), 'recados_filtrados.xlsx');
     }
 
@@ -886,6 +979,17 @@ foreach ($addedFreeEmails as $email) {
     {
         $estadoTratado = Estado::where('name', 'Tratado')->first();
         if (!$estadoTratado) return redirect()->back()->with('error', 'Estado "Tratado" não encontrado.');
+
+        // ✅ AUDIT: concluir
+        AuditService::log('recado_concluir', $recado, [
+            'recado_id' => $recado->id,
+        ], [
+            'estado_id' => $recado->getOriginal('estado_id'),
+            'termino' => $recado->getOriginal('termino'),
+        ], [
+            'estado_id' => $estadoTratado->id,
+            'termino' => now()->toDateTimeString(),
+        ]);
 
         $recado->estado_id = $estadoTratado->id;
         $recado->termino = now();
@@ -921,14 +1025,22 @@ foreach ($addedFreeEmails as $email) {
             $emails = array_merge($emails, $recado->guestTokens->pluck('email')->toArray());
         }
 
-        foreach (array_values(array_unique($emails)) as $email) {
+        $emailsUnique = array_values(array_unique($emails));
+
+        // ✅ AUDIT: ação enviar aviso (NÃO loga emails)
+        AuditService::log('recado_enviar_aviso', $recado, [
+            'recado_id' => $recado->id,
+            'aviso_id' => $avisoId,
+            'destinatarios_total' => count($emailsUnique),
+        ]);
+
+        foreach ($emailsUnique as $email) {
             try {
                 $mailable = new RecadoAvisoMail($recado, $aviso);
                 $mailable = $this->attachEmailLogContext($mailable, $recado);
 
                 $emailLogger->sendLogged($mailable, $email);
             } catch (\Throwable $e) {
-                // erro já fica na BD; continua para os restantes
                 continue;
             }
         }
@@ -937,6 +1049,4 @@ foreach ($addedFreeEmails as $email) {
 
         return back()->with('success', 'Aviso enviado com sucesso!');
     }
-
-    
 }
