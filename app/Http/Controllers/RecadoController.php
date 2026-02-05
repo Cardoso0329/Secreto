@@ -699,9 +699,11 @@ class RecadoController extends Controller
 
         $user = auth()->user();
 
-        if (!$user) {
-            abort(403, 'Faça login para ver este recado.');
-        }
+        if (!auth()->check()) {
+    return redirect()->route('login')
+        ->with('error', 'Recupere password para aderir a sua conta.');
+}
+
 
         if ($user->cargo?->name !== 'admin' && $recado->user_id !== $user->id) {
             $uid = (int) $user->id;

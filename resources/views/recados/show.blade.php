@@ -3,20 +3,26 @@
 @section('content')
 <div class="container py-4">
 
-    {{-- Cabeçalho com botão concluir --}}
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <h2 class="fw-bold mb-0">📌 Recado #{{ $recado->id }}</h2>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <a href="{{ route('painel') }}" class="btn btn-outline-secondary d-flex align-items-center gap-2">
+            <i class="bi bi-arrow-left"></i> Voltar ao Painel
+        </a>
 
-        @if ($recado->estado->name !== 'Tratado')
-            <form action="{{ route('recados.concluir', $recado) }}" method="POST">
-                @csrf
-                @method('PUT')
-                <button type="submit" class="btn btn-success d-flex align-items-center gap-2">
-                    <i class="bi bi-check-circle"></i> Concluir
-                </button>
-            </form>
-        @endif
+        <h2 class="fw-bold mb-0">📌 Recado #{{ $recado->id }}</h2>
     </div>
+
+    @if ($recado->estado->name !== 'Tratado')
+        <form action="{{ route('recados.concluir', $recado) }}" method="POST" class="m-0">
+            @csrf
+            @method('PUT')
+            <button type="submit" class="btn btn-success d-flex align-items-center gap-2">
+                <i class="bi bi-check-circle"></i> Concluir
+            </button>
+        </form>
+    @endif
+</div>
+
 
     @php
         // ✅ IDs dos avisos já enviados neste recado (pivot recado_aviso)

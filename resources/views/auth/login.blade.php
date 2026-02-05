@@ -90,36 +90,95 @@
             color: #FF6B6B !important;
             font-size: 0.875rem;
         }
+
+        /* 🔒 Mensagem de acesso restrito (session error) */
+        .alert-auth {
+            background: #3a1d1d;
+            border: 1px solid #ff6b6b;
+            color: #ffb3b3;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 1.25rem;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+
+        /* ⚠️ Erro normal de autenticação/validação (Breeze) */
+        .alert-login {
+            background: #2b2413;
+            border: 1px solid #f7c948;
+            color: #ffe8a3;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 1.25rem;
+            text-align: center;
+            font-size: 0.95rem;
+        }
     </style>
 
     <div class="form-container">
-        <!-- Session Status -->
+
+        {{-- 🔒 Mensagem quando vem de acesso protegido --}}
+        @if (session('error'))
+            <div class="alert-auth">
+                🔒 <strong>Acesso restrito</strong><br>
+                {{ session('error') }}
+            </div>
+        @endif
+
+        {{-- ⚠️ Erro normal de login (credenciais inválidas, etc.) --}}
+        @if ($errors->any())
+            <div class="alert-login">
+                ⚠️ <strong>Não foi possível iniciar sessão</strong><br>
+                {{ $errors->first() }}
+            </div>
+        @endif
+
+        {{-- Session Status (Breeze) --}}
         <x-auth-session-status class="mb-4" :status="session('status')" />
 
         <form method="POST" action="{{ route('login') }}">
             @csrf
 
-            <!-- Email Address -->
+            {{-- Email --}}
             <div class="mb-4">
                 <x-input-label for="email" :value="__('Email')" />
-                <x-text-input id="email" class="mt-1" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
+                <x-text-input
+                    id="email"
+                    class="mt-1"
+                    type="email"
+                    name="email"
+                    :value="old('email')"
+                    required
+                    autofocus
+                    autocomplete="username"
+                />
                 <x-input-error :messages="$errors->get('email')" class="mt-2" />
             </div>
 
-            <!-- Password -->
+            {{-- Password --}}
             <div class="mb-4">
                 <x-input-label for="password" :value="__('Password')" />
-                <x-text-input id="password" class="mt-1" type="password" name="password" required autocomplete="current-password" />
+                <x-text-input
+                    id="password"
+                    class="mt-1"
+                    type="password"
+                    name="password"
+                    required
+                    autocomplete="current-password"
+                />
                 <x-input-error :messages="$errors->get('password')" class="mt-2" />
             </div>
 
-            <!-- Remember Me -->
+            {{-- Remember me --}}
             <div class="remember-label">
                 <input id="remember_me" type="checkbox" name="remember">
-                <label for="remember_me" class="text-sm text-gray-400">{{ __('Lembrar-me') }}</label>
+                <label for="remember_me" class="text-sm text-gray-400">
+                    {{ __('Lembrar-me') }}
+                </label>
             </div>
 
-            <!-- Actions -->
+            {{-- Footer --}}
             <div class="form-footer">
                 @if (Route::has('password.request'))
                     <a class="text-sm underline hover:text-white" href="{{ route('password.request') }}">

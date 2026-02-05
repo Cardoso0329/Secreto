@@ -34,6 +34,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
 
+
+
+
+
 });
 Route::resource('recados', RecadoController::class);
 
