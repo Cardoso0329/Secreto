@@ -68,6 +68,20 @@
                         @endforeach
                     </select>
                 </div>
+                
+                {{-- Campanha (Só na CENTRAL) --}}
+<div class="mb-4">
+    <label class="form-label">Campanha</label>
+<select name="campanha_id" class="form-select">
+  <option value="">—</option>
+  @foreach($campanhas as $c)
+    <option value="{{ $c->id }}" @selected(old('campanha_id', $recado->campanha_id ?? null) == $c->id)>
+      {{ $c->name }}
+    </option>
+  @endforeach
+</select>
+
+</div>
 
                 {{-- Origem (pré-selecionada + bloqueada) --}}
                 <div class="mb-4">

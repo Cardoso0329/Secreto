@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 class RecadoController extends Controller
 {
@@ -263,7 +264,6 @@ class RecadoController extends Controller
         $tipos = Tipo::orderBy('name')->get();
         $avisos = Aviso::orderBy('name')->get();
         $campanhas = Campanha::orderBy('name')->get();
-
         $chefias = Chefia::orderBy('name')->get();
 
         $nomeTipo = strtolower(trim((string)$localTrabalho));
@@ -324,7 +324,6 @@ class RecadoController extends Controller
         $tipos = Tipo::all();
         $avisos = Aviso::all();
         $campanhas = Campanha::all();
-
         $chefias = Chefia::orderBy('name')->get();
 
         $guestEmails = $recado->guestTokens->pluck('email')->toArray();
@@ -535,6 +534,7 @@ class RecadoController extends Controller
             'ficheiro' => 'nullable|file',
             'aviso_id' => 'nullable|exists:avisos,id',
             'estado_id' => 'nullable|exists:estados,id',
+            'campanha_id' => 'nullable|exists:campanhas,id', // ✅ CORRIGIDO (faltava aqui)
             'observacoes' => 'nullable|string',
             'abertura' => 'nullable|date',
             'termino' => 'nullable|date',
@@ -691,6 +691,14 @@ class RecadoController extends Controller
 
     public function show($id)
     {
+        // ✅ mover check para cima
+        if (!auth()->check()) {
+            return redirect()->route('login')
+                ->with('error', 'Recupere password para aderir a sua conta.');
+        }
+
+        $users = User::orderBy('name')->get();
+
         $recado = Recado::with([
             'sla','tipo','origem','setor','departamento','chefia',
             'destinatarios','aviso','estado','tipoFormulario',
@@ -698,12 +706,6 @@ class RecadoController extends Controller
         ])->findOrFail($id);
 
         $user = auth()->user();
-
-        if (!auth()->check()) {
-    return redirect()->route('login')
-        ->with('error', 'Recupere password para aderir a sua conta.');
-}
-
 
         if ($user->cargo?->name !== 'admin' && $recado->user_id !== $user->id) {
             $uid = (int) $user->id;
@@ -736,7 +738,7 @@ class RecadoController extends Controller
         $avisos = Aviso::all();
         $estados = Estado::all();
 
-        return view('recados.show', compact('recado','estados','avisos'));
+        return view('recados.show', compact('recado','estados','avisos', 'users'));
     }
 
     public function showGuest(string $token)
@@ -1050,5 +1052,108 @@ class RecadoController extends Controller
         $recado->avisosEnviados()->syncWithoutDetaching([$avisoId]);
 
         return back()->with('success', 'Aviso enviado com sucesso!');
+    }
+
+    public function updateFicheiro(Request $request, \App\Models\Recado $recado)
+    {
+        if (!auth()->check()) abort(403);
+
+        // ✅ remover ficheiro
+        if ($request->boolean('remove_file')) {
+            if ($recado->ficheiro) {
+                Storage::disk('public')->delete('recados/'.$recado->ficheiro);
+            }
+
+            $recado->update(['ficheiro' => null]);
+
+            return back()->with('success', 'Ficheiro removido com sucesso.');
+        }
+
+        // ✅ validar upload
+        $request->validate([
+            'ficheiro' => ['required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,gif,webp,doc,docx,xls,xlsx,txt'],
+        ]);
+
+        // ✅ apagar ficheiro antigo (se existir)
+        if ($recado->ficheiro) {
+            Storage::disk('public')->delete('recados/'.$recado->ficheiro);
+        }
+
+        // ✅ guardar novo
+        $file = $request->file('ficheiro');
+
+        $name = time().'_'.$recado->id.'_'.preg_replace('/\s+/', '_', $file->getClientOriginalName());
+        $file->storeAs('recados', $name, 'public');
+
+        $recado->update(['ficheiro' => $name]);
+
+        return back()->with('success', 'Ficheiro enviado com sucesso.');
+    }
+
+    public function destroyFicheiro(Recado $recado)
+    {
+        if ($recado->ficheiro) {
+            $path = 'recados/' . $recado->ficheiro;
+
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+
+            $recado->ficheiro = null;
+            $recado->save();
+        }
+
+        return back()->with('success', 'Ficheiro removido com sucesso.');
+    }
+
+    public function updateDestinatarios(Request $request, Recado $recado)
+    {
+        $temColisao = auth()->user()
+            ->departamentos
+            ->contains(fn($d) => mb_strtolower(trim($d->name)) === 'colisão'); // ✅ corrigido (lowercase)
+
+        if (!$temColisao) abort(403);
+
+        $request->validate([
+            'user_ids'   => ['nullable', 'array'],
+            'user_ids.*' => ['integer', 'exists:users,id'],
+            'encaminhar' => ['nullable'],
+        ]);
+
+        $userIds = collect($request->input('user_ids', []))
+            ->map(fn($v) => (int)$v)
+            ->filter(fn($v) => $v > 0)
+            ->unique()
+            ->values();
+
+        // atuais
+        $atuais = $recado->destinatarios()->pluck('users.id');
+
+        // novos (para email)
+        $novosIds = $userIds->diff($atuais)->values();
+
+        // adiciona sem remover os antigos
+        if ($userIds->count()) {
+            $recado->destinatarios()->syncWithoutDetaching($userIds->all());
+        }
+
+        // ✅ encaminhar por email (só para os novos)
+        if ($request->boolean('encaminhar') && $novosIds->count()) {
+            $novos = User::whereIn('id', $novosIds)->get();
+            foreach ($novos as $u) {
+                if (!empty($u->email)) {
+                    Mail::to($u->email)->send(new RecadoCriadoMail($recado));
+                }
+            }
+        }
+
+        return back()->with('success', 'Destinatários atualizados com sucesso.');
+    }
+
+    public function removeDestinatario(Recado $recado, User $user)
+    {
+        $recado->destinatarios()->detach($user->id);
+
+        return back()->with('success', 'Destinatário removido.');
     }
 }

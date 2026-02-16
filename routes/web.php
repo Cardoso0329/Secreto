@@ -147,6 +147,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/audit-logs/{auditLog}', [AuditLogController::class, 'show'])->name('audit_logs.show');
 });
 
+Route::put('/recados/{recado}/ficheiro', [RecadoController::class, 'updateFicheiro'])
+    ->name('recados.ficheiro.update')
+    ->middleware('auth');
+
+    Route::delete('/recados/{recado}/ficheiro', [RecadoController::class, 'destroyFicheiro'])
+    ->name('recados.ficheiro.destroy');
+
+Route::put('/recados/{recado}/destinatarios', [RecadoController::class, 'updateDestinatarios'])
+    ->name('recados.destinatarios.update');
+
+Route::delete('/recados/{recado}/destinatarios/{user}', [RecadoController::class, 'removeDestinatario'])
+    ->name('recados.destinatarios.remove');
+
 
 
        

@@ -89,8 +89,9 @@ public function destinatariosLivres()
 
 public function campanha()
 {
-    return $this->belongsTo(Campanha::class, 'campanha_id');
+    return $this->belongsTo(\App\Models\Campanha::class, 'campanha_id');
 }
+
 
 public function chefia()
 {
