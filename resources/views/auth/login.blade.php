@@ -1,195 +1,242 @@
 <x-guest-layout>
+    {{-- Bootstrap Icons --}}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
     <style>
-        body {
-            background-color: #1C1C1C;
-            color: #F8F8F8;
-            font-family: 'Segoe UI', sans-serif;
+        :root{
+            --bg:#1C1C1C;
+            --card:#2A2A2A;
+            --input:#3A3A3A;
+            --border:#A5A5A5;
+            --text:#F8F8F8;
+            --muted:#C0C0C0;
+            --accent:#009EDB;
         }
 
-        .form-container {
-            background-color: #2A2A2A;
-            padding: 2rem;
-            border-radius: 0.75rem;
-            box-shadow: 0 0 12px rgba(255, 255, 255, 0.05);
-            max-width: 500px;
-            margin: 3rem auto;
+        body{
+            background:var(--bg);
+            color:var(--text);
+            font-family:'Segoe UI', sans-serif;
         }
 
-        label,
-        .x-input-label {
-            color: #F8F8F8 !important;
-            font-weight: 500;
+        .form-container{
+            background:var(--card);
+            padding:2rem;
+            border-radius:12px;
+            box-shadow:0 0 12px rgba(255,255,255,.05);
+            max-width:500px;
+            margin:3rem auto;
         }
 
-        input[type="text"],
-        input[type="email"],
-        input[type="password"] {
-            background-color: #3A3A3A;
-            border: 1px solid #A5A5A5;
-            color: #F8F8F8;
-            padding: 0.5rem;
-            border-radius: 0.375rem;
-            width: 100%;
-            transition: all 0.3s ease;
+        .field{
+            margin-bottom:1rem;
         }
 
-        input:focus {
-            border-color: #009EDB;
-            box-shadow: 0 0 5px #009EDB;
-            outline: none;
+        .label{
+            display:block;
+            margin-bottom:.35rem;
+            font-weight:600;
+            color:var(--text);
         }
 
-        .text-sm.text-gray-600 {
-            color: #C0C0C0 !important;
+        .input{
+            width:100%;
+            background:var(--input);
+            border:1px solid var(--border);
+            color:var(--text);
+            padding:.55rem .75rem;
+            border-radius:8px;
+            transition:all .2s ease;
         }
 
-        a {
-            color: #C0C0C0;
-            transition: color 0.3s ease;
+        .input:focus{
+            border-color:var(--accent);
+            box-shadow:0 0 0 3px rgba(0,158,219,.20);
+            outline:none;
         }
 
-        a:hover {
-            color: #FFFFFF;
+        .password-wrap{
+            position:relative;
         }
 
-        .btn-mercedes {
-            background-color: #A5A5A5;
-            color: #000;
-            padding: 0.5rem 1.25rem;
-            border-radius: 0.375rem;
-            font-weight: 500;
-            transition: background-color 0.3s ease;
-            border: none;
+        .password-wrap .input{
+            padding-right:44px; /* espaço para o olho */
         }
 
-        .btn-mercedes:hover {
-            background-color: #DADADA;
+        .eye-btn{
+            position:absolute;
+            right:12px;
+            top:50%;
+            transform:translateY(-50%);
+            background:transparent;
+            border:0;
+            padding:0;
+            cursor:pointer;
+            color:var(--muted);
+            font-size:18px;
+            line-height:1;
         }
 
-        .remember-label {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-top: 1rem;
+        .eye-btn:hover{
+            color:var(--accent);
         }
 
-        .remember-label input[type="checkbox"] {
-            accent-color: #009EDB;
-            width: 1rem;
-            height: 1rem;
+        .remember{
+            display:flex;
+            align-items:center;
+            gap:.55rem;
+            margin-top:.25rem;
         }
 
-        .form-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 2rem;
+        .remember input[type="checkbox"]{
+            accent-color:var(--accent);
+            width:16px;
+            height:16px;
         }
 
-        .x-input-error {
-            color: #FF6B6B !important;
-            font-size: 0.875rem;
+        .form-footer{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:1rem;
+            margin-top:1.75rem;
         }
 
-        /* 🔒 Mensagem de acesso restrito (session error) */
-        .alert-auth {
-            background: #3a1d1d;
-            border: 1px solid #ff6b6b;
-            color: #ffb3b3;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 1.25rem;
-            text-align: center;
-            font-size: 0.95rem;
+        .link{
+            color:var(--muted);
+            text-decoration:underline;
+            text-underline-offset:3px;
+            transition:color .2s ease;
+            font-size:.92rem;
         }
 
-        /* ⚠️ Erro normal de autenticação/validação (Breeze) */
-        .alert-login {
-            background: #2b2413;
-            border: 1px solid #f7c948;
-            color: #ffe8a3;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 1.25rem;
-            text-align: center;
-            font-size: 0.95rem;
+        .link:hover{
+            color:#fff;
+        }
+
+        .btn-mercedes{
+            background:var(--border);
+            color:#000;
+            padding:.55rem 1.25rem;
+            border-radius:8px;
+            font-weight:600;
+            border:none;
+            transition:background-color .2s ease;
+            white-space:nowrap;
+        }
+
+        .btn-mercedes:hover{
+            background:#DADADA;
+        }
+
+        .alert{
+            padding:12px;
+            border-radius:8px;
+            margin-bottom:1.1rem;
+            text-align:center;
+            font-size:.95rem;
+        }
+
+        .alert-auth{
+            background:#3a1d1d;
+            border:1px solid #ff6b6b;
+            color:#ffb3b3;
+        }
+
+        .alert-login{
+            background:#2b2413;
+            border:1px solid #f7c948;
+            color:#ffe8a3;
         }
     </style>
 
     <div class="form-container">
 
-        {{-- 🔒 Mensagem quando vem de acesso protegido --}}
+        {{-- 🔒 Mensagem de acesso restrito --}}
         @if (session('error'))
-            <div class="alert-auth">
+            <div class="alert alert-auth">
                 🔒 <strong>Acesso restrito</strong><br>
                 {{ session('error') }}
             </div>
         @endif
 
-        {{-- ⚠️ Erro normal de login (credenciais inválidas, etc.) --}}
+        {{-- ⚠️ Erro de login --}}
         @if ($errors->any())
-            <div class="alert-login">
+            <div class="alert alert-login">
                 ⚠️ <strong>Não foi possível iniciar sessão</strong><br>
                 {{ $errors->first() }}
             </div>
         @endif
 
-        {{-- Session Status (Breeze) --}}
-        <x-auth-session-status class="mb-4" :status="session('status')" />
-
         <form method="POST" action="{{ route('login') }}">
             @csrf
 
             {{-- Email --}}
-            <div class="mb-4">
-                <x-input-label for="email" :value="__('Email')" />
-                <x-text-input
+            <div class="field">
+                <label for="email" class="label">Email</label>
+                <input
                     id="email"
-                    class="mt-1"
                     type="email"
                     name="email"
-                    :value="old('email')"
+                    value="{{ old('email') }}"
                     required
                     autofocus
                     autocomplete="username"
-                />
-                <x-input-error :messages="$errors->get('email')" class="mt-2" />
+                    class="input"
+                >
             </div>
 
             {{-- Password --}}
-            <div class="mb-4">
-                <x-input-label for="password" :value="__('Password')" />
-                <x-text-input
-                    id="password"
-                    class="mt-1"
-                    type="password"
-                    name="password"
-                    required
-                    autocomplete="current-password"
-                />
-                <x-input-error :messages="$errors->get('password')" class="mt-2" />
+            <div class="field">
+                <label for="password" class="label">Password</label>
+
+                <div class="password-wrap">
+                    <input
+                        id="password"
+                        type="password"
+                        name="password"
+                        required
+                        autocomplete="current-password"
+                        class="input"
+                    >
+
+                    <button type="button" class="eye-btn" onclick="togglePassword()" aria-label="Mostrar/esconder password">
+                        <i id="eyeIcon" class="bi bi-eye"></i>
+                    </button>
+                </div>
             </div>
 
-            {{-- Remember me --}}
-            <div class="remember-label">
-                <input id="remember_me" type="checkbox" name="remember">
-                <label for="remember_me" class="text-sm text-gray-400">
-                    {{ __('Lembrar-me') }}
-                </label>
+            {{-- Remember --}}
+            <div class="remember">
+                <input type="checkbox" name="remember" id="remember_me">
+                <label for="remember_me" class="label" style="margin:0; font-weight:500;">Lembrar-me</label>
             </div>
 
             {{-- Footer --}}
             <div class="form-footer">
                 @if (Route::has('password.request'))
-                    <a class="text-sm underline hover:text-white" href="{{ route('password.request') }}">
-                        {{ __('Esqueceste-te da password?') }}
+                    <a class="link" href="{{ route('password.request') }}">
+                        Esqueceste-te da password?
                     </a>
                 @endif
 
                 <button type="submit" class="btn-mercedes">
-                    {{ __('Login') }}
+                    Login
                 </button>
             </div>
         </form>
     </div>
+
+    <script>
+        function togglePassword() {
+            const password = document.getElementById('password');
+            const icon = document.getElementById('eyeIcon');
+
+            const showing = password.type === 'text';
+            password.type = showing ? 'password' : 'text';
+
+            icon.classList.toggle('bi-eye', showing);
+            icon.classList.toggle('bi-eye-slash', !showing);
+        }
+    </script>
 </x-guest-layout>
