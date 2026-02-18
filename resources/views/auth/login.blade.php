@@ -1,242 +1,338 @@
 <x-guest-layout>
-    {{-- Bootstrap Icons --}}
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
-    <style>
-        :root{
-            --bg:#1C1C1C;
-            --card:#2A2A2A;
-            --input:#3A3A3A;
-            --border:#A5A5A5;
-            --text:#F8F8F8;
-            --muted:#C0C0C0;
-            --accent:#009EDB;
-        }
+<style>
+/* ============================= */
+/* FULLSCREEN FIX (BREEZE)       */
+/* ============================= */
+html, body { height:100%; margin:0; }
 
-        body{
-            background:var(--bg);
-            color:var(--text);
-            font-family:'Segoe UI', sans-serif;
-        }
+.min-h-screen{ padding:0 !important; }
+.min-h-screen > div{
+    max-width:100% !important;
+    width:100% !important;
+    padding:0 !important;
+    margin:0 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+    border:none !important;
+}
+.bg-white,.shadow-md,.sm\:rounded-lg{
+    background:transparent !important;
+    box-shadow:none !important;
+    border-radius:0 !important;
+}
 
-        .form-container{
-            background:var(--card);
-            padding:2rem;
-            border-radius:12px;
-            box-shadow:0 0 12px rgba(255,255,255,.05);
-            max-width:500px;
-            margin:3rem auto;
-        }
+/* ============================= */
+/* MERCEDES COLOR PALETTE        */
+/* ============================= */
 
-        .field{
-            margin-bottom:1rem;
-        }
+:root{
+    --black:#0a0a0a;
+    --deep-black:#111111;
+    --silver:#C8C8C8;
+    --metal:#8F8F8F;
+    --white:#F5F5F5;
+    --accent:#00A19B; /* Mercedes teal accent */
+    --glass:rgba(255,255,255,0.05);
+    --stroke:rgba(255,255,255,0.12);
+}
 
-        .label{
-            display:block;
-            margin-bottom:.35rem;
-            font-weight:600;
-            color:var(--text);
-        }
+body{
+    font-family:'Segoe UI', sans-serif;
+    color:var(--white);
+    background:
+        radial-gradient(1200px 600px at 20% 20%, rgba(0,161,155,.15), transparent 60%),
+        linear-gradient(180deg, var(--black), var(--deep-black));
+}
 
-        .input{
-            width:100%;
-            background:var(--input);
-            border:1px solid var(--border);
-            color:var(--text);
-            padding:.55rem .75rem;
-            border-radius:8px;
-            transition:all .2s ease;
-        }
+/* ============================= */
+/* LAYOUT                        */
+/* ============================= */
 
-        .input:focus{
-            border-color:var(--accent);
-            box-shadow:0 0 0 3px rgba(0,158,219,.20);
-            outline:none;
-        }
+.page{
+    width:100vw;
+    height:100vh;
+    display:grid;
+    grid-template-columns:1.1fr .9fr;
+}
 
-        .password-wrap{
-            position:relative;
-        }
+@media(max-width:980px){
+    .page{grid-template-columns:1fr;}
+    .left{display:none;}
+}
 
-        .password-wrap .input{
-            padding-right:44px; /* espaço para o olho */
-        }
+/* ============================= */
+/* LEFT PANEL                    */
+/* ============================= */
 
-        .eye-btn{
-            position:absolute;
-            right:12px;
-            top:50%;
-            transform:translateY(-50%);
-            background:transparent;
-            border:0;
-            padding:0;
-            cursor:pointer;
-            color:var(--muted);
-            font-size:18px;
-            line-height:1;
-        }
+.left{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:70px;
+    background:
+        radial-gradient(800px 400px at 30% 30%, rgba(0,161,155,.12), transparent 60%),
+        linear-gradient(135deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+    border-right:1px solid var(--stroke);
+}
 
-        .eye-btn:hover{
-            color:var(--accent);
-        }
+.brand{
+    max-width:560px;
+}
 
-        .remember{
-            display:flex;
-            align-items:center;
-            gap:.55rem;
-            margin-top:.25rem;
-        }
+.logo{
+    width:50px;
+    height:50px;
+    border-radius:50%;
+    border:2px solid var(--silver);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin-bottom:20px;
+    font-size:20px;
+    color:var(--silver);
+}
 
-        .remember input[type="checkbox"]{
-            accent-color:var(--accent);
-            width:16px;
-            height:16px;
-        }
+.company{
+    font-size:1.5rem;
+    font-weight:700;
+    letter-spacing:.5px;
+    margin-bottom:8px;
+}
 
-        .form-footer{
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            gap:1rem;
-            margin-top:1.75rem;
-        }
+.tagline{
+    color:var(--metal);
+    font-size:.95rem;
+    margin-bottom:30px;
+}
 
-        .link{
-            color:var(--muted);
-            text-decoration:underline;
-            text-underline-offset:3px;
-            transition:color .2s ease;
-            font-size:.92rem;
-        }
+.headline{
+    font-size:2.2rem;
+    font-weight:600;
+    margin-bottom:15px;
+}
 
-        .link:hover{
-            color:#fff;
-        }
+.desc{
+    color:var(--silver);
+    line-height:1.6;
+    font-size:1rem;
+}
 
-        .btn-mercedes{
-            background:var(--border);
-            color:#000;
-            padding:.55rem 1.25rem;
-            border-radius:8px;
-            font-weight:600;
-            border:none;
-            transition:background-color .2s ease;
-            white-space:nowrap;
-        }
+/* ============================= */
+/* RIGHT PANEL (LOGIN)           */
+/* ============================= */
 
-        .btn-mercedes:hover{
-            background:#DADADA;
-        }
+.right{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:40px;
+}
 
-        .alert{
-            padding:12px;
-            border-radius:8px;
-            margin-bottom:1.1rem;
-            text-align:center;
-            font-size:.95rem;
-        }
+.card{
+    width:100%;
+    max-width:440px;
+    background:var(--glass);
+    border:1px solid var(--stroke);
+    backdrop-filter:blur(12px);
+    border-radius:24px;
+    padding:40px;
+    box-shadow:0 30px 80px rgba(0,0,0,.6);
+}
 
-        .alert-auth{
-            background:#3a1d1d;
-            border:1px solid #ff6b6b;
-            color:#ffb3b3;
-        }
+.title{
+    font-size:1.4rem;
+    font-weight:700;
+    margin-bottom:8px;
+}
 
-        .alert-login{
-            background:#2b2413;
-            border:1px solid #f7c948;
-            color:#ffe8a3;
-        }
-    </style>
+.sub{
+    color:var(--metal);
+    font-size:.9rem;
+    margin-bottom:25px;
+}
 
-    <div class="form-container">
+.alert{
+    background:rgba(255,0,0,.08);
+    border:1px solid rgba(255,0,0,.3);
+    padding:12px;
+    border-radius:12px;
+    margin-bottom:15px;
+    font-size:.9rem;
+}
 
-        {{-- 🔒 Mensagem de acesso restrito --}}
-        @if (session('error'))
-            <div class="alert alert-auth">
-                🔒 <strong>Acesso restrito</strong><br>
-                {{ session('error') }}
+.field{margin-bottom:18px;}
+
+.input{
+    width:100%;
+    padding:14px;
+    border-radius:14px;
+    border:1px solid var(--stroke);
+    background:rgba(0,0,0,.4);
+    color:var(--white);
+    outline:none;
+    transition:.2s;
+}
+
+.input:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(0,161,155,.25);
+}
+
+.password-wrap{position:relative;}
+.password-wrap .input{padding-right:50px;}
+
+.eye-btn{
+    position:absolute;
+    right:12px;
+    top:50%;
+    transform:translateY(-50%);
+    background:none;
+    border:none;
+    color:var(--metal);
+    cursor:pointer;
+}
+.eye-btn:hover{color:var(--accent);}
+
+.row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:.85rem;
+    margin-bottom:15px;
+}
+
+.remember input{accent-color:var(--accent);}
+
+.link{
+    color:var(--silver);
+    text-decoration:underline;
+}
+.link:hover{color:white;}
+
+.btn{
+    width:100%;
+    padding:14px;
+    border-radius:14px;
+    border:none;
+    font-weight:700;
+    letter-spacing:.5px;
+    background:linear-gradient(180deg,#E6E6E6,#CFCFCF);
+    color:#000;
+    cursor:pointer;
+    transition:.2s;
+}
+
+.btn:hover{
+    transform:translateY(-2px);
+    box-shadow:0 10px 30px rgba(0,0,0,.6);
+}
+
+.footer-note{
+    margin-top:18px;
+    text-align:center;
+    font-size:.8rem;
+    color:var(--metal);
+}
+</style>
+
+<div class="page">
+
+    <!-- LEFT -->
+    <section class="left">
+        <div class="brand">
+            <div class="logo">
+                <i class="bi bi-envelope-paper"></i>
             </div>
-        @endif
 
-        {{-- ⚠️ Erro de login --}}
-        @if ($errors->any())
-            <div class="alert alert-login">
-                ⚠️ <strong>Não foi possível iniciar sessão</strong><br>
-                {{ $errors->first() }}
+            <div class="company">Sociedade Comercial C. Santos</div>
+            <div class="tagline">Plataforma Interna de Recados</div>
+
+            <div class="headline">Comunicação clara. Execução precisa.</div>
+            <div class="desc">
+                Gere, encaminha e acompanha recados com elegância e eficiência.
+                Histórico completo, controlo por perfil e rastreabilidade total.
             </div>
-        @endif
+        </div>
+    </section>
 
-        <form method="POST" action="{{ route('login') }}">
-            @csrf
+    <!-- RIGHT -->
+    <section class="right">
+        <div class="card">
 
-            {{-- Email --}}
-            <div class="field">
-                <label for="email" class="label">Email</label>
-                <input
-                    id="email"
-                    type="email"
-                    name="email"
-                    value="{{ old('email') }}"
-                    required
-                    autofocus
-                    autocomplete="username"
-                    class="input"
-                >
-            </div>
+            <div class="title">Iniciar sessão</div>
+            <div class="sub">Acede à plataforma de recados</div>
 
-            {{-- Password --}}
-            <div class="field">
-                <label for="password" class="label">Password</label>
+            @if ($errors->any())
+                <div class="alert">
+                    {{ $errors->first() }}
+                </div>
+            @endif
 
-                <div class="password-wrap">
-                    <input
-                        id="password"
-                        type="password"
-                        name="password"
-                        required
-                        autocomplete="current-password"
-                        class="input"
-                    >
+            <form method="POST" action="{{ route('login') }}">
+                @csrf
 
-                    <button type="button" class="eye-btn" onclick="togglePassword()" aria-label="Mostrar/esconder password">
+                <div class="field">
+                    <input type="email"
+                           name="email"
+                           value="{{ old('email') }}"
+                           class="input"
+                           required
+                           placeholder="Email">
+                </div>
+
+                <div class="field password-wrap">
+                    <input id="password"
+                           type="password"
+                           name="password"
+                           class="input"
+                           required
+                           placeholder="Password">
+
+                    <button type="button" class="eye-btn" onclick="togglePassword()">
                         <i id="eyeIcon" class="bi bi-eye"></i>
                     </button>
                 </div>
-            </div>
 
-            {{-- Remember --}}
-            <div class="remember">
-                <input type="checkbox" name="remember" id="remember_me">
-                <label for="remember_me" class="label" style="margin:0; font-weight:500;">Lembrar-me</label>
-            </div>
+                <div class="row">
+                    <label class="remember">
+                        <input type="checkbox" name="remember">
+                        Lembrar-me
+                    </label>
 
-            {{-- Footer --}}
-            <div class="form-footer">
-                @if (Route::has('password.request'))
-                    <a class="link" href="{{ route('password.request') }}">
-                        Esqueceste-te da password?
-                    </a>
-                @endif
+                    @if (Route::has('password.request'))
+                        <a class="link" href="{{ route('password.request') }}">
+                            Esqueceste-te da password?
+                        </a>
+                    @endif
+                </div>
 
-                <button type="submit" class="btn-mercedes">
-                    Login
+                <button type="submit" class="btn">
+                    Entrar
                 </button>
-            </div>
-        </form>
-    </div>
 
-    <script>
-        function togglePassword() {
-            const password = document.getElementById('password');
-            const icon = document.getElementById('eyeIcon');
+                <div class="footer-note">
+                    Sistema interno · Acesso restrito
+                </div>
 
-            const showing = password.type === 'text';
-            password.type = showing ? 'password' : 'text';
+            </form>
+        </div>
+    </section>
+</div>
 
-            icon.classList.toggle('bi-eye', showing);
-            icon.classList.toggle('bi-eye-slash', !showing);
-        }
-    </script>
+<script>
+function togglePassword(){
+    const password = document.getElementById('password');
+    const icon = document.getElementById('eyeIcon');
+
+    if(password.type === 'password'){
+        password.type = 'text';
+        icon.classList.replace('bi-eye','bi-eye-slash');
+    }else{
+        password.type = 'password';
+        icon.classList.replace('bi-eye-slash','bi-eye');
+    }
+}
+</script>
 </x-guest-layout>

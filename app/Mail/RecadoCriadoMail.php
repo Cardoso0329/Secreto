@@ -17,12 +17,15 @@ class RecadoCriadoMail extends Mailable
     public ?string $guestUrl;
     public $emailsInternos;
 
-
-    public function __construct(Recado $recado, ?string $guestUrl = null, $emailsInternos)
+    /**
+     * ✅ FIX: $emailsInternos agora tem default, para não rebentar
+     * quando algum sítio fizer new RecadoCriadoMail($recado)
+     */
+    public function __construct(Recado $recado, ?string $guestUrl = null, $emailsInternos = [])
     {
         $this->recado = $recado;
         $this->emailsInternos = $emailsInternos;
-        $this->guestUrl = $guestUrl;    
+        $this->guestUrl = $guestUrl;
     }
 
     public function envelope(): Envelope
@@ -33,9 +36,20 @@ class RecadoCriadoMail extends Mailable
             $subject .= ' | Matrícula: ' . $this->recado->plate;
         }
 
+        // ✅ replyTo precisa de array/Address/Collection; garantimos array aqui
+        $replyTo = $this->emailsInternos;
+
+        if ($replyTo instanceof \Illuminate\Support\Collection) {
+            $replyTo = $replyTo->values()->all();
+        } elseif (is_string($replyTo) && !empty($replyTo)) {
+            $replyTo = [$replyTo];
+        } elseif (!is_array($replyTo)) {
+            $replyTo = [];
+        }
+
         return new Envelope(
             subject: $subject,
-            replyTo: $this->emailsInternos,
+            replyTo: $replyTo
         );
     }
 

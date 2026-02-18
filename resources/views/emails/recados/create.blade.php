@@ -31,9 +31,18 @@
 
               <!-- Badge -->
               <div style="margin-bottom:14px;">
-                <span style="display:inline-block;padding:6px 10px;border-radius:999px;background:#e7f1ff;color:#0d6efd;border:1px solid #cfe2ff;font-size:12px;font-weight:700;">
+
+                {{-- ✅ Tipo de Formulário (antes do Recado #) --}}
+                @if($recado->tipoFormulario)
+                  <span style="display:inline-block;padding:6px 10px;border-radius:999px;background:#e9ecef;color:#212529;border:1px solid #dee2e6;font-size:12px;font-weight:700;">
+                    {{ $recado->tipoFormulario->name }}
+                  </span>
+                @endif
+
+                <span style="display:inline-block;padding:6px 10px;border-radius:999px;background:#e7f1ff;color:#0d6efd;border:1px solid #cfe2ff;font-size:12px;font-weight:700; margin-left:8px;">
                   Recado #{{ $recado->id }}
                 </span>
+
                 <span style="display:inline-block;margin-left:8px;color:#6c757d;font-size:12px;">
                   {{ optional($recado->created_at)->format('d/m/Y H:i') }}
                 </span>

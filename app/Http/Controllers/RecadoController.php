@@ -1106,7 +1106,8 @@ class RecadoController extends Controller
         return back()->with('success', 'Ficheiro removido com sucesso.');
     }
 
-    public function updateDestinatarios(Request $request, Recado $recado)
+    
+public function updateDestinatarios(Request $request, Recado $recado)
     {
         $temColisao = auth()->user()
             ->departamentos
@@ -1139,10 +1140,28 @@ class RecadoController extends Controller
 
         // ✅ encaminhar por email (só para os novos)
         if ($request->boolean('encaminhar') && $novosIds->count()) {
+
             $novos = User::whereIn('id', $novosIds)->get();
+
+            // reply-to (emails internos) — usa os emails dos novos
+            $emailsInternos = $novos->pluck('email')
+                ->filter()
+                ->map(fn($e) => trim(mb_strtolower((string)$e)))
+                ->unique()
+                ->values();
+
             foreach ($novos as $u) {
-                if (!empty($u->email)) {
-                    Mail::to($u->email)->send(new RecadoCriadoMail($recado));
+                if (empty($u->email)) continue;
+
+                try {
+                    // ✅ agora passa os 3 args esperados
+                    $mailable = new RecadoCriadoMail($recado, null, $emailsInternos);
+                    $mailable = $this->attachEmailLogContext($mailable, $recado);
+
+                    Mail::to($u->email)->send($mailable);
+
+                } catch (\Throwable $e) {
+                    continue;
                 }
             }
         }
@@ -1157,3 +1176,4 @@ class RecadoController extends Controller
         return back()->with('success', 'Destinatário removido.');
     }
 }
+
