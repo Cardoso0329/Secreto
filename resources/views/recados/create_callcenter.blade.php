@@ -7,6 +7,7 @@
             <div class="d-flex justify-content-between align-items-center mb-5">
                 <h2 class="fw-bold m-0">📞 Criar Novo Recado - Call Center</h2>
 <<<<<<< HEAD
+<<<<<<< HEAD
                 
                 {{-- Botão fechar --}}
                 <button type="button" class="btn btn-light btn-sm rounded-circle border" title="Cancelar"
@@ -15,6 +16,10 @@
                 </button>
 =======
 <a href="{{ route('recados.index') }}" class="btn btn-light btn-sm rounded-circle border" title="Voltar">                    <i class="bi bi-x-lg"></i>
+=======
+                <a href="{{ route('recados.index') }}" class="btn btn-light btn-sm rounded-circle border" title="Voltar">
+                    <i class="bi bi-x-lg"></i>
+>>>>>>> main
                 </a>
 >>>>>>> main
             </div>
@@ -92,6 +97,20 @@
                         @endforeach
                     </select>
                 </div>
+                
+                {{-- Campanha (Só na CENTRAL) --}}
+<div class="mb-4">
+    <label class="form-label">Campanha</label>
+<select name="campanha_id" class="form-select">
+  <option value="">—</option>
+  @foreach($campanhas as $c)
+    <option value="{{ $c->id }}" @selected(old('campanha_id', $recado->campanha_id ?? null) == $c->id)>
+      {{ $c->name }}
+    </option>
+  @endforeach
+</select>
+
+</div>
 
                 {{-- Origem (pré-selecionada + bloqueada) --}}
                 <div class="mb-4">
@@ -109,12 +128,10 @@
                            value="{{ $origens->firstWhere('name', 'Telefone')->id }}">
                 </div>
 
-
-
                 {{-- Departamento --}}
                 <div class="mb-4">
-                    <label class="form-label fw-semibold">Departamento *</label>
-                    <select name="departamento_id" id="departamento_id" class="form-select rounded-3" required>
+                    <label class="form-label fw-semibold">Departamento</label>
+                    <select name="departamento_id" id="departamento_id" class="form-select rounded-3">
                         <option value="">-- Selecione --</option>
                         @foreach ($departamentos as $item)
                             <option value="{{ $item->id }}">{{ $item->name }}</option>
@@ -123,6 +140,7 @@
                 </div>
 >>>>>>> main
 
+<<<<<<< HEAD
                 {{-- Tipo --}}
                 <div class="mb-4">
                     <label class="form-label fw-semibold">Tipo *</label>
@@ -168,25 +186,31 @@
                         'Colisão', 'APV - VLP', 'APV - VCL', 'APV - VCP', 'VCL', 'Marketing', 'Informática'
                     ];
                 @endphp
+=======
+                {{-- ✅ NOVO: Chefia (Call Center) --}}
+>>>>>>> main
                 <div class="mb-4">
-                    <label class="form-label fw-semibold">Chefias *</label>
-                    <select name="setor_id" id="setor_id" class="form-select rounded-3" required>
+                    <label class="form-label fw-semibold">Chefia *</label>
+                    <select name="chefia_id" id="chefia_id" class="form-select rounded-3" >
                         <option value="">-- Selecione --</option>
-                        @foreach ($setores as $setor)
-                            @if(in_array($setor->name, $setoresPermitidos))
-                                <option value="{{ $setor->id }}">{{ $setor->name }}</option>
-                            @endif
+                        @foreach ($chefias as $chefia)
+                            <option value="{{ $chefia->id }}">{{ $chefia->name }}</option>
                         @endforeach
                     </select>
                 </div>
 
+<<<<<<< HEAD
                 {{-- Destinatários --}}
+=======
+
+                {{-- Destinatários Dinâmicos --}}
+>>>>>>> main
                 <div class="mb-4">
                     <label class="form-label fw-semibold">Destinatários</label>
                     <div class="input-group">
                         <select id="novoDestinatario" class="form-select rounded-start">
                             <option value="">Selecione um destinatário</option>
-                            @foreach (\App\Models\User::all() as $user)
+                            @foreach (\App\Models\User::orderBy('name')->get() as $user)
                                 <option value="{{ $user->id }}" data-name="{{ $user->name }}">{{ $user->name }}</option>
                             @endforeach
                         </select>
@@ -198,6 +222,7 @@
                     <div id="destinatariosInputs"></div>
                 </div>
 <<<<<<< HEAD
+<<<<<<< HEAD
 
                 {{-- Grupo Destinatário (fixo: Telefonistas) --}}
                 <div class="mb-4">
@@ -208,6 +233,13 @@
                     <label class="form-label fw-semibold">Grupo Destinatário</label>
                     <select class="form-select rounded-3" disabled>
 >>>>>>> main
+=======
+
+                {{-- Grupo Destinatário --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Grupo Destinatário</label>
+                    <select name="destinatarios_grupos[]" id="destinatarios_grupos" class="form-select rounded-3" multiple>
+>>>>>>> main
                         @foreach (\App\Models\Grupo::all() as $grupo)
                             <option value="{{ $grupo->id }}"
                                 {{ $grupo->name === 'Telefonistas' ? 'selected' : '' }}>
@@ -215,6 +247,7 @@
                             </option>
                         @endforeach
                     </select>
+<<<<<<< HEAD
                     <input type="hidden" name="destinatarios_grupos[]"
                         value="{{ \App\Models\Grupo::where('name', 'Telefonistas')->first()->id }}">
                 </div>
@@ -233,6 +266,10 @@
     <small class="form-text text-muted">Segure Ctrl (Windows).</small>
 </div>
 >>>>>>> main
+=======
+                    <small class="form-text text-muted">Segure Ctrl (Windows).</small>
+                </div>
+>>>>>>> main
 
                 {{-- Destinatários Livres --}}
                 <div class="mb-4">
@@ -247,7 +284,7 @@
                     <div id="destinatariosLivresInputs"></div>
                 </div>
 
-                {{-- Assunto (AGORA OBRIGATÓRIO) --}}
+                {{-- Assunto --}}
                 <div class="mb-4">
                     <label for="assunto" class="form-label fw-semibold">Assunto *</label>
                     <input type="text" name="assunto" id="assunto" class="form-control rounded-3" placeholder="Digite o assunto" required>

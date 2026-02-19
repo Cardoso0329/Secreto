@@ -6,10 +6,12 @@ use Illuminate\Support\Str;
 use App\Models\RecadoGuestToken;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\Auditable;
 
 class Recado extends Model
 {
     use HasFactory;
+    use Auditable;
 
         protected $casts = [
     'abertura' => 'datetime',
@@ -20,7 +22,7 @@ class Recado extends Model
     'name', 'contact_client', 'operator_email', 'sla_id', 'tipo_id', 
     'origem_id', 'setor_id', 'departamento_id', 'mensagem', 'ficheiro',
     'aviso_id', 'estado_id', 'observacoes', 'abertura', 'termino',
-    'tipo_formulario_id', 'wip', 'destinatario_livre', 'plate', 'user_id', 'assunto',  'campanha_id' 
+    'tipo_formulario_id', 'wip', 'destinatario_livre', 'plate', 'user_id', 'assunto',  'campanha_id', 'chefia_id',
     
 ];
 
@@ -87,12 +89,29 @@ public function destinatariosLivres()
 
 public function campanha()
 {
-    return $this->belongsTo(Campanha::class, 'campanha_id');
+    return $this->belongsTo(\App\Models\Campanha::class, 'campanha_id');
+}
+
+
+public function chefia()
+{
+    return $this->belongsTo(\App\Models\Chefia::class, 'chefia_id');
+}
+
+
+public function avisosEnviados()
+{
+    return $this->belongsToMany(Aviso::class, 'recado_aviso')
+        ->withPivot('created_at')
+        ->orderBy('recado_aviso.created_at', 'asc');
 }
 
 
 
+<<<<<<< HEAD
 
 
 
+=======
+>>>>>>> main
 }

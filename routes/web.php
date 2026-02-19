@@ -8,7 +8,8 @@ use App\Http\Controllers\{
     AvisoController, EstadoController, TipoController,
     RecadoController, UserController, PainelController,
     ProfileController, CargoController, GrupoController,
-    CampanhaController, RecadosCampanhaController
+    CampanhaController, RecadosCampanhaController, VistaController,
+    ChefiaController
 };
 
 // Página inicial
@@ -33,6 +34,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
 
+
+
+
+
 });
 Route::resource('recados', RecadoController::class);
 
@@ -49,6 +54,8 @@ Route::resource('recados', RecadoController::class);
         Route::resource('tipos', TipoController::class)->parameters(['tipos' => 'tipo']);
         Route::put('/recados/{recado}/observacoes', [RecadoController::class, 'adicionarComentario'])->name('recados.observacoes.update');
         Route::resource('campanhas', CampanhaController::class)->except(['show']);
+         Route::resource('vistas', VistaController::class)->except(['show']);
+         Route::resource('chefias', ChefiaController::class);
 
 
 // Atualiza estado pelo select
@@ -125,7 +132,46 @@ Route::get('/recados-campanhas', [RecadosCampanhaController::class, 'index'])
     ->middleware('auth');
 
 
+    // ✅ Link público do email (SEM login)
+Route::get('/recados/guest/{token}', [RecadoController::class, 'showGuest'])
+    ->name('recados.guest');
 
+// (Opcional) Se a tua rota show estiver dentro de auth, mantém.
+// Se NÃO estiver, mete auth nela:
+Route::get('/recados/{id}', [RecadoController::class, 'show'])
+    ->name('recados.show')
+    ->middleware('auth');
+
+
+
+
+use App\Http\Controllers\EmailLogController;
+
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/email-logs', [EmailLogController::class, 'index'])->name('email_logs.index');
+    Route::get('/email-logs/{emailLog}', [EmailLogController::class, 'show'])->name('email_logs.show');
+});
+
+use App\Http\Controllers\AuditLogController;
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/admin/audit-logs', [AuditLogController::class, 'index'])->name('audit_logs.index');
+    Route::get('/admin/audit-logs/{auditLog}', [AuditLogController::class, 'show'])->name('audit_logs.show');
+});
+
+Route::put('/recados/{recado}/ficheiro', [RecadoController::class, 'updateFicheiro'])
+    ->name('recados.ficheiro.update')
+    ->middleware('auth');
+
+    Route::delete('/recados/{recado}/ficheiro', [RecadoController::class, 'destroyFicheiro'])
+    ->name('recados.ficheiro.destroy');
+
+Route::put('/recados/{recado}/destinatarios', [RecadoController::class, 'updateDestinatarios'])
+    ->name('recados.destinatarios.update');
+
+Route::delete('/recados/{recado}/destinatarios/{user}', [RecadoController::class, 'removeDestinatario'])
+    ->name('recados.destinatarios.remove');
 
 
 

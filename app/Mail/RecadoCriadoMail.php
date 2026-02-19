@@ -5,29 +5,32 @@ namespace App\Mail;
 use App\Models\Recado;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 class RecadoCriadoMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $recado;
-    public $guestUrl;
+    public Recado $recado;
+    public ?string $guestUrl;
+    public $emailsInternos;
 
     /**
-     * Create a new message instance.
+     * ✅ FIX: $emailsInternos agora tem default, para não rebentar
+     * quando algum sítio fizer new RecadoCriadoMail($recado)
      */
-    public function __construct(Recado $recado, $guestUrl = null)
+    public function __construct(Recado $recado, ?string $guestUrl = null, $emailsInternos = [])
     {
         $this->recado = $recado;
+        $this->emailsInternos = $emailsInternos;
         $this->guestUrl = $guestUrl;
     }
 
-    /**
-     * Build the message.
-     */
-    public function build()
+    public function envelope(): Envelope
     {
+<<<<<<< HEAD
         return $this->subject('Novo Recado Criado — Matricula:' . ($this->recado->plate))
 
                     ->view('emails.recados.create')
@@ -35,6 +38,40 @@ class RecadoCriadoMail extends Mailable
                         'recado' => $this->recado,
                         'guestUrl' => $this->guestUrl,
                     ]);
+=======
+        $subject = 'Recado #' . $this->recado->id;
+
+        if (!empty($this->recado->plate)) {
+            $subject .= ' | Matrícula: ' . $this->recado->plate;
+        }
+
+        // ✅ replyTo precisa de array/Address/Collection; garantimos array aqui
+        $replyTo = $this->emailsInternos;
+
+        if ($replyTo instanceof \Illuminate\Support\Collection) {
+            $replyTo = $replyTo->values()->all();
+        } elseif (is_string($replyTo) && !empty($replyTo)) {
+            $replyTo = [$replyTo];
+        } elseif (!is_array($replyTo)) {
+            $replyTo = [];
+        }
+
+        return new Envelope(
+            subject: $subject,
+            replyTo: $replyTo
+        );
+    }
+
+    public function content(): Content
+    {
+        return new Content(
+            view: 'emails.recados.create',
+            with: [
+                'recado' => $this->recado,
+                'guestUrl' => $this->guestUrl,
+            ]
+        );
+>>>>>>> main
     }
 }
 

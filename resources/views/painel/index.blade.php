@@ -83,7 +83,7 @@
 <body>
   <div class="container-fluid">
     <div class="row g-0">
-      
+
       <!-- Sidebar -->
       <nav class="col-md-3 col-lg-2 sidebar p-3">
         <h4 class="text-center">📋 Painel</h4>
@@ -92,11 +92,6 @@
         <a href="#" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/recados';">
           <i class="bi bi-chat-left-dots"></i> Recados
         </a>
-        <a href="#" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/recados-campanhas';">
-  <i class="bi bi-megaphone"></i> Campanhas
-</a>
-
-
 
         <!-- Parte inferior -->
         <div class="bottom-links mt-auto">
@@ -105,7 +100,18 @@
             <a href="#" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/configuracoes';">
               <i class="bi bi-gear"></i> Configurações
             </a>
+
+            {{-- ✅ Logs (entre Configurações e Sair) --}}
+            <a href="#" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/email-logs';">
+              <i class="bi bi-envelope-paper"></i> Logs de Emails
+            </a>
+
+            {{-- ✅ NOVO: Audit Logs (entre Logs de Emails e Sair) --}}
+            <a href="#" onclick="event.preventDefault(); document.getElementById('iframeMain').src='/admin/audit-logs';">
+              <i class="bi bi-shield-check"></i> Audit Logs
+            </a>
           @endif
+          
 
           <form method="POST" action="{{ route('logout') }}">
             @csrf

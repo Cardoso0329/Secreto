@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -21,6 +20,30 @@
         </div>
     </div>
 
+    {{-- Barra de pesquisa --}}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ route('destinatarios.index') }}">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-10">
+                        <input
+                            type="text"
+                            name="search"
+                            class="form-control"
+                            placeholder="Pesquisar por nome ou email..."
+                            value="{{ request('search') }}"
+                        >
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button type="submit" class="btn btn-outline-primary">
+                            🔍 Pesquisar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     {{-- Mensagens --}}
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -35,6 +58,7 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
+                        <th>ID</th>
                         <th>Nome</th>
                         <th>Email</th>
                         <th class="text-end">Ações</th>
@@ -43,6 +67,7 @@
                 <tbody>
                     @forelse ($destinatarios as $destinatario)
                         <tr>
+                            <td>{{ $loop->iteration }}</td> <!-- ID sequencial -->
                             <td>{{ $destinatario->name }}</td>
                             <td>{{ $destinatario->email }}</td>
                             <td class="text-end">
@@ -56,7 +81,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3" class="text-center text-muted">Nenhum destinatário encontrado.</td>
+                            <td colspan="4" class="text-center text-muted">Nenhum destinatário encontrado.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -70,4 +95,3 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-

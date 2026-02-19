@@ -9,7 +9,7 @@ class AvisoController extends Controller
 {
     public function index()
     {
-        $avisos = Aviso::all();
+        $avisos = Aviso::orderBy('name', 'asc')->get();
         return view('avisos.index', compact('avisos'));
     }
 

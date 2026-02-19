@@ -33,20 +33,61 @@
 </style>
 @endif
 
+@php
+    // ✅ vista ativa: GET ou sessão
+    $vistaAtivaId = request('vista_id') ?? session('recados_vista_id');
 
-<div class="container mt-4">
+    $vistaSelecionada = null;
+    $vistaConditions = [];
 
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <h2 class="fw-bold mb-0">📋 Recados</h2>
+    if($vistaAtivaId) {
+        $vistaSelecionada = $vistas->firstWhere('id', $vistaAtivaId);
+        $vistaConditions = $vistaSelecionada['filtros'] ?? [];
+    }
 
-        {{-- Só aparece para Telefonistas que já escolheram local --}}
-        @if(session()->has('local_trabalho') && auth()->user()->grupos->contains('name','Telefonistas'))
-        <a href="{{ route('recados.create') }}" class="btn btn-primary">
-            📄 Novo Recado ({{ session('local_trabalho') }})
-        </a>
+    $getFiltro = fn($field) =>
+    $temFiltrosManuais
+        ? request($field)
+        : (collect($vistaConditions)->firstWhere('field', $field)['value'] ?? request($field));
+
+    // ✅ Permissão para ver "Ações"
+    $podeVerAcoes =
+        optional(auth()->user()->cargo)->name === 'admin'
+        || auth()->user()->grupos->contains('name', 'Telefonistas');
+@endphp
+
+{{-- ✅ container fluid + wrapper para ficar bonito em 1080p / 2K / 4K --}}
+<div class="container-fluid py-4">
+    <div class="recados-wrap mx-auto">
+
+        {{-- HEADER --}}
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+            <div>
+                <h2 class="fw-bold mb-1">📋 Recados - {{ session('local_trabalho') }}</h2>
+                <div class="text-muted small">Gerir e acompanhar recados</div>
+            </div>
+
+            <div class="d-flex gap-2 flex-wrap">
+                {{-- Só aparece para Telefonistas que já escolheram local --}}
+                @if(session()->has('local_trabalho') && auth()->user()->grupos->contains('name','Telefonistas'))
+                    <a href="{{ route('recados.create') }}" class="btn btn-primary">
+                        <i class="bi bi-file-earmark-plus me-1"></i>
+                        Novo Recado
+                        <span class="badge bg-light text-dark ms-2">{{ session('local_trabalho') }}</span>
+                    </a>
+                @endif
+            </div>
+        </div>
+
+        {{-- ALERTA SUCESSO --}}
+        @if(session('success'))
+            <div class="alert alert-success shadow-sm border-0 d-flex align-items-center gap-2">
+                <i class="bi bi-check-circle-fill"></i>
+                <div>{{ session('success') }}</div>
+            </div>
         @endif
-    </div>
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     {{-- Card para escolher tipo de formulário --}}
     <div class="mb-4">
@@ -82,185 +123,609 @@
         <div class="p-2 mb-2 bg-light border rounded">
             <h5 class="mb-0">🔍 Filtros Avançados</h5>
         </div>
+=======
+        {{-- ✅ TOPO: VISTA + FILTROS (em cima) --}}
+        <div class="row g-4 mb-4">
+>>>>>>> main
 
-        <div class="p-3 border rounded">
-            <form action="{{ route('recados.index') }}" method="GET" class="row g-3">
-                <div class="col-md-2">
-                    <input type="text" name="id" class="form-control" placeholder="ID..." value="{{ request('id') }}">
-                </div>
-                <div class="col-md-2">
-                    <input type="text" name="contact_client" class="form-control" placeholder="Contacto..." value="{{ request('contact_client') }}">
-                </div>
-                <div class="col-md-2">
-                    <input type="text" name="plate" class="form-control" placeholder="Matrícula..." value="{{ request('plate') }}">
-                </div>
-                <div class="col-md-3">
-                    <select name="estado_id" class="form-select">
-                        <option value="">Todos os Estados</option>
-                        @foreach($estados as $estado)
-                            <option value="{{ $estado->id }}" {{ request('estado_id') == $estado->id ? 'selected' : '' }}>
-                                {{ $estado->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <select name="tipo_formulario_id" class="form-select">
-                        <option value="">Todos os Tipos</option>
-                        @foreach($tiposFormulario as $tipo_formulario)
-                            <option value="{{ $tipo_formulario->id }}" {{ request('tipo_formulario_id') == $tipo_formulario->id ? 'selected' : '' }}>
-                                {{ $tipo_formulario->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="col-12 d-flex gap-2">
-    <button type="submit" class="btn btn-primary w-50">Filtrar</button>
-</div>
-
-            </form>
-        </div>
-    </div>
-
-    {{-- Sucesso --}}
-    @if(session('success'))
-        <div class="alert alert-success shadow-sm">
-            <i class="bi bi-check-circle"></i> {{ session('success') }}
-        </div>
-    @endif
-
-    {{-- Tabela --}}
-    <div class="card shadow-sm border-0">
-        <div class="card-body table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        @php $sortDir = request('sort_dir', 'desc') === 'asc' ? 'desc' : 'asc'; @endphp
-                        <th>
-                            <a href="{{ route('recados.index', array_merge(request()->query(), ['sort_by' => 'id', 'sort_dir' => $sortDir])) }}" class="text-decoration-none">
-                                ID
-                                @if(request('sort_by') === 'id')
-                                    <i class="bi {{ request('sort_dir') === 'asc' ? 'bi-sort-up' : 'bi-sort-down' }}"></i>
-                                @endif
-                            </a>
-                        </th>
-                        <th>Nome</th>
-                        <th>Contacto Cliente</th>
-                        <th>Matrícula</th>
-                        <th>Destinatários</th>
-                        <th>Estado</th>
-                        <th>Tipo</th>
-                        <th class="text-nowrap">Criado em</th>
-                        @if(auth()->user()->cargo->name === 'admin')
-                        <th>Ações</th>
+            {{-- VISTA --}}
+            <div class="col-12 col-lg-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                        <div class="fw-semibold">
+                            <i class="bi bi-layout-sidebar-inset me-1"></i> Vista
+                        </div>
+                        @if($vistaAtivaId)
+                            <span class="badge bg-info text-dark">Vista aplicada</span>
+                        @else
+                            <span class="badge bg-light text-muted">Sem vista</span>
                         @endif
-                    </tr>
-                </thead>
+                    </div>
 
-                <tbody>
-                    @forelse($recados as $recado)
-                        <tr class="clickable-row" data-href="{{ route('recados.show', $recado->id) }}">
-                            <td class="fw-semibold">#{{ $recado->id }}</td>
-                            <td>{{ $recado->name }}</td>
-                            <td>{{ $recado->contact_client }}</td>
-                            <td>{{ $recado->plate ?? '—' }}</td>
+                    <div class="card-body">
+                        <form action="{{ route('recados.index') }}" method="GET" class="row g-3 align-items-center">
 
-                            {{-- Destinatários --}}
-                            <td>
-                                @php
-                                    $destinatarios = collect();
+                            {{-- manter todos os filtros já aplicados --}}
+                            @foreach(request()->except('vista_id','page') as $key => $value)
+                                @if(is_array($value))
+                                    @foreach($value as $v)
+                                        <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
+                                    @endforeach
+                                @else
+                                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                                @endif
+                            @endforeach
 
-                                    if($recado->destinatarios->count()) {
-                                        $destinatarios = $destinatarios->merge($recado->destinatarios->pluck('name'));
-                                    }
+                            <div class="col-12">
+                                <label class="form-label small text-muted mb-1">Selecionar vista</label>
+                                <select name="vista_id" class="form-select" onchange="this.form.submit()">
+                                    <option value="">Nenhuma</option>
 
-                                    if($recado->grupos->count()) {
-                                        $destinatarios = $destinatarios->merge($recado->grupos->pluck('name'));
-                                    }
+                                    @foreach($vistas as $vista)
+                                        <option
+                                            value="{{ $vista['id'] }}"
+                                            {{ (string)$vistaAtivaId === (string)$vista['id'] ? 'selected' : '' }}>
+                                            {{ $vista['nome'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                                    if($recado->guestTokens->count()) {
-                                        $destinatarios = $destinatarios->merge($recado->guestTokens->pluck('email'));
-                                    }
+                            @if($vistaAtivaId)
+                                <div class="col-12">
+                                    <div class="p-2 rounded bg-light border small">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Esta vista será aplicada automaticamente quando não estiveres a usar filtros manuais.
+                                    </div>
+                                </div>
+                            @endif
+                        </form>
+                    </div>
+                </div>
+            </div>
 
-                                    $destinatarios = $destinatarios->unique();
-                                @endphp
+            {{-- FILTROS AVANÇADOS --}}
+            <div class="col-12 col-lg-8">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                        <div class="fw-semibold">
+                            <i class="bi bi-funnel me-1"></i> Filtros Avançados
+                        </div>
+                        <span class="badge bg-light text-muted">Pesquisa</span>
+                    </div>
 
-                                {!! $destinatarios->implode('<br>') !!}
-                            </td>
+                    <div class="card-body">
+                        <form action="{{ route('recados.index') }}" method="GET" class="row g-3" id="formFiltrosAvancados">
 
-                            {{-- Estado --}}
-                            <td>
-                                @php
-                                    $estadoNome = strtolower($recado->estado->name ?? '');
-                                    $badgeEstado = match($estadoNome) {
-                                        'pendente' => 'bg-warning text-dark',
-                                        'tratado' => 'bg-purple text-white',
-                                        default => 'bg-secondary text-white'
-                                    };
-                                @endphp
-                                <span class="badge rounded-pill {{ $badgeEstado }}">
-                                    {{ $estadoNome ? ucfirst($estadoNome) : '—' }}
-                                </span>
-                            </td>
-
-                            {{-- Tipo --}}
-                            <td>
-                                @php
-                                    $tipoNome = strtolower($recado->tipoFormulario->name ?? '');
-                                    $badgeTipo = match($tipoNome) {
-                                        'central' => 'bg-primary text-white',
-                                        'call center' => 'bg-success text-white',
-                                        default => 'bg-secondary text-white'
-                                    };
-                                @endphp
-                                <span class="badge rounded-pill {{ $badgeTipo }}">
-                                    {{ $tipoNome ? ucfirst($tipoNome) : '—' }}
-                                </span>
-                            </td>
-
-                            <td class="text-nowrap">{{ $recado->created_at->format('d/m/Y H:i') }}</td>
-
-                            @if(auth()->user()->cargo->name === 'admin')
-                            <td class="text-nowrap">
-                                <a href="{{ route('recados.edit', $recado->id) }}" class="btn btn-sm btn-warning mb-1">Editar</a>
-                                <form action="{{ route('recados.destroy', $recado->id) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem a certeza que deseja eliminar este recado?')">Eliminar</button>
-                                </form>
-                            </td>
+                            {{-- ✅ manter vista_id --}}
+                            @if($vistaAtivaId)
+                                <input type="hidden" name="vista_id" value="{{ $vistaAtivaId }}">
                             @endif
 
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="{{ auth()->user()->cargo->name === 'Administrador' ? '9' : '8' }}" class="text-center text-muted">Nenhum recado encontrado.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                            {{-- ID --}}
+                            <div class="col-12 col-md-3">
+                                <label class="form-label small text-muted mb-1">ID</label>
+                                <input type="text" name="id" class="form-control"
+                                       placeholder="Ex: 123"
+                                       value="{{ $getFiltro('id') }}">
+                            </div>
 
-            <div class="d-flex justify-content-center mt-4">
-                {{ $recados->appends(request()->query())->links() }}
+                            {{-- Contacto --}}
+                            <div class="col-12 col-md-4">
+                                <label class="form-label small text-muted mb-1">Contacto Cliente</label>
+                                <input type="text" name="contact_client" class="form-control"
+                                       placeholder="Ex: 9xx xxx xxx"
+                                       value="{{ $getFiltro('contact_client') }}">
+                            </div>
+
+                            {{-- Matrícula --}}
+                            <div class="col-12 col-md-5">
+                                <label class="form-label small text-muted mb-1">Matrícula</label>
+                                <input type="text" name="plate" class="form-control"
+                                       placeholder="Ex: AA-00-AA"
+                                       value="{{ $getFiltro('plate') }}">
+                            </div>
+
+                            {{-- ✅ Estado (sempre visível e persistente após refresh) --}}
+                            <div class="col-12 col-md-3">
+                                <label class="form-label small text-muted mb-1">Estado</label>
+                                <select name="estado_id" id="filtroEstado" class="form-select">
+                                    <option value="">Todos</option>
+                                    @foreach($estados as $e)
+                                        <option value="{{ $e->id }}"
+                                            @selected((string)request('estado_id') === (string)$e->id)>
+                                            {{ $e->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            {{-- ✅ Tipo do recado (persistente após refresh) --}}
+                            <div class="col-12 col-md-3">
+                                <label class="form-label small text-muted mb-1">Tipo</label>
+                                <select name="tipo_id" id="filtroTipoRecado" class="form-select">
+                                    <option value="">Todos</option>
+                                    @foreach($tipos as $t)
+                                        <option value="{{ $t->id }}"
+                                            @selected((string)request('tipo_id') === (string)$t->id)>
+                                            {{ $t->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            {{-- 📅 Intervalo de datas (abertura) --}}
+                            <div class="col-12 col-md-3">
+                                <label class="form-label small text-muted mb-1">Data início</label>
+                                <input type="date" name="date_from" class="form-control"
+                                       value="{{ request('date_from') }}">
+                            </div>
+
+                            <div class="col-12 col-md-3">
+                                <label class="form-label small text-muted mb-1">Data fim</label>
+                                <input type="date" name="date_to" class="form-control"
+                                       value="{{ request('date_to') }}">
+                            </div>
+
+                            {{-- BOTÕES --}}
+                            <div class="col-12 d-flex gap-2 flex-wrap pt-1">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-search me-1"></i> Filtrar
+                                </button>
+
+                                @if($podeVerAcoes)
+                                    <a href="{{ route('configuracoes.recados.export.filtered', request()->query()) }}"
+                                       class="btn btn-success">
+                                        <i class="bi bi-download me-1"></i> Exportar Excel
+                                    </a>
+                                @endif
+
+                                <a href="{{ route('recados.index') }}"
+                                   class="btn btn-outline-secondary ms-auto"
+                                   id="btnLimparFiltros">
+                                    <i class="bi bi-x-circle me-1"></i> Limpar
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
 
         </div>
-    </div>
 
-</div>
+        {{-- ✅ EM BAIXO: TABELA --}}
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                <div class="fw-semibold">
+                    <i class="bi bi-table me-1"></i> Lista
+                </div>
+
+                {{-- ✅ COLUNAS VISÍVEIS (frontend) + paginação --}}
+                <div class="d-flex align-items-center gap-2">
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-light border dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-columns-gap me-1"></i> Colunas
+                        </button>
+
+                        <div class="dropdown-menu dropdown-menu-end p-3 shadow" style="min-width: 240px;">
+                            <div class="fw-semibold mb-2">Mostrar colunas</div>
+
+                            <div class="d-grid gap-2" id="colsMenu">
+                                {{-- checkboxes gerados por JS --}}
+                            </div>
+
+                            <hr class="my-3">
+
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary w-50" id="colsReset">
+                                    Reset
+                                </button>
+                                <button type="button" class="btn btn-sm btn-primary w-50" id="colsAll">
+                                    Mostrar tudo
+                                </button>
+                            </div>
+
+                            <div class="small text-muted mt-2">
+                                A escolha fica guardada neste browser.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-muted small">
+                        Página {{ $recados->currentPage() }} de {{ $recados->lastPage() }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-body table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            @php $sortDir = request('sort_dir', 'desc') === 'asc' ? 'desc' : 'asc'; @endphp
+
+                            <th data-col="id" style="width: 90px;">
+                                <a href="{{ route('recados.index', array_merge(request()->query(), ['sort_by' => 'id', 'sort_dir' => $sortDir])) }}"
+                                   class="text-decoration-none d-inline-flex align-items-center gap-1">
+                                    ID
+                                    @if(request('sort_by') === 'id')
+                                        <i class="bi {{ request('sort_dir') === 'asc' ? 'bi-sort-up' : 'bi-sort-down' }}"></i>
+                                    @else
+                                        <i class="bi bi-arrow-down-up text-muted"></i>
+                                    @endif
+                                </a>
+                            </th>
+
+                            <th data-col="nome">Nome</th>
+                            <th data-col="contacto">Contacto</th>
+                            <th data-col="matricula">Matrícula</th>
+
+                            <th data-col="chefia">Chefia</th>
+                            <th data-col="departamento">Departamento</th>
+                            <th data-col="origem">Origem</th>
+                            <th data-col="sla">SLA</th>
+                            <th data-col="operador">Email do Operador</th>
+
+                            <th data-col="destinatarios">Destinatários</th>
+                            <th data-col="aviso">Aviso</th>
+
+                            <th data-col="estado">Estado</th>
+
+                            <th data-col="tipo_recado">Tipo</th>
+                            <th data-col="tipo">TipoFormulário</th>
+
+                            <th data-col="abertura" class="text-nowrap">Abertura</th>
+
+                            @if($podeVerAcoes)
+                                <th data-col="acoes" class="text-center" style="width: 90px;">Ações</th>
+                            @endif
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @forelse($recados as $recado)
+                            <tr class="clickable-row" data-href="{{ route('recados.show', $recado->id) }}">
+                                <td data-col="id" class="fw-semibold">#{{ $recado->id }}</td>
+                                <td data-col="nome" class="fw-semibold">{{ $recado->name }}</td>
+                                <td data-col="contacto">{{ $recado->contact_client }}</td>
+                                <td data-col="matricula">{{ $recado->plate ?? '—' }}</td>
+
+                                <td data-col="chefia" class="small">{{ $recado->chefia->name ?? '—' }}</td>
+                                <td data-col="departamento" class="small">{{ $recado->departamento->name ?? '—' }}</td>
+                                <td data-col="origem" class="small">{{ $recado->origem->name ?? '—' }}</td>
+                                <td data-col="sla" class="small">{{ $recado->sla->name ?? '—' }}</td>
+
+                                <td data-col="operador" class="small text-truncate" style="max-width: 220px;">
+                                    <span title="{{ $recado->operator_email ?? '' }}">
+                                        {{ $recado->operator_email ?? '—' }}
+                                    </span>
+                                </td>
+
+                                {{-- Destinatários --}}
+                                <td data-col="destinatarios" class="small">
+                                    @php
+                                        $destinatarios = collect();
+
+                                        if($recado->destinatarios->count()) $destinatarios = $destinatarios->merge($recado->destinatarios->pluck('name'));
+                                        if($recado->grupos->count()) $destinatarios = $destinatarios->merge($recado->grupos->pluck('name'));
+                                        if($recado->guestTokens->count()) $destinatarios = $destinatarios->merge($recado->guestTokens->pluck('email'));
+
+                                        $destinatarios = $destinatarios->unique();
+                                    @endphp
+                                    {!! $destinatarios->implode('<br>') !!}
+                                </td>
+
+                                {{-- Aviso --}}
+                                <td data-col="aviso" class="small">
+                                    @php
+                                        $ultimoAviso = $recado->avisosEnviados->last() ?? $recado->aviso ?? null;
+                                        $textoAviso = $ultimoAviso->titulo ?? $ultimoAviso->name ?? $ultimoAviso->assunto ?? null;
+                                    @endphp
+
+                                    @if($textoAviso)
+                                        <span class="badge rounded-pill bg-secondary text-white">
+                                            {{ \Illuminate\Support\Str::limit($textoAviso, 40) }}
+                                        </span>
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+
+                                {{-- Estado --}}
+                                <td data-col="estado" onclick="event.stopPropagation();">
+                                    @php
+                                        $estadoNome = strtolower($recado->estado->name ?? '');
+                                        $badgeEstado = match($estadoNome) {
+                                            'novo' => 'bg-info text-white',
+                                            'pendente' => 'bg-warning text-dark',
+                                            'tratado' => 'bg-purple text-white',
+                                            default => 'bg-secondary text-white'
+                                        };
+                                    @endphp
+
+                                    <span class="badge rounded-pill {{ $badgeEstado }}">
+                                        {{ $estadoNome ? ucfirst($estadoNome) : '—' }}
+                                    </span>
+                                </td>
+
+                                {{-- Tipo --}}
+                                <td data-col="tipo_recado" class="small">
+                                    <span class="badge rounded-pill bg-dark text-white">
+                                        {{ $recado->tipo->name ?? '—' }}
+                                    </span>
+                                </td>
+
+                                {{-- TipoFormulário --}}
+                                <td data-col="tipo">
+                                    @php
+                                        $tipoFormularioNome = strtolower($recado->tipoFormulario->name ?? '');
+                                        $badgeTipoFormulario = match($tipoFormularioNome) {
+                                            'central' => 'bg-primary text-white',
+                                            'call center' => 'bg-success text-white',
+                                            default => 'bg-secondary text-white'
+                                        };
+                                    @endphp
+                                    <span class="badge rounded-pill {{ $badgeTipoFormulario }}">
+                                        {{ $tipoFormularioNome ? ucfirst($tipoFormularioNome) : '—' }}
+                                    </span>
+                                </td>
+
+                                <td data-col="abertura" class="text-nowrap">
+                                    {{ $recado->abertura ? \Carbon\Carbon::parse($recado->abertura)->format('d/m/Y H:i') : '—' }}
+                                </td>
+
+                                @if($podeVerAcoes)
+                                    <td data-col="acoes" class="text-center" onclick="event.stopPropagation();">
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-light border"
+                                                    type="button"
+                                                    data-bs-toggle="dropdown"
+                                                    aria-expanded="false"
+                                                    onclick="event.stopPropagation();">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+
+                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                                <li>
+                                                    <a class="dropdown-item" href="{{ route('recados.edit', $recado->id) }}">
+                                                        ✏️ Editar
+                                                    </a>
+                                                </li>
+
+                                                @if(optional(auth()->user()->cargo)->name === 'admin')
+                                                    <li><hr class="dropdown-divider"></li>
+
+                                                    <li>
+                                                        <form action="{{ route('recados.destroy', $recado->id) }}" method="POST"
+                                                              onsubmit="return confirm('Tem a certeza que deseja eliminar este recado?')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="dropdown-item text-danger">
+                                                                🗑️ Apagar
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                @endif
+                                            </ul>
+                                        </div>
+                                    </td>
+                                @endif
+
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="{{ $podeVerAcoes ? 16 : 15 }}" class="text-center text-muted py-4">
+                                    <div class="d-flex flex-column align-items-center gap-2">
+                                        <i class="bi bi-inbox fs-2"></i>
+                                        <div>Nenhum recado encontrado.</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+
+                <div class="d-flex justify-content-center mt-4">
+                    {{ $recados->appends(request()->query())->links() }}
+                </div>
+
+            </div>
+        </div>
+
+    </div> {{-- /recados-wrap --}}
+</div> {{-- /container-fluid --}}
 @endsection
 
 <style>
-.bg-purple { background-color: #6f42c1 !important; }
-.clickable-row { cursor: pointer; transition: background-color 0.2s ease; }
-.clickable-row:hover { background-color: #f8f9fa; }
+    .bg-purple { background-color: #6f42c1 !important; }
+    .bg-info { background-color: #17a2b8 !important; }
+
+    .clickable-row { cursor: pointer; transition: background-color 0.15s ease, transform 0.05s ease; }
+    .clickable-row:hover { background-color: #f8f9fa; }
+    .clickable-row:active { transform: scale(0.999); }
+
+    .card { border-radius: 16px; }
+    .card-header { border-top-left-radius: 16px; border-top-right-radius: 16px; }
+
+    .table > :not(caption) > * > * { padding-top: .85rem; padding-bottom: .85rem; }
+
+    /* ✅ esconder colunas (frontend only) */
+    .col-hidden { display: none !important; }
+
+    /* ✅ Wrapper com largura máxima adaptativa para 1080p / 2K / 4K */
+    .recados-wrap{
+        width: 100%;
+        max-width: 1400px; /* default confortável */
+    }
+
+    /* 2K (>= 1600px) */
+    @media (min-width: 1600px){
+        .recados-wrap{ max-width: 1700px; }
+    }
+
+    /* 4K (>= 2200px) */
+    @media (min-width: 2200px){
+        .recados-wrap{ max-width: 2000px; }
+
+        /* opcional: aumentar ligeiramente texto e espaçamento */
+        .recados-wrap .table{ font-size: 1.02rem; }
+        .recados-wrap .card{ border-radius: 18px; }
+    }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.clickable-row').forEach(row =>
-        row.addEventListener('click', () => window.location.href = row.dataset.href)
-    );
+    // ✅ clique na linha abre o recado
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', (e) => {
+            // se clicou num elemento interativo, não navega
+            if (e.target.closest('a, button, input, select, textarea, label, .dropdown, .dropdown-menu')) return;
+            window.location.href = row.dataset.href;
+        });
+    });
+
+    // ---- Colunas (frontend only) ----
+    const table = document.querySelector('table');
+    if (!table) return;
+
+    const storageKey = 'recados_cols_v1';
+    const colsMenu = document.getElementById('colsMenu');
+    const btnReset = document.getElementById('colsReset');
+    const btnAll = document.getElementById('colsAll');
+
+    const ths = Array.from(table.querySelectorAll('thead th[data-col]'));
+    const colDefs = ths.map(th => ({
+        key: th.dataset.col,
+        label: (th.innerText || th.textContent || th.dataset.col).trim()
+    }));
+
+    const defaultState = Object.fromEntries(colDefs.map(c => [c.key, true]));
+
+    let state;
+    try {
+        state = JSON.parse(localStorage.getItem(storageKey)) || defaultState;
+    } catch (e) {
+        state = defaultState;
+    }
+
+    colDefs.forEach(c => {
+        if (typeof state[c.key] !== 'boolean') state[c.key] = true;
+    });
+
+    function applyState() {
+        colDefs.forEach(c => {
+            const visible = !!state[c.key];
+
+            table.querySelectorAll(`thead th[data-col="${c.key}"]`)
+                .forEach(el => el.classList.toggle('col-hidden', !visible));
+
+            table.querySelectorAll(`tbody td[data-col="${c.key}"]`)
+                .forEach(el => el.classList.toggle('col-hidden', !visible));
+        });
+
+        localStorage.setItem(storageKey, JSON.stringify(state));
+    }
+
+    function renderMenu() {
+        if (!colsMenu) return;
+        colsMenu.innerHTML = '';
+
+        colDefs.forEach(c => {
+            if (c.key === 'acoes') return; // não mostrar ações no menu
+
+            const id = `col_${c.key}`;
+            const wrapper = document.createElement('label');
+            wrapper.className = 'form-check d-flex align-items-center gap-2 mb-0';
+
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.className = 'form-check-input';
+            input.id = id;
+            input.checked = !!state[c.key];
+
+            input.addEventListener('change', () => {
+                state[c.key] = input.checked;
+                applyState();
+            });
+
+            const span = document.createElement('span');
+            span.className = 'form-check-label';
+            span.textContent = c.label;
+
+            wrapper.appendChild(input);
+            wrapper.appendChild(span);
+            colsMenu.appendChild(wrapper);
+        });
+    }
+
+    if (btnReset) {
+        btnReset.addEventListener('click', () => {
+            state = { ...defaultState };
+            renderMenu();
+            applyState();
+        });
+    }
+
+    if (btnAll) {
+        btnAll.addEventListener('click', () => {
+            colDefs.forEach(c => state[c.key] = true);
+            renderMenu();
+            applyState();
+        });
+    }
+
+    renderMenu();
+    applyState();
+
+    /* =======================
+       ✅ Estado persistente (não sai no refresh)
+       ======================= */
+    const estadoSelect = document.getElementById('filtroEstado');
+    const estadoKey = 'recados_estado_id_v1';
+    const formFiltros = document.getElementById('formFiltrosAvancados');
+    const btnLimpar = document.getElementById('btnLimparFiltros');
+
+    if (estadoSelect) {
+        const url = new URL(window.location.href);
+        const urlEstado = url.searchParams.get('estado_id');
+        const savedEstado = localStorage.getItem(estadoKey);
+
+        if ((!urlEstado || urlEstado === '') && savedEstado && savedEstado !== '') {
+            estadoSelect.value = savedEstado;
+            if (formFiltros) formFiltros.submit();
+        }
+
+        estadoSelect.addEventListener('change', () => {
+            localStorage.setItem(estadoKey, estadoSelect.value || '');
+        });
+    }
+
+    /* =======================
+       ✅ Tipo (recado) persistente (igual ao Estado)
+       ======================= */
+    const tipoSelect = document.getElementById('filtroTipoRecado');
+    const tipoKey = 'recados_tipo_id_v1';
+
+    if (tipoSelect) {
+        const url = new URL(window.location.href);
+        const urlTipo = url.searchParams.get('tipo_id');
+        const savedTipo = localStorage.getItem(tipoKey);
+
+        if ((!urlTipo || urlTipo === '') && savedTipo && savedTipo !== '') {
+            tipoSelect.value = savedTipo;
+            if (formFiltros) formFiltros.submit();
+        }
+
+        tipoSelect.addEventListener('change', () => {
+            localStorage.setItem(tipoKey, tipoSelect.value || '');
+        });
+    }
+
+    // ✅ ao limpar -> apagar o guardado (estado + tipo)
+    if (btnLimpar) {
+        btnLimpar.addEventListener('click', () => {
+            localStorage.removeItem(estadoKey);
+            localStorage.removeItem(tipoKey);
+        });
+    }
 });
 </script>

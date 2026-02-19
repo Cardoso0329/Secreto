@@ -13,6 +13,16 @@
         <div class="card shadow-sm w-100" style="max-width: 720px; border-radius: 1rem;">
             <div class="card-body p-4">
                 <h3 class="text-center mb-4" style="font-weight: 600; color: #343a40;">Criar Novo Utilizador</h3>
+                
+                 @if ($errors->any())
+    <div class="alert alert-danger">
+        <ul class="mb-0">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 
                 <form method="POST" action="{{ route('users.store') }}">
                     @csrf

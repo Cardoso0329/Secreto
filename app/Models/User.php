@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\Destinatario;
+use App\Traits\Auditable;
 
 
 
@@ -14,6 +15,7 @@ class User extends Authenticatable
 {
     use HasFactory;
     use Notifiable;
+    use Auditable;
 
 
     protected $fillable = [
@@ -78,6 +80,11 @@ public function recados()
 public function departamentos()
 {
     return $this->belongsToMany(Departamento::class, 'departamento_user');
+}
+
+public function chefias()
+{
+    return $this->belongsToMany(\App\Models\Chefia::class)->withTimestamps();
 }
 
 

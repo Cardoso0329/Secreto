@@ -11,7 +11,7 @@ class DepartamentoController extends Controller
     
     public function index()
     {
-        $departamentos = Departamento::all();
+        $departamentos = Departamento::orderBy('name', 'asc')->get();
         return view('departamentos.index', compact('departamentos'));
     }
 

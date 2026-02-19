@@ -14,7 +14,7 @@
 =======
 
 <div class="d-flex justify-content-between align-items-center mb-5">
-    <h2 class="fw-bold m-0">📨 Criar Novo Recado</h2>
+    <h2 class="fw-bold m-0">📨 Criar Novo Recado - Central</h2>
     <a href="{{ route('recados.index') }}" class="btn btn-light btn-sm rounded-circle border" title="Voltar">
         <i class="bi bi-x-lg"></i>
     </a>
@@ -211,6 +211,20 @@
         </select>
     </div>
 
+    {{-- Campanha (Só na CENTRAL) --}}
+<div class="mb-4">
+    <label class="form-label">Campanha</label>
+<select name="campanha_id" class="form-select">
+  <option value="">—</option>
+  @foreach($campanhas as $c)
+    <option value="{{ $c->id }}" @selected(old('campanha_id', $recado->campanha_id ?? null) == $c->id)>
+      {{ $c->name }}
+    </option>
+  @endforeach
+</select>
+
+</div>
+
     {{-- Origem --}}
     <div class="mb-4">
         <label class="form-label fw-semibold">Origem *</label>
@@ -226,53 +240,29 @@
                value="{{ $origens->firstWhere('name','Telefone')->id }}">
     </div>
 
-    {{-- Campanha (Só na CENTRAL) --}}
-<div class="mb-4">
-    <label for="campanha_id" class="form-label fw-semibold">Campanha</label>
-    <select name="campanha_id" id="campanha_id" class="form-select rounded-3">
-        <option value="">-- Selecionar Campanha --</option>
-        @foreach($campanhas as $campanha)
-            <option value="{{ $campanha->id }}">{{ $campanha->name }}</option>
-        @endforeach
-    </select>
-</div>
+    
 
-
-@php
-$setoresPermitidos = [
-    'Usados','Novos VLP', 'Novos VCL', 'Novos Smart', 'Novos VCP',
-    'Peças',
-    'Oficina VLP','Oficina Smart','Oficina VCL','Oficina VCP','Oficina Colisão',
-    'Marcações VLP','Marcações Smart','Marcações VCL','Marcações VCP','Marcações Colisão',
-    'Orçamentos VLP','Orçamentos Smart','Orçamentos VCL','Orçamentos VCP','Orçamentos Colisão',
-    'Financiamento','Recursos Humanos','Informática','Administração','Jurídico',
-    'RAC','Marketing','Contabilidade','Financeiro',
-];
-@endphp
-
-    {{-- Setor --}}
-    <div class="mb-4">
-        <label class="form-label fw-semibold">Setores *</label>
-        <select name="setor_id" id="setor_id" class="form-select rounded-3" required>
-            <option value="">-- Selecione --</option>
-            @foreach ($setores as $setor)
-                @if(in_array($setor->name, $setoresPermitidos))
-                    <option value="{{ $setor->id }}">{{ $setor->name }}</option>
-                @endif
-            @endforeach
-        </select>
-    </div>
 
     {{-- Departamento --}}
     <div class="mb-4">
-        <label class="form-label fw-semibold">Departamento *</label>
-        <select name="departamento_id" id="departamento_id" class="form-select rounded-3" required>
+        <label class="form-label fw-semibold">Departamento </label>
+        <select name="departamento_id" id="departamento_id" class="form-select rounded-3">
             <option value="">-- Selecione --</option>
             @foreach ($departamentos as $item)
                 <option value="{{ $item->id }}">{{ $item->name }}</option>
             @endforeach
         </select>
     </div>
+     {{-- ✅ NOVO: Chefia (Call Center) --}}
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Chefia </label>
+                    <select name="chefia_id" id="chefia_id" class="form-select rounded-3" >
+                        <option value="">-- Selecione --</option>
+                        @foreach ($chefias as $chefia)
+                            <option value="{{ $chefia->id }}">{{ $chefia->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
     {{-- GRUPOS DESTINATÁRIOS OCULTO --}}
 
@@ -284,7 +274,7 @@ $setoresPermitidos = [
         <div class="input-group">
             <select id="novoDestinatario" class="form-select rounded-start">
                 <option value="">Selecione um destinatário</option>
-                @foreach (\App\Models\User::all() as $user)
+                @foreach (\App\Models\User::orderBy('name')->get() as $user)
                     <option value="{{ $user->id }}" data-name="{{ $user->name }}">{{ $user->name }}</option>
                 @endforeach
             </select>

@@ -25,11 +25,14 @@ return new class extends Migration
         $table->foreignId('tipo_id')->constrained('tipos')->onDelete('cascade');
         $table->foreignId('origem_id')->constrained('origens')->onDelete('cascade');
         $table->foreignId('setor_id')->constrained('setores')->onDelete('cascade');
-        $table->foreignId('departamento_id')->constrained('departamentos')->onDelete('cascade');
+        $table->foreignId('departamento_id')
+    ->nullable()
+    ->constrained('departamentos')
+    ->nullOnDelete();
+
         $table->foreignId('destinatario_id')->nullable()->constrained('destinatarios')->onDelete('cascade');
         $table->string('destinatario_livre')->nullable();
-$table->foreignId('campanha_id')->nullable()->constrained('campanhas')->onDelete('set null');
-
+    $table->foreignId('campanha_id')->nullable()->constrained('campanhas')->nullOnDelete();
 
 
         $table->longText('mensagem');

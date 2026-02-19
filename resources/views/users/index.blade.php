@@ -19,7 +19,6 @@
         <h2 class="fw-bold mb-0">Utilizadores</h2>
 
         <div class="d-flex flex-wrap gap-2 align-items-center">
-
             <a href="{{ route('users.create') }}" class="btn btn-primary d-flex align-items-center gap-1">
                 <i class="bi bi-person-plus-fill"></i> Criar
             </a>
@@ -40,7 +39,7 @@
 
     {{-- Barra de Pesquisa --}}
     <div class="mb-3">
-        <input type="text" id="search" class="form-control" placeholder="Pesquisar pelo nome...">
+        <input type="text" id="search" class="form-control" placeholder="Pesquisar pelo nome ou email..." value="{{ $q ?? '' }}">
     </div>
 
     {{-- Mensagens de sessão --}}
@@ -63,7 +62,7 @@
                 <table class="table table-striped align-middle" id="users-table">
                     <thead class="table-light">
                         <tr>
-                            <th>ID</th>
+                            <th style="width:90px;">ID</th>
                             <th>Nome</th>
                             <th>Email</th>
                             <th>Cargo</th>
@@ -72,9 +71,9 @@
                         </tr>
                     </thead>
                     <tbody id="users-tbody">
-                        @foreach($users as $user)
+                        @forelse($users as $user)
                         <tr>
-                            <td>{{ $user->id }}</td>
+                            <td class="text-muted">{{ $user->id }}</td> {{-- ✅ ID real --}}
                             <td>{{ $user->name }}</td>
                             <td>{{ $user->email }}</td>
                             <td>{{ $user->cargo->name ?? '-' }}</td>
@@ -98,9 +97,18 @@
                                 </form>
                             </td>
                         </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">Nenhum utilizador encontrado.</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            {{-- Paginação --}}
+            <div class="mt-3">
+                {{ $users->links() }}
             </div>
         </div>
     </div>
@@ -120,7 +128,7 @@ function debounce(func, wait) {
 const searchInput = document.getElementById('search');
 
 searchInput.addEventListener('input', debounce(function() {
-    const query = this.value;
+    const query = this.value.trim();
 
     fetch(`{{ route('users.search') }}?q=${encodeURIComponent(query)}`)
         .then(res => res.json())
@@ -133,16 +141,18 @@ searchInput.addEventListener('input', debounce(function() {
                 return;
             }
 
-            users.forEach(user => {
+            // ✅ já vem ordenado por id asc do backend, não precisas ordenar aqui
+
+            users.forEach((user) => {
                 const grupos = user.grupos && user.grupos.length
                     ? user.grupos.map(g => `<span class="badge bg-dark">${g.name}</span>`).join(' ')
                     : '<span class="text-muted">Sem grupo</span>';
 
                 tbody.innerHTML += `
                     <tr>
-                        <td>${user.id}</td>
-                        <td>${user.name}</td>
-                        <td>${user.email}</td>
+                        <td class="text-muted">${user.id}</td>
+                        <td>${user.name ?? ''}</td>
+                        <td>${user.email ?? ''}</td>
                         <td>${user.cargo?.name ?? '-'}</td>
                         <td>${grupos}</td>
                         <td class="text-end">
@@ -150,8 +160,8 @@ searchInput.addEventListener('input', debounce(function() {
                                 <i class="bi bi-pencil-square"></i>
                             </a>
                             <form action="/users/${user.id}" method="POST" class="d-inline" onsubmit="return confirm('Apagar este utilizador?')">
-                                @csrf
-                                @method('DELETE')
+                                <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="_method" value="DELETE">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">
                                     <i class="bi bi-trash-fill"></i>
                                 </button>

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -24,7 +23,7 @@
     {{-- Mensagens --}}
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
+            {{ session('success') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
@@ -32,16 +31,19 @@
     {{-- Tabela --}}
     <div class="card shadow-sm">
         <div class="card-body p-0">
+            @if($avisos->count())
             <table class="table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
+                        <th>ID</th>
                         <th>Nome</th>
                         <th class="text-end">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($avisos as $aviso)
+                    @foreach ($avisos as $aviso)
                         <tr>
+                            <td>{{ $loop->iteration }}</td>
                             <td>{{ $aviso->name }}</td>
                             <td class="text-end">
                                 <a href="{{ route('avisos.edit', $aviso->id) }}" class="btn btn-sm btn-outline-warning me-1">Editar</a>
@@ -52,13 +54,12 @@
                                 </form>
                             </td>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="2" class="text-center text-muted">Nenhum aviso encontrado.</td>
-                        </tr>
-                    @endforelse
+                    @endforeach
                 </tbody>
             </table>
+            @else
+                <p class="text-center text-muted m-3">Nenhum aviso encontrado.</p>
+            @endif
         </div>
     </div>
 
@@ -68,4 +69,3 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-

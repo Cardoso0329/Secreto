@@ -11,7 +11,7 @@ class OrigemController extends Controller
     // Exibe todos os setores
     public function index()
     {
-        $origens = Origem::all();
+        $origens = Origem::orderBy('name', 'asc')->get();
     return view('origens.index', compact('origens'));
     }
 

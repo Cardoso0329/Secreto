@@ -12,10 +12,13 @@ class CampanhaController extends Controller
     // Listagem de campanhas
     // ============================
     public function index()
-    {
-        $campanhas = Campanha::with('departamentos')->get();
-        return view('campanhas.index', compact('campanhas'));
-    }
+{
+    // Ordenar alfabeticamente e carregar departamentos
+    $campanhas = Campanha::with('departamentos')->orderBy('name', 'asc')->get();
+
+    return view('campanhas.index', compact('campanhas'));
+}
+
 
     // ============================
     // Formulário de criação
