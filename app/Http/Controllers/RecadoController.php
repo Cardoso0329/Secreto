@@ -16,7 +16,6 @@ use App\Services\AuditService; // ✅ AUDIT (tudo menos emails)
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 
@@ -93,6 +92,19 @@ class RecadoController extends Controller
         return $mailable;
     }
 
+    /**
+     * ✅ Regra: Recados anonimizados (anonymized_at != null) só podem ser vistos por admin
+     */
+    private function blockIfAnonymizedForNonAdmin(Recado $recado): void
+    {
+        $user = auth()->user();
+        if (!$user) return;
+
+        if ($user->cargo?->name !== 'admin' && !is_null($recado->anonymized_at)) {
+            abort(404);
+        }
+    }
+
     public function index(Request $request)
     {
         $user = auth()->user();
@@ -109,6 +121,11 @@ class RecadoController extends Controller
             'setor','origem','departamento','chefia','destinatarios','estado','sla',
             'tipo','aviso','avisosEnviados','tipoFormulario','grupos','guestTokens','campanha'
         ]);
+
+        // 🔒 esconder recados anonimizados para não-admin (NÃO aparecem na listagem)
+        if ($user->cargo?->name !== 'admin') {
+            $recados->whereNull('anonymized_at');
+        }
 
         /* ================= DETETAR FILTROS MANUAIS ================= */
         $manualFields = ['id','contact_client','plate','estado_id','tipo_id','tipo_formulario_id','date_from','date_to'];
@@ -310,6 +327,9 @@ class RecadoController extends Controller
 
     public function edit(Recado $recado)
     {
+        // ✅ bloquear edição para não-admin se já estiver anonimizado
+        $this->blockIfAnonymizedForNonAdmin($recado);
+
         // ✅ AUDIT: abrir form edit
         AuditService::log('recado_edit_form', $recado, ['recado_id' => $recado->id]);
 
@@ -337,6 +357,9 @@ class RecadoController extends Controller
 
     public function update(Request $request, Recado $recado, EmailLogger $emailLogger)
     {
+        // ✅ bloquear update para não-admin se já estiver anonimizado
+        $this->blockIfAnonymizedForNonAdmin($recado);
+
         // ================== CAPTURAR ESTADO ANTES (para comparar) ==================
         $oldUserIds   = $recado->destinatariosUsers()->pluck('users.id')->map(fn($v)=>(int)$v)->values();
         $oldGroupIds  = $recado->grupos()->pluck('grupos.id')->map(fn($v)=>(int)$v)->values();
@@ -477,7 +500,7 @@ class RecadoController extends Controller
                     ->map(fn($e) => trim(mb_strtolower($e)));
             }
 
-            // 3) Juntar e remover duplicados + remover emails livres (porque esses vão com link guest)
+            // 3) Juntar e remover duplicados
             $emailsInternos = $emailsUsers
                 ->merge($emailsGrupos)
                 ->unique()
@@ -534,7 +557,7 @@ class RecadoController extends Controller
             'ficheiro' => 'nullable|file',
             'aviso_id' => 'nullable|exists:avisos,id',
             'estado_id' => 'nullable|exists:estados,id',
-            'campanha_id' => 'nullable|exists:campanhas,id', // ✅ CORRIGIDO (faltava aqui)
+            'campanha_id' => 'nullable|exists:campanhas,id',
             'observacoes' => 'nullable|string',
             'abertura' => 'nullable|date',
             'termino' => 'nullable|date',
@@ -640,12 +663,11 @@ class RecadoController extends Controller
             'internos_total' => $emailsInternos->count(),
         ]);
 
-        // ❌ envio com EmailLogger (já tens logs de email)
+        // ❌ envio com EmailLogger
         foreach ($emailsInternos as $email) {
             try {
                 $mailable = new RecadoCriadoMail($recado, null, $emailsInternos);
                 $mailable = $this->attachEmailLogContext($mailable, $recado);
-
                 $emailLogger->sendLogged($mailable, $email);
             } catch (\Throwable $e) {
                 continue;
@@ -669,14 +691,15 @@ class RecadoController extends Controller
                     'is_active' => true
                 ]);
 
-                // ✅ AUDIT: guest token criado (sem emails)
+                // ✅ AUDIT: guest token criado
                 AuditService::log('recado_store_guest_token', $recado, [
                     'recado_id' => $recado->id,
                     'guest_email' => $emailLivre,
                 ]);
 
                 try {
-                    $mailable = new RecadoCriadoMail($recado, route('recados.guest', $token));
+                    // ✅ precisa dos 3 args (emailsInternos) para não rebentar
+                    $mailable = new RecadoCriadoMail($recado, route('recados.guest', $token), collect([$emailLivre]));
                     $mailable = $this->attachEmailLogContext($mailable, $recado);
 
                     $emailLogger->sendLogged($mailable, $emailLivre);
@@ -691,7 +714,6 @@ class RecadoController extends Controller
 
     public function show($id)
     {
-        // ✅ mover check para cima
         if (!auth()->check()) {
             return redirect()->route('login')
                 ->with('error', 'Recupere password para aderir a sua conta.');
@@ -704,6 +726,9 @@ class RecadoController extends Controller
             'destinatarios','aviso','estado','tipoFormulario',
             'guestTokens','grupos.users','campanha'
         ])->findOrFail($id);
+
+        // 🔒 bloquear acesso a recados anonimizados para não-admin (nem por URL direto)
+        $this->blockIfAnonymizedForNonAdmin($recado);
 
         $user = auth()->user();
 
@@ -732,7 +757,6 @@ class RecadoController extends Controller
             }
         }
 
-        // ✅ AUDIT: abrir recado
         AuditService::log('recado_show', $recado, ['recado_id' => $recado->id]);
 
         $avisos = Aviso::all();
@@ -755,7 +779,11 @@ class RecadoController extends Controller
             'guestTokens','grupos.users','campanha'
         ])->findOrFail($guest->recado_id);
 
-        // ✅ AUDIT: acesso guest
+        // 🔒 guest NÃO pode ver recados anonimizados
+        if (!is_null($recado->anonymized_at)) {
+            abort(404);
+        }
+
         AuditService::log('recado_show_guest', $recado, [
             'recado_id' => $recado->id,
             'guest_email' => $guest->email,
@@ -775,7 +803,6 @@ class RecadoController extends Controller
 
         $recado = Recado::findOrFail($id);
 
-        // ✅ AUDIT: tentativa de delete
         AuditService::log('recado_destroy', $recado, ['recado_id' => $recado->id]);
 
         $recado->delete();
@@ -785,11 +812,12 @@ class RecadoController extends Controller
 
     public function adicionarComentario(Request $request, Recado $recado)
     {
+        $this->blockIfAnonymizedForNonAdmin($recado);
+
         $request->validate(['comentario' => 'required|string']);
 
         $oldObs = (string) $recado->observacoes;
 
-        // ✅ AUDIT: comentário adicionado (sem guardar texto completo)
         AuditService::log('recado_add_comment', $recado, [
             'recado_id' => $recado->id,
         ], [
@@ -817,6 +845,8 @@ class RecadoController extends Controller
 
     public function updateEstado(Request $request, Recado $recado)
     {
+        $this->blockIfAnonymizedForNonAdmin($recado);
+
         $request->validate(['estado_id' => 'required|exists:estados,id']);
 
         $estadoAntigo = $recado->estado;
@@ -825,7 +855,6 @@ class RecadoController extends Controller
 
         if (!$novoEstado) return redirect()->back()->with('error', 'Estado inválido.');
 
-        // ✅ AUDIT: mudança de estado
         AuditService::log('recado_update_estado', $recado, [
             'recado_id' => $recado->id,
             'from' => $estadoAntigo?->name,
@@ -863,7 +892,6 @@ class RecadoController extends Controller
     {
         $request->validate(['local' => 'required|in:Central,Call Center']);
 
-        // ✅ AUDIT: escolha de local
         AuditService::log('recado_escolher_local', null, [
             'local' => $request->local,
         ]);
@@ -885,6 +913,11 @@ class RecadoController extends Controller
             'setor','origem','departamento','chefia','destinatarios','estado','sla',
             'tipo','aviso','tipoFormulario','grupos','guestTokens','campanha'
         ]);
+
+        // 🔒 não-admin nunca exporta anonimizados
+        if ($user->cargo?->name !== 'admin') {
+            $query->whereNull('anonymized_at');
+        }
 
         $vistaId = $request->filled('vista_id')
             ? $request->input('vista_id')
@@ -934,14 +967,14 @@ class RecadoController extends Controller
         }
 
         if ($request->filled('date_from') && $request->filled('date_to')) {
-            $from = \Carbon\Carbon::parse($request->input('date_from'))->startOfDay();
-            $to   = \Carbon\Carbon::parse($request->input('date_to'))->endOfDay();
+            $from = Carbon::parse($request->input('date_from'))->startOfDay();
+            $to   = Carbon::parse($request->input('date_to'))->endOfDay();
             $query->whereBetween('recados.abertura', [$from, $to]);
         } elseif ($request->filled('date_from')) {
-            $from = \Carbon\Carbon::parse($request->input('date_from'))->startOfDay();
+            $from = Carbon::parse($request->input('date_from'))->startOfDay();
             $query->where('recados.abertura', '>=', $from);
         } elseif ($request->filled('date_to')) {
-            $to = \Carbon\Carbon::parse($request->input('date_to'))->endOfDay();
+            $to = Carbon::parse($request->input('date_to'))->endOfDay();
             $query->where('recados.abertura', '<=', $to);
         }
 
@@ -970,7 +1003,6 @@ class RecadoController extends Controller
             return back()->with('error', 'Não existem recados para exportar com os filtros atuais.');
         }
 
-        // ✅ AUDIT: exportação
         AuditService::log('recados_export_filtered', null, [
             'total' => $recados->count(),
             'filters' => $request->except(['password', '_token']),
@@ -981,10 +1013,11 @@ class RecadoController extends Controller
 
     public function concluir(Recado $recado)
     {
+        $this->blockIfAnonymizedForNonAdmin($recado);
+
         $estadoTratado = Estado::where('name', 'Tratado')->first();
         if (!$estadoTratado) return redirect()->back()->with('error', 'Estado "Tratado" não encontrado.');
 
-        // ✅ AUDIT: concluir
         AuditService::log('recado_concluir', $recado, [
             'recado_id' => $recado->id,
         ], [
@@ -1011,6 +1044,8 @@ class RecadoController extends Controller
 
     public function enviarAviso(Request $request, Recado $recado, EmailLogger $emailLogger)
     {
+        $this->blockIfAnonymizedForNonAdmin($recado);
+
         $request->validate([
             'aviso_id' => ['required', 'exists:avisos,id'],
         ]);
@@ -1031,7 +1066,6 @@ class RecadoController extends Controller
 
         $emailsUnique = array_values(array_unique($emails));
 
-        // ✅ AUDIT: ação enviar aviso (NÃO loga emails)
         AuditService::log('recado_enviar_aviso', $recado, [
             'recado_id' => $recado->id,
             'aviso_id' => $avisoId,
@@ -1042,7 +1076,6 @@ class RecadoController extends Controller
             try {
                 $mailable = new RecadoAvisoMail($recado, $aviso);
                 $mailable = $this->attachEmailLogContext($mailable, $recado);
-
                 $emailLogger->sendLogged($mailable, $email);
             } catch (\Throwable $e) {
                 continue;
@@ -1054,11 +1087,12 @@ class RecadoController extends Controller
         return back()->with('success', 'Aviso enviado com sucesso!');
     }
 
-    public function updateFicheiro(Request $request, \App\Models\Recado $recado)
+    public function updateFicheiro(Request $request, Recado $recado)
     {
+        $this->blockIfAnonymizedForNonAdmin($recado);
+
         if (!auth()->check()) abort(403);
 
-        // ✅ remover ficheiro
         if ($request->boolean('remove_file')) {
             if ($recado->ficheiro) {
                 Storage::disk('public')->delete('recados/'.$recado->ficheiro);
@@ -1069,17 +1103,14 @@ class RecadoController extends Controller
             return back()->with('success', 'Ficheiro removido com sucesso.');
         }
 
-        // ✅ validar upload
         $request->validate([
             'ficheiro' => ['required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,gif,webp,doc,docx,xls,xlsx,txt'],
         ]);
 
-        // ✅ apagar ficheiro antigo (se existir)
         if ($recado->ficheiro) {
             Storage::disk('public')->delete('recados/'.$recado->ficheiro);
         }
 
-        // ✅ guardar novo
         $file = $request->file('ficheiro');
 
         $name = time().'_'.$recado->id.'_'.preg_replace('/\s+/', '_', $file->getClientOriginalName());
@@ -1092,6 +1123,8 @@ class RecadoController extends Controller
 
     public function destroyFicheiro(Recado $recado)
     {
+        $this->blockIfAnonymizedForNonAdmin($recado);
+
         if ($recado->ficheiro) {
             $path = 'recados/' . $recado->ficheiro;
 
@@ -1106,12 +1139,13 @@ class RecadoController extends Controller
         return back()->with('success', 'Ficheiro removido com sucesso.');
     }
 
-    
-public function updateDestinatarios(Request $request, Recado $recado)
+    public function updateDestinatarios(Request $request, Recado $recado)
     {
+        $this->blockIfAnonymizedForNonAdmin($recado);
+
         $temColisao = auth()->user()
             ->departamentos
-            ->contains(fn($d) => mb_strtolower(trim($d->name)) === 'colisão'); // ✅ corrigido (lowercase)
+            ->contains(fn($d) => mb_strtolower(trim($d->name)) === 'colisão');
 
         if (!$temColisao) abort(403);
 
@@ -1127,23 +1161,17 @@ public function updateDestinatarios(Request $request, Recado $recado)
             ->unique()
             ->values();
 
-        // atuais
         $atuais = $recado->destinatarios()->pluck('users.id');
-
-        // novos (para email)
         $novosIds = $userIds->diff($atuais)->values();
 
-        // adiciona sem remover os antigos
         if ($userIds->count()) {
             $recado->destinatarios()->syncWithoutDetaching($userIds->all());
         }
 
-        // ✅ encaminhar por email (só para os novos)
         if ($request->boolean('encaminhar') && $novosIds->count()) {
 
             $novos = User::whereIn('id', $novosIds)->get();
 
-            // reply-to (emails internos) — usa os emails dos novos
             $emailsInternos = $novos->pluck('email')
                 ->filter()
                 ->map(fn($e) => trim(mb_strtolower((string)$e)))
@@ -1154,12 +1182,10 @@ public function updateDestinatarios(Request $request, Recado $recado)
                 if (empty($u->email)) continue;
 
                 try {
-                    // ✅ agora passa os 3 args esperados
                     $mailable = new RecadoCriadoMail($recado, null, $emailsInternos);
                     $mailable = $this->attachEmailLogContext($mailable, $recado);
 
                     Mail::to($u->email)->send($mailable);
-
                 } catch (\Throwable $e) {
                     continue;
                 }
@@ -1171,9 +1197,10 @@ public function updateDestinatarios(Request $request, Recado $recado)
 
     public function removeDestinatario(Recado $recado, User $user)
     {
+        $this->blockIfAnonymizedForNonAdmin($recado);
+
         $recado->destinatarios()->detach($user->id);
 
         return back()->with('success', 'Destinatário removido.');
     }
 }
-

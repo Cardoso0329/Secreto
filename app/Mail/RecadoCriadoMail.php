@@ -28,30 +28,39 @@ class RecadoCriadoMail extends Mailable
         $this->guestUrl = $guestUrl;
     }
 
-    public function envelope(): Envelope
-    {
-        $subject = 'Recado #' . $this->recado->id;
 
-        if (!empty($this->recado->plate)) {
-            $subject .= ' | Matrícula: ' . $this->recado->plate;
-        }
+public function envelope(): Envelope
+{
+    // ✅ tipo formulário (ex: Central / Call Center)
+    $tipo = $this->recado->tipoFormulario?->name;
 
-        // ✅ replyTo precisa de array/Address/Collection; garantimos array aqui
-        $replyTo = $this->emailsInternos;
+    $subject = 'Recado #' . $this->recado->id;
 
-        if ($replyTo instanceof \Illuminate\Support\Collection) {
-            $replyTo = $replyTo->values()->all();
-        } elseif (is_string($replyTo) && !empty($replyTo)) {
-            $replyTo = [$replyTo];
-        } elseif (!is_array($replyTo)) {
-            $replyTo = [];
-        }
-
-        return new Envelope(
-            subject: $subject,
-            replyTo: $replyTo
-        );
+    if (!empty($tipo)) {
+        $subject .= ' | ' . $tipo;
     }
+
+    if (!empty($this->recado->plate)) {
+        $subject .= ' | Matrícula: ' . $this->recado->plate;
+    }
+
+    // ✅ replyTo precisa de array/Address/Collection; garantimos array aqui
+    $replyTo = $this->emailsInternos;
+
+    if ($replyTo instanceof \Illuminate\Support\Collection) {
+        $replyTo = $replyTo->values()->all();
+    } elseif (is_string($replyTo) && !empty($replyTo)) {
+        $replyTo = [$replyTo];
+    } elseif (!is_array($replyTo)) {
+        $replyTo = [];
+    }
+
+    return new Envelope(
+        subject: $subject,
+        replyTo: $replyTo
+    );
+}
+
 
     public function content(): Content
     {

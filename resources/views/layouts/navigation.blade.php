@@ -1,4 +1,4 @@
-<nav class="navbar navbar-expand-lg" style="background-color: #212529;">
+<nav class="navbar navbar-expand-lg" style="background-color: #0f0f10;">
   <div class="container py-2">
 
     <button class="navbar-toggler text-white" type="button" data-bs-toggle="collapse"

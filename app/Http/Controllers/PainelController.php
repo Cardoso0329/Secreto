@@ -25,6 +25,7 @@ use App\Exports\RecadosExport;
 use App\Imports\RecadosImport;
 use App\Models\TipoFormulario;
 use App\Services\AuditService; // ✅ AUDIT (tudo menos emails)
+use Carbon\Carbon;
 
 class PainelController extends Controller
 {
@@ -39,7 +40,6 @@ class PainelController extends Controller
         $avisos = Aviso::all();
         $tipos = Tipo::all();
 
-        // ✅ AUDIT: abrir painel
         AuditService::log('painel_index', null, [
             'totais' => [
                 'destinatarios' => $destinatarios->count(),
@@ -67,7 +67,6 @@ class PainelController extends Controller
 
     public function configuracoes(Request $request)
     {
-        // ✅ AUDIT: abrir configurações (com filtros recebidos)
         AuditService::log('configuracoes_index', null, [
             'filters' => $request->except(['password', '_token']),
         ]);
@@ -87,30 +86,16 @@ class PainelController extends Controller
         if ($request->vista_id) {
             $vista = Vista::findOrFail($request->vista_id);
 
-            // ✅ AUDIT: vista aplicada
             AuditService::log('configuracoes_aplicar_vista', null, [
                 'vista_id' => $vista->id,
                 'logica' => $vista->logica,
             ]);
 
-            // ⚠️ Correção importante: tens de aplicar a vista ANTES do paginate.
-            // Aqui mantive a tua estrutura, mas para ficar certo:
-            // - O ideal é construir query, aplicarVista($query, $vista) e só depois paginate().
-            // Como tu já paginaste acima, isto não altera a query original.
-            // Vou deixar aqui a forma correta em baixo (comentada).
-
-            // ✅ Forma correta (recomendada):
-            // $query = Recado::query()
-            //     ->when(...)
-            //     ->orderBy('id','desc');
-            // $this->aplicarVista($query, $vista);
-            // $recados = $query->paginate(10);
-
-            // Mantém a tua chamada (não quebra), mas não altera o resultado paginado:
+            // ⚠️ Nota: isto não altera o paginate (porque já paginaste).
+            // Se quiseres aplicar vista "a sério", tens de aplicar na query antes do paginate.
             $this->aplicarVista($recados, $vista);
         }
 
-        // ✅ AUDIT: total devolvido nesta página
         AuditService::log('configuracoes_resultados', null, [
             'page_total' => $recados->count(),
             'vista_id' => $request->vista_id ?: null,
@@ -130,7 +115,6 @@ class PainelController extends Controller
 
         $recados = $query->get();
 
-        // ✅ AUDIT: export filtrado
         AuditService::log('painel_export_filtered', null, [
             'total' => $recados->count(),
             'filters' => $request->except(['password', '_token']),
@@ -145,7 +129,6 @@ class PainelController extends Controller
             'file' => 'required|mimes:xlsx,csv'
         ]);
 
-        // ✅ AUDIT: import iniciado (não guardamos nome real do ficheiro se não quiseres)
         AuditService::log('painel_import_recados', null, [
             'original_name' => $request->file('file')->getClientOriginalName(),
             'mime' => $request->file('file')->getClientMimeType(),
@@ -154,7 +137,6 @@ class PainelController extends Controller
 
         Excel::import(new RecadosImport, $request->file('file'));
 
-        // ✅ AUDIT: import concluído (não dá para saber quantos criou sem mexer no import)
         AuditService::log('painel_import_recados_done');
 
         return redirect()->back()->with('success', 'Recados importados com sucesso!');
@@ -164,7 +146,6 @@ class PainelController extends Controller
     {
         $recados = Recado::with(['estado','tipoFormulario'])->get();
 
-        // ✅ AUDIT: export total
         AuditService::log('painel_export_all', null, [
             'total' => $recados->count(),
         ]);
@@ -174,13 +155,12 @@ class PainelController extends Controller
 
     public function indexConfiguracoes(Request $request)
     {
-        // ✅ AUDIT: abrir indexConfiguracoes (se estiver a ser usado)
         AuditService::log('configuracoes_index_alt', null, [
             'filters' => $request->except(['password', '_token']),
         ]);
 
         $recados = Recado::with(['estado', 'tipoFormulario'])
-            ->filter($request->all()) // se tiver scope de filtros
+            ->filter($request->all())
             ->paginate(10);
 
         $estados = Estado::all();
@@ -197,7 +177,6 @@ class PainelController extends Controller
     {
         $conditions = $vista->filtros['conditions'] ?? [];
 
-        // ✅ AUDIT: registar condições aplicadas (sem exagerar)
         AuditService::log('vista_apply', null, [
             'vista_id' => $vista->id ?? null,
             'logica' => $vista->logica ?? null,
@@ -210,5 +189,118 @@ class PainelController extends Controller
                 $q->$method($cond['field'], $cond['operator'], $cond['value']);
             }
         });
+    }
+
+    /* ============================================================
+     | ✅ ANONIMIZAÇÃO (ATUALIZADA)
+     | Só recados no estado "Tratado"
+     | name / contact_client / mensagem -> "Anonimizado"
+     | marca anonymized_at para não repetir
+     ============================================================ */
+
+    private function ensureAdmin(): void
+    {
+        $user = auth()->user();
+        if (!$user) abort(403);
+        if ((int)($user->cargo_id ?? 0) !== 1 && ($user->cargo?->name ?? null) !== 'admin') abort(403);
+    }
+
+    private function tratadoEstadoId(): ?int
+    {
+        return Estado::whereRaw('LOWER(name) = ?', ['tratado'])->value('id');
+    }
+
+    private function aplicarAnonimizacaoEmRecados($recados): int
+    {
+        foreach ($recados as $r) {
+            $r->name = 'Anonimizado';
+            $r->contact_client = 'Anonimizado';
+            $r->mensagem = 'Anonimizado';
+            $r->anonymized_at = now();
+            $r->save();
+        }
+        return $recados->count();
+    }
+
+    public function anonimizarRecados3Meses(Request $request)
+    {
+        $this->ensureAdmin();
+
+        $estadoTratadoId = $this->tratadoEstadoId();
+        if (!$estadoTratadoId) {
+            return back()->with('error', 'Estado "Tratado" não encontrado.');
+        }
+
+        $cutoff = now()->subMonths(3)->startOfDay();
+
+        $count = DB::transaction(function () use ($cutoff, $estadoTratadoId) {
+
+            $recados = Recado::query()
+                ->where('estado_id', $estadoTratadoId)
+                ->whereNull('anonymized_at')
+                ->where(function ($q) use ($cutoff) {
+                    $q->whereNotNull('abertura')->where('abertura', '<=', $cutoff)
+                      ->orWhereNull('abertura')->where('created_at', '<=', $cutoff);
+                })
+                ->get(['id','name','contact_client','mensagem','anonymized_at']);
+
+            return $this->aplicarAnonimizacaoEmRecados($recados);
+        });
+
+        AuditService::log('recados_anonimizar_3meses', null, [
+            'cutoff' => $cutoff->toDateString(),
+            'estado' => 'Tratado',
+            'total' => $count,
+        ]);
+
+        return back()->with('success', "Anonimização concluída: {$count} recado(s) anonimizados (>= 3 meses, Tratado).");
+    }
+
+    public function anonimizarRecadosManual(Request $request)
+    {
+        $this->ensureAdmin();
+
+        $estadoTratadoId = $this->tratadoEstadoId();
+        if (!$estadoTratadoId) {
+            return back()->with('error', 'Estado "Tratado" não encontrado.');
+        }
+
+        $data = $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to'   => ['required', 'date', 'after_or_equal:date_from'],
+        ]);
+
+        $from = !empty($data['date_from']) ? Carbon::parse($data['date_from'])->startOfDay() : null;
+        $to   = Carbon::parse($data['date_to'])->endOfDay();
+
+        $count = DB::transaction(function () use ($from, $to, $estadoTratadoId) {
+
+            $recados = Recado::query()
+                ->where('estado_id', $estadoTratadoId)
+                ->whereNull('anonymized_at')
+                ->where(function ($w) use ($from, $to) {
+                    $w->where(function ($a) use ($from, $to) {
+                        $a->whereNotNull('abertura');
+                        if ($from) $a->where('abertura', '>=', $from);
+                        $a->where('abertura', '<=', $to);
+                    })->orWhere(function ($c) use ($from, $to) {
+                        $c->whereNull('abertura');
+                        if ($from) $c->where('created_at', '>=', $from);
+                        $c->where('created_at', '<=', $to);
+                    });
+                })
+                ->get(['id','name','contact_client','mensagem','anonymized_at']);
+
+            return $this->aplicarAnonimizacaoEmRecados($recados);
+        });
+
+        AuditService::log('recados_anonimizar_manual', null, [
+            'from' => $from?->toDateString(),
+            'to' => $to->toDateString(),
+            'estado' => 'Tratado',
+            'total' => $count,
+        ]);
+
+        return back()->with('success', "Anonimização concluída: {$count} recado(s) anonimizados no período (Tratado).");
     }
 }

@@ -160,6 +160,12 @@ Route::put('/recados/{recado}/destinatarios', [RecadoController::class, 'updateD
 Route::delete('/recados/{recado}/destinatarios/{user}', [RecadoController::class, 'removeDestinatario'])
     ->name('recados.destinatarios.remove');
 
+    Route::post('/configuracoes/recados/anonimizar/3-meses', [PainelController::class, 'anonimizarRecados3Meses'])
+    ->name('config.recados.anonimizar.3meses');
+
+Route::post('/configuracoes/recados/anonimizar/manual', [PainelController::class, 'anonimizarRecadosManual'])
+    ->name('config.recados.anonimizar.manual');
+
 
 
        
